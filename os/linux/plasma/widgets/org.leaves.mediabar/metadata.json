@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.leaves.mediabar",
+        "Name": "Leaves Media Bar",
+        "Description": "Compact now-playing controls that only appear while a media player is active",
+        "Icon": "media-playback-start",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

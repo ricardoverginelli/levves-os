@@ -1,5 +1,5 @@
 // Plasma layout script: thin top bar on the primary monitor.
-//   left:   perf meter (CPU, GPU usage + temp; RAM, disk usage)
+//   left:   perf meter (CPU, GPU usage + temp; RAM, disk usage), media controls (only while a player is active)
 //   center: weekday, date and time
 //   right:  system tray
 // Re-running replaces the bar instead of adding a second one.
@@ -23,8 +23,9 @@ panel.height = 28;
 panel.floating = false;
 panel.opacity = "translucent";  // translucent + KWin blur behind it
 
-// Left: perf meter (custom widget from ../widgets)
+// Left: perf meter, then media controls (hidden unless something is playing)
 panel.addWidget("org.leaves.perfmeter");
+panel.addWidget("org.leaves.mediabar");
 
 // Center: clock, held in the middle by two flexible spacers
 const spacerLeft = panel.addWidget("org.kde.plasma.panelspacer");
