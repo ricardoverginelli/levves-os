@@ -58,6 +58,30 @@ for script in panels/*.js; do
     qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$script")"
 done
 
+# KWin shortcuts: halves only, no quarters. Meta+Up/Down move a window between
+# the stacked monitors, Meta+Shift+Up maximizes, Meta+Shift+Down minimizes, and
+# Meta+Shift+Left/Right are freed for the snap assist script. Keys are Qt key
+# codes: Meta 0x10000000, Shift 0x02000000, Up 0x01000013, Down 0x01000015,
+# PgUp 0x01000016, PgDown 0x01000017. Everything is cleared first, so a key
+# moving from one action to another never conflicts.
+kwin_shortcut() {  # action, friendly name, keys as a(ai)
+    gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
+        --method org.kde.KGlobalAccel.setForeignShortcutKeys "['kwin', '$1', 'KWin', '$2']" "$3" >/dev/null
+}
+none='@a(ai) []'
+kwin_shortcut "Window Quick Tile Top" "Quick Tile Window to the Top" "$none"
+kwin_shortcut "Window Quick Tile Bottom" "Quick Tile Window to the Bottom" "$none"
+kwin_shortcut "Window to Next Screen" "Move Window to Next Screen" "$none"
+kwin_shortcut "Window to Previous Screen" "Move Window to Previous Screen" "$none"
+kwin_shortcut "Window Maximize" "Maximize Window" "$none"
+kwin_shortcut "Window Minimize" "Minimize Window" "$none"
+kwin_shortcut "Window One Screen Up" "Move Window One Screen Up" "$none"
+kwin_shortcut "Window One Screen Down" "Move Window One Screen Down" "$none"
+kwin_shortcut "Window One Screen Up" "Move Window One Screen Up" "[([$((0x11000013)), 0, 0, 0],)]"
+kwin_shortcut "Window One Screen Down" "Move Window One Screen Down" "[([$((0x11000015)), 0, 0, 0],)]"
+kwin_shortcut "Window Maximize" "Maximize Window" "[([$((0x13000013)), 0, 0, 0],), ([$((0x11000016)), 0, 0, 0],)]"
+kwin_shortcut "Window Minimize" "Minimize Window" "[([$((0x13000015)), 0, 0, 0],), ([$((0x11000017)), 0, 0, 0],)]"
+
 # KWin scripts: copy the package, render main.js from its template, enable, reload
 for script in kwin/*/; do
     id=$(basename "$script")

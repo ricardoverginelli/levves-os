@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Id": "leaves-snap-assist",
+        "Name": "Leaves: snap assist",
+        "Description": "Meta+Shift+Left/Right tiles the window to that half, then offers the monitor's other windows to fill the other half",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "declarativescript",
+    "KPackageStructure": "KWin/Script"
+}
