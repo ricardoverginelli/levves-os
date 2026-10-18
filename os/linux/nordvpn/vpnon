@@ -1,0 +1,5 @@
+#!/bin/bash
+# Start the NordVPN daemon and connect (optional arg: country/server, e.g. "vpnon Brazil")
+sudo systemctl start nordvpnd.socket nordvpnd.service
+sleep 1
+nordvpn connect "$@"
