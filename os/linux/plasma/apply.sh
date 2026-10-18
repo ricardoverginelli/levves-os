@@ -29,6 +29,29 @@ for script in panels/*.js; do
     qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$script")"
 done
 
+# KWin scripts: copy the package, render main.js from its template, enable, reload
+for script in kwin/*/; do
+    id=$(basename "$script")
+    dest="$HOME/.local/share/kwin/scripts/$id"
+    echo "Installing KWin script $id"
+    rm -rf "$dest"
+    mkdir -p "$dest"
+    cp -r "$script"/. "$dest"
+    template="$dest/contents/code/main.template.js"
+    if [ -f "$template" ]; then
+        python3 -I - "$template" panels/top-bar.js "$dest/contents/code/main.js" <<'PY'
+import json, sys
+template, bar, out = sys.argv[1:]
+code = open(template).read().replace("/*BAR_SCRIPT*/", json.dumps(open(bar).read()))
+open(out, "w").write(code)
+PY
+        rm "$template"
+    fi
+    kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" true
+    qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript "$id" >/dev/null
+done
+qdbus-qt6 org.kde.KWin /KWin reconfigure
+
 if [ "$restart" = true ]; then
     echo "Restarting plasmashell to load updated widgets"
     systemctl --user restart plasma-plasmashell
