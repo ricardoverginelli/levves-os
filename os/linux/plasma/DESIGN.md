@@ -90,6 +90,9 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 - Sizes: 16px in the bar, rows and buttons; 24px where an icon stands in for an app.
 - Adding one: put its name in `icons/mingcute.txt`, run `icons/fetch.py`, commit the SVG.
   `apply.sh` installs it as `mingcute-<name>`, e.g. `source: "mingcute-play-fill"`.
+- Gaps: when MingCute has nothing that reads at 16px, draw one in its style (24px grid,
+  filled, rounded 1-3px corners) in `icons/custom/`; it installs as `leaves-<name>`.
+  So far: `cpu` (MingCute's chip reads as a gear at 16px) and `ram` (a memory stick).
 
 ## Motion
 - House curve: **`cubic-bezier(0.2, 0.8, 0.2, 1)`** — fast start, soft landing.

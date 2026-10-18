@@ -34,12 +34,13 @@ for widget in widgets/*/; do
 done
 
 # Icons (DESIGN.md): MingCute SVGs go into the user's hicolor theme as
-# mingcute-<name>, so any widget can use them by name. Plasma caches icon
-# lookups, so a change means a restart.
+# mingcute-<name> and our own drawings as leaves-<name>, so any widget can use
+# them by name. Plasma caches icon lookups, so a change means a restart.
 icons="$HOME/.local/share/icons/hicolor/scalable/actions"
 mkdir -p "$icons"
-for svg in icons/mingcute/*.svg; do
-    dest="$icons/mingcute-$(basename "$svg")"
+for svg in icons/mingcute/*.svg icons/custom/*.svg; do
+    case "$svg" in icons/custom/*) prefix=leaves ;; *) prefix=mingcute ;; esac
+    dest="$icons/$prefix-$(basename "$svg")"
     cmp -s "$svg" "$dest" && continue
     cp "$svg" "$dest"
     rm -f "$HOME/.cache/icon-cache.kcache"

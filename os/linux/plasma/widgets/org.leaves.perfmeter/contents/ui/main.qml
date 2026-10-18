@@ -1,10 +1,11 @@
-// Compact perf meter: "CPU 31% 69°  GPU 99% 79°  RAM 78%  SSD 9%"
-// Colors come from the Plasma theme (see ../../../../DESIGN.md):
-// label = muted text, value = text, warning >= 70, critical >= 85.
+// Compact perf meter: [cpu] 31% 69°  [monitor] 99% 79°  [ram] 78%  [drive] 9%  [wifi] ↓2.4M ↑96K
+// Each component is a MingCute icon (DESIGN.md Icons). Colors come from the
+// Plasma theme: icon/arrows = muted text, value = text, warning >= 70, critical >= 85.
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.ksysguard.sensors as Sensors
 
 PlasmoidItem {
@@ -31,10 +32,11 @@ PlasmoidItem {
             anchors.verticalCenter: parent.verticalCenter
             spacing: root.groupGap
 
-            Metric { label: "CPU"; usageId: "cpu/all/usage"; tempId: "cpu/all/maximumTemperature" }
-            Metric { label: "GPU"; usageId: "gpu/all/usage"; tempId: "gpu/gpu0/temperature" }
-            Metric { label: "RAM"; usageId: "memory/physical/usedPercent" }
-            Metric { label: "SSD"; usageId: "disk/all/usedPercent" }
+            Metric { label: "CPU"; icon: "leaves-cpu"; usageId: "cpu/all/usage"; tempId: "cpu/all/maximumTemperature" }
+            Metric { label: "GPU"; icon: "mingcute-monitor-fill"; usageId: "gpu/all/usage"; tempId: "gpu/gpu0/temperature" }
+            Metric { label: "RAM"; icon: "leaves-ram"; usageId: "memory/physical/usedPercent" }
+            Metric { label: "SSD"; icon: "mingcute-server-2-fill"; usageId: "disk/all/usedPercent" }
+            NetworkMetric {}
         }
     }
 
@@ -58,8 +60,24 @@ PlasmoidItem {
         TextMetrics { id: widestMetrics; font: root.meterFont; text: widest }
     }
 
+    // Component icon in the muted label color; the name shows as a tooltip
+    component MetricIcon: Kirigami.Icon {
+        property string label
+        implicitWidth: 16
+        implicitHeight: 16
+        isMask: true
+        color: Kirigami.Theme.disabledTextColor
+
+        HoverHandler { id: hover }
+        PlasmaComponents.ToolTip {
+            text: parent.label
+            visible: hover.hovered
+        }
+    }
+
     component Metric: RowLayout {
         property string label
+        property string icon
         property string usageId
         property string tempId
 
@@ -68,12 +86,37 @@ PlasmoidItem {
         Sensors.Sensor { id: usage; sensorId: usageId; updateRateLimit: 2000 }
         Sensors.Sensor { id: temp; sensorId: tempId; updateRateLimit: 2000 }
 
-        Text {
-            text: label
-            color: Kirigami.Theme.disabledTextColor
-            font: root.meterFont
-        }
+        MetricIcon { source: icon; label: parent.label }
         Reading { value: usage.value ?? NaN; suffix: "%"; widest: "00%" }
         Reading { value: tempId ? (temp.value ?? NaN) : NaN; suffix: "°"; widest: "00°" }
+    }
+
+    // Download and upload for all interfaces as one reading, e.g. "↓2.4M ↑96K" (bytes per second)
+    component NetworkMetric: RowLayout {
+        spacing: root.innerGap
+
+        Sensors.Sensor { id: down; sensorId: "network/all/download"; updateRateLimit: 2000 }
+        Sensors.Sensor { id: up; sensorId: "network/all/upload"; updateRateLimit: 2000 }
+
+        MetricIcon { source: "mingcute-wifi-fill"; label: "Network" }
+        Text {
+            readonly property string muted: Kirigami.Theme.disabledTextColor
+            visible: !isNaN(down.value ?? NaN)
+            textFormat: Text.StyledText
+            text: `<font color="${muted}">↓</font>${root.formatRate(down.value)} <font color="${muted}">↑</font>${root.formatRate(up.value ?? 0)}`
+            color: Kirigami.Theme.textColor
+            font: root.meterFont
+            // Room for a typical reading so the bar doesn't shift; only 100-999K widens it a little
+            Layout.minimumWidth: rateMetrics.advanceWidth
+            TextMetrics { id: rateMetrics; font: root.meterFont; text: "↓99K ↑99K" }
+        }
+    }
+
+    // 1000 KiB/s and up switch to MiB/s, with one decimal below 10
+    function formatRate(bytes) {
+        const kib = bytes / 1024
+        if (kib < 1000) return Math.round(kib) + "K"
+        const mib = kib / 1024
+        return (mib < 10 ? mib.toFixed(1) : Math.round(mib)) + "M"
     }
 }
