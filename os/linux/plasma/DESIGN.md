@@ -54,10 +54,26 @@ blue-green-gray foliage with tiny crimson stem tips.
 Panels: `bg` at ~85% opacity. Popups: `surface`, opaque or ~95%.
 
 ## Typography
-_TBD._ Current system font: Noto Sans.
+| Role | Font | Notes |
+|---|---|---|
+| UI | **Noto Sans** | Everything in panels, widgets, apps (package `google-noto-sans-fonts`) |
+| Mono | **JetBrains Mono** | Terminals, code, numeric readouts that must align (package `jetbrains-mono-fonts`) |
+
+- Sizes: 10pt default UI, 9pt for dense readouts (perf meter), 11pt for titles.
+- Weights: Regular for content, Medium/Bold only for emphasis (e.g. the clock).
+- Numbers that update live (clock, meters) use tabular figures so they don't
+  jiggle; Noto Sans digits are tabular by default.
 
 ## Shape & spacing
-_TBD_ (corner radius, spacing scale, panel heights).
+- Spacing on a 4px grid: 4, 8, 12, 16, 24, 32.
+- Corner radius: 8px small (buttons, rows, inputs), 12px large (popups, cards).
+- Borders: 1px `border`, only where surfaces of similar tone meet.
+- Top bar: 28px tall.
 
 ## Motion
-_TBD_ (easing curve, durations).
+- House curve: **`cubic-bezier(0.2, 0.8, 0.2, 1)`** — fast start, soft landing.
+  - QML: `easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1]`
+  - KWin effects only accept named curves; nearest is `QEasingCurve.OutCubic`.
+- Durations: 120ms hover/press, 200ms popups opening, 280ms large panels/overlays.
+- Closing uses the same curve ~30% faster (e.g. popup closes in 140ms).
+- No bounce/overshoot.
