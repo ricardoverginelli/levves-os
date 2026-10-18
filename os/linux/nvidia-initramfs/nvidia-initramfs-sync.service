@@ -1,0 +1,14 @@
+[Unit]
+Description=Rebuild initramfs at shutdown if nvidia modules changed
+RequiresMountsFor=/boot /var/lib
+Before=akmods-shutdown.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+ExecStop=/usr/local/sbin/nvidia-initramfs-sync
+TimeoutStopSec=15min
+
+[Install]
+WantedBy=multi-user.target

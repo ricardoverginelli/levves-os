@@ -1,0 +1,26 @@
+#!/usr/bin/bash
+# Rebuild a kernel's initramfs when its akmods-built nvidia modules changed,
+# so the initramfs never carries a stale driver. Usage: nvidia-initramfs-sync [kver...]
+set -u
+STATE=/var/lib/nvidia-initramfs-sync
+mkdir -p "$STATE"
+
+# Let any running akmods build (e.g. from a driver update) finish first.
+for _ in $(seq 300); do pgrep -f /usr/sbin/akmods >/dev/null || break; sleep 2; done
+
+kvers=("$@")
+[ ${#kvers[@]} -eq 0 ] && kvers=($(ls /usr/lib/modules))
+
+for k in "${kvers[@]}"; do
+    mods=(/usr/lib/modules/"$k"/extra/nvidia*/nvidia*.ko*)
+    [ -e "${mods[0]}" ] || continue
+    [ -e /boot/vmlinuz-"$k" ] || continue
+    sum=$(sha256sum "${mods[@]}" | sha256sum | cut -d' ' -f1)
+    [ "$(cat "$STATE/$k" 2>/dev/null)" = "$sum" ] && continue
+    echo "nvidia modules changed for $k, rebuilding initramfs"
+    dracut -f --kver "$k" && echo "$sum" > "$STATE/$k"
+done
+
+# Drop stamps for removed kernels.
+for f in "$STATE"/*; do [ -e "$f" ] && [ ! -d /usr/lib/modules/"$(basename "$f")" ] && rm -f "$f"; done
+exit 0
