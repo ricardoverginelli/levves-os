@@ -14,6 +14,8 @@ blue-green-gray foliage with tiny crimson stem tips.
 - Dark, quiet, low-contrast surroundings; content and the accent carry attention.
 - Neutrals are cool (blue-green gray), never pure black or pure gray.
 - The amber accent is used sparingly: one accented thing per view is ideal.
+  In lists, that's the keyboard highlight (accent at 18%); hover is a neutral tint
+  (text at 6%) and focus rings stay neutral.
 
 ## Colors
 
@@ -75,7 +77,8 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 
 ## Shape & spacing
 - Spacing on a 4px grid: 4, 8, 12, 16, 24, 32.
-- Corner radius: 8px small (buttons, rows, inputs), 12px large (popups, cards).
+- Corner radius: 8px small (buttons, rows, inputs), 12px large (popups, cards). The Plasma
+  style draws every popup's frame and blur mask at 12px (`popup-radius` in `palette.json`).
 - Borders: 1px `border`, only where surfaces of similar tone meet.
 - Top bar: 28px tall.
 

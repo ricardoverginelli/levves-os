@@ -12,7 +12,11 @@ before=$(style_hash || true)
 echo "Building Plasma style"
 python3 -I plasma-style/build.py
 plasma-apply-desktoptheme leaves >/dev/null
-[ "$before" = "$(style_hash)" ] || restart=true
+if [ "$before" != "$(style_hash)" ]; then
+    # Plasma caches rendered SVGs and their element sizes; stale ones keep the old shapes
+    rm -f "$HOME/.cache/plasma_theme_leaves.kcache" "$HOME/.cache/ksvg-elements"
+    restart=true
+fi
 
 for widget in widgets/*/; do
     id=$(basename "$widget")
