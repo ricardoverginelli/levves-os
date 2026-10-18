@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Id": "yakuake-avoid-fullscreen",
+        "Name": "Yakuake: avoid fullscreen screens",
+        "Description": "Opens Yakuake on another monitor when a fullscreen/borderless window covers the one it would open on",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "javascript",
+    "KPackageStructure": "KWin/Script"
+}
