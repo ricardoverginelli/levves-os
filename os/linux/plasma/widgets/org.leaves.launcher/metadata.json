@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.leaves.launcher",
+        "Name": "Leaves Launcher",
+        "Description": "Centered launcher: search apps and files, recent and pinned apps, power and session actions",
+        "Icon": "start-here-kde",
+        "Category": "Application Launchers",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": ["org.kde.plasma.launchermenu"]
+}

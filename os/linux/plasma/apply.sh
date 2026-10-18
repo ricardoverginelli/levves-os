@@ -3,12 +3,17 @@
 set -e
 cd "$(dirname "$0")"
 
+# plasmashell keeps a widget's old QML and the style's cached SVGs until restarted
+restart=false
+
+style="$HOME/.local/share/plasma/desktoptheme/leaves"
+style_hash() { [ -d "$style" ] && find "$style" -type f -exec sha1sum {} + | sort | sha1sum; }
+before=$(style_hash || true)
 echo "Building Plasma style"
 python3 -I plasma-style/build.py
 plasma-apply-desktoptheme leaves >/dev/null
+[ "$before" = "$(style_hash)" ] || restart=true
 
-# plasmashell keeps a widget's old QML loaded until restarted
-restart=false
 for widget in widgets/*/; do
     id=$(basename "$widget")
     installed="$HOME/.local/share/plasma/plasmoids/$id"
@@ -53,6 +58,6 @@ done
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
 if [ "$restart" = true ]; then
-    echo "Restarting plasmashell to load updated widgets"
+    echo "Restarting plasmashell to load the updated style/widgets"
     systemctl --user restart plasma-plasmashell
 fi

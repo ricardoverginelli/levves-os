@@ -1,5 +1,5 @@
 // Plasma layout script: thin top bar.
-//   left:   perf meter (CPU, GPU usage + temp; RAM, disk usage), media controls (only while a player is active)
+//   left:   launcher icon, perf meter (CPU, GPU usage + temp; RAM, disk usage), media controls (only while a player is active)
 //   center: weekday, date and time
 //   right:  system tray
 // Re-running replaces the bar instead of adding a second one.
@@ -36,7 +36,8 @@ function buildBar() {
     panel.floating = false;
     panel.opacity = "translucent";  // translucent + KWin blur behind it
 
-    // Left: perf meter, then media controls (hidden unless something is playing)
+    // Left: launcher icon, perf meter, then media controls (hidden unless something is playing)
+    panel.addWidget("org.leaves.launcher");
     panel.addWidget("org.leaves.perfmeter");
     panel.addWidget("org.leaves.mediabar");
 

@@ -2,7 +2,8 @@
 """Build the "Leaves" Plasma style from ../palette.json into ~/.local/share/plasma/desktoptheme/leaves.
 
 Starts from the Breeze Dark style installed on this machine (so it tracks Plasma
-updates), swaps in the palette, and makes translucent panels more see-through.
+updates), swaps in the palette, and makes translucent panels and popups more see-through
+(glass: the fill lets KWin's blur show through).
 Everything not overridden falls back to the stock "default" style.
 """
 import configparser
@@ -67,14 +68,23 @@ def build_colors():
         colors.write(f, space_around_delimiters=False)
 
 
-def build_panel_background():
-    src = SYSTEM / "default/translucent/widgets/panel-background.svgz"
-    svg = gzip.decompress(src.read_bytes()).decode()
-    # The panel fill is drawn at 0.85 opacity in Breeze
-    svg = re.sub(r"opacity:0\.85\b", f"opacity:{palette['panel-opacity']}", svg)
-    dest = OUT / "translucent/widgets/panel-background.svgz"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(gzip.compress(svg.encode()))
+# Translucent backgrounds (used while KWin blur is on). Breeze draws their
+# fill at 0.85; glass uses the palette's glass-opacity.
+GLASS = [
+    "widgets/panel-background.svgz",
+    "dialogs/background.svgz",
+    "widgets/tooltip.svgz",
+]
+
+
+def build_glass():
+    for path in GLASS:
+        src = SYSTEM / "default/translucent" / path
+        svg = gzip.decompress(src.read_bytes()).decode()
+        svg = re.sub(r"opacity:0\.85\b", f"opacity:{palette['glass-opacity']}", svg)
+        dest = OUT / "translucent" / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(gzip.compress(svg.encode(), mtime=0))  # reproducible, so apply.sh can spot changes
 
 
 def main():
@@ -83,7 +93,7 @@ def main():
     shutil.copy(HERE / "metadata.json", OUT)
     shutil.copy(SYSTEM / "breeze-dark/plasmarc", OUT)
     build_colors()
-    build_panel_background()
+    build_glass()
     print(f"Built {OUT}")
 
 

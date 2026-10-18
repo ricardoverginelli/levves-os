@@ -54,7 +54,13 @@ blue-green-gray foliage with tiny crimson stem tips.
 `text-faint` (3.3), which is why it's decorative only.
 
 ### Translucency
-Panels: `bg` at 65% opacity with KWin blur behind (glass). Popups: `surface`, opaque or ~95%.
+Glass is the default for every surface that floats over other content: a
+translucent fill with KWin's blur behind it. The Plasma style applies it to all
+panels, popups and tooltips (`plasma-style/build.py`); custom windows get it by
+using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
+`Rectangle`.
+- Fill: `bg` at 40% opacity (`glass-opacity`), the same for panels, popups, the launcher and tooltips.
+  Kept low on purpose: the blur flattens what's behind into one tone, so a denser fill reads as solid.
 
 ## Typography
 | Role | Font | Notes |

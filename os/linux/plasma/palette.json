@@ -16,5 +16,5 @@
     "warning": "#e8cf6a",
     "success": "#8fbf8a",
     "info": "#82a9c4",
-    "panel-opacity": 0.65
+    "glass-opacity": 0.4
 }
