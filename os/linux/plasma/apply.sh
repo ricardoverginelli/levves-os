@@ -29,6 +29,12 @@ for widget in widgets/*/; do
     fi
 done
 
+# File search (launcher, KRunner): Fedora only indexes Documents, Pictures,
+# Videos and Music by default
+for folder in Downloads Desktop; do
+    balooctl6 config add includeFolders "$HOME/$folder" >/dev/null 2>&1 || true
+done
+
 for script in panels/*.js; do
     echo "Applying $script"
     qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$script")"

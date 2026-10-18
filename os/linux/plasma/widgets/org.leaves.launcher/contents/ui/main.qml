@@ -13,8 +13,9 @@
 //
 // Keys: focus stays in the search field; arrows move a highlight between
 // areas. Down = list, Right = side panel (from search only when the cursor is
-// at the end), Left = back, Enter = run, Esc = close, Ctrl+P = pin/unpin.
-// Right-click a row (or click its pin) to pin/unpin it.
+// at the end), Left = back, Enter = run, Esc = close.
+// Pins: Alt+Right pins, Alt+Left unpins, Alt+Up/Down reorders pinned apps
+// (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
@@ -42,6 +43,13 @@ PlasmoidItem {
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
     readonly property string pinsClient: "org.leaves.launcher.favorites"
+
+    // Apps never listed in recents or search (System Settings has its own row
+    // in the side panel). Pinning one still shows it.
+    readonly property var hiddenApps: ["systemsettings.desktop", "org.kde.discover.desktop"]
+    function isHidden(favoriteId) {
+        return hiddenApps.includes(favoriteId.replace(/^applications:/, ""))
+    }
 
     // Keyboard state: which area has the highlight
     property string area: "search"   // "search" | "list" | "side"
@@ -143,6 +151,8 @@ PlasmoidItem {
     Connections {
         target: pins
         function onFavoritesChanged() { Qt.callLater(root.rebuildHome) }
+        function onRowsMoved() { Qt.callLater(root.rebuildHome) }
+        function onModelReset() { Qt.callLater(root.rebuildHome) }
     }
 
     function entryFrom(row, source, i) {
@@ -168,17 +178,25 @@ PlasmoidItem {
         }
         for (let i = 0; i < recentRows.count; i++) {
             const r = recentRows.objectAt(i)
-            if (r && !pinned.has(r.favoriteId) && !pinned.has(r.name)) add(r, recents, i)
+            if (r && !pinned.has(r.favoriteId) && !pinned.has(r.name) && !isHidden(r.favoriteId)) add(r, recents, i)
         }
         homeEntries = out
         pinsVersion++
+
+        // Keep the highlight on the app that was just pinned, unpinned or moved
+        if (followId !== "") {
+            const i = out.findIndex(e => e.favoriteId === followId)
+            if (!searching) list.currentIndex = i >= 0 ? i : Math.min(list.currentIndex, out.length - 1)
+            followId = ""
+        }
     }
+    property string followId: ""
 
     function rebuildSearch() {
         const out = []
         for (let i = 0; i < searchRows.count; i++) {
             const r = searchRows.objectAt(i)
-            if (r) out.push(entryFrom(r, searchRows.model, i))
+            if (r && !isHidden(r.favoriteId)) out.push(entryFrom(r, searchRows.model, i))
         }
         searchEntries = out
         list.currentIndex = 0
@@ -190,10 +208,25 @@ PlasmoidItem {
         return pinsVersion >= 0 && entry.favoriteId !== "" && pins.isFavorite(entry.favoriteId)
     }
 
+    function setPinned(entry, pinned) {
+        if (!entry || entry.favoriteId === "" || isPinned(entry) === pinned) return
+        followId = entry.favoriteId
+        if (pinned) pins.addFavorite(entry.favoriteId, -1)
+        else pins.removeFavorite(entry.favoriteId)
+    }
+
     function togglePin(entry) {
-        if (!entry || entry.favoriteId === "") return
-        if (isPinned(entry)) pins.removeFavorite(entry.favoriteId)
-        else pins.addFavorite(entry.favoriteId, -1)
+        if (entry) setPinned(entry, !isPinned(entry))
+    }
+
+    // Moves the highlighted pinned app up (-1) or down (+1) among the pins
+    function movePin(step) {
+        const entry = entries[list.currentIndex]
+        if (searching || !entry || entry.source !== pins) return
+        const to = entry.row + step
+        if (to < 0 || to >= pinRows.count) return
+        followId = entry.favoriteId
+        pins.moveRow(entry.row, to)
     }
 
     function run(entry) {
@@ -408,6 +441,11 @@ PlasmoidItem {
 
     function handleKey(event) {
         const ctrl = event.modifiers & Qt.ControlModifier
+        if ((event.modifiers & Qt.AltModifier) && area !== "side" && handlePinKey(event.key)) {
+            event.accepted = true
+            list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+            return
+        }
         switch (event.key) {
         case Qt.Key_Escape:
             if (searching) search.text = ""
@@ -453,6 +491,19 @@ PlasmoidItem {
         }
         event.accepted = true
         list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+    }
+
+    // Alt+arrows act on the highlighted row: the list's, or the first result while typing
+    function handlePinKey(key) {
+        const highlighted = area === "list" || (area === "search" && searching)
+        const entry = highlighted ? entries[list.currentIndex] : null
+        switch (key) {
+        case Qt.Key_Right: setPinned(entry, true); return true
+        case Qt.Key_Left:  setPinned(entry, false); return true
+        case Qt.Key_Up:    if (area === "list") movePin(-1); return true
+        case Qt.Key_Down:  if (area === "list") movePin(+1); return true
+        }
+        return false
     }
 
     // ── Rows ──────────────────────────────────────────────────────────────
