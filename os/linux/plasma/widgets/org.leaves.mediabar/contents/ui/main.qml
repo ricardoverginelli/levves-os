@@ -100,17 +100,17 @@ PlasmoidItem {
             RowLayout {
                 spacing: root.innerGap
                 ControlButton {
-                    icon: "media-skip-backward-symbolic"
+                    icon: "mingcute-skip-previous-fill"
                     enabled: root.player && root.player.canGoPrevious
                     onTriggered: root.player.Previous()
                 }
                 ControlButton {
-                    icon: root.playing ? "media-playback-pause-symbolic" : "media-playback-start-symbolic"
+                    icon: root.playing ? "mingcute-pause-fill" : "mingcute-play-fill"
                     enabled: root.player && (root.playing ? root.player.canPause : root.player.canPlay)
                     onTriggered: root.player.PlayPause()
                 }
                 ControlButton {
-                    icon: "media-skip-forward-symbolic"
+                    icon: "mingcute-skip-forward-fill"
                     enabled: root.player && root.player.canGoNext
                     onTriggered: root.player.Next()
                 }

@@ -33,6 +33,19 @@ for widget in widgets/*/; do
     fi
 done
 
+# Icons (DESIGN.md): MingCute SVGs go into the user's hicolor theme as
+# mingcute-<name>, so any widget can use them by name. Plasma caches icon
+# lookups, so a change means a restart.
+icons="$HOME/.local/share/icons/hicolor/scalable/actions"
+mkdir -p "$icons"
+for svg in icons/mingcute/*.svg; do
+    dest="$icons/mingcute-$(basename "$svg")"
+    cmp -s "$svg" "$dest" && continue
+    cp "$svg" "$dest"
+    rm -f "$HOME/.cache/icon-cache.kcache"
+    restart=true
+done
+
 # File search (launcher, KRunner): Fedora only indexes Documents, Pictures,
 # Videos and Music by default
 for folder in Downloads Desktop; do

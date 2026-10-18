@@ -82,6 +82,15 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 - Borders: 1px `border`, only where surfaces of similar tone meet.
 - Top bar: 28px tall.
 
+## Icons
+- Library: **MingCute** (https://www.mingcute.com/, Apache-2.0), **Fill** style by default.
+  The Line style is only for a deliberate secondary/inactive state of the same icon.
+- Monochrome: icons are drawn as masks in a text token (`Kirigami.Icon { isMask: true }`),
+  never in their own colors. App icons (Spotify, Brave…) stay as the apps ship them.
+- Sizes: 16px in the bar, rows and buttons; 24px where an icon stands in for an app.
+- Adding one: put its name in `icons/mingcute.txt`, run `icons/fetch.py`, commit the SVG.
+  `apply.sh` installs it as `mingcute-<name>`, e.g. `source: "mingcute-play-fill"`.
+
 ## Motion
 - House curve: **`cubic-bezier(0.2, 0.8, 0.2, 1)`** — fast start, soft landing.
   - QML: `easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1]`
