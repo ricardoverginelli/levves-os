@@ -1,0 +1,20 @@
+{
+    "_comment": "Machine-readable copy of the DESIGN.md palette. Keep the two in sync.",
+    "bg-deep": "#0b1016",
+    "bg": "#11171d",
+    "surface": "#182027",
+    "raised": "#222b32",
+    "border": "#2e383d",
+    "text-faint": "#5f6b67",
+    "text-muted": "#93a09a",
+    "text": "#dde3df",
+    "accent": "#e9a23b",
+    "accent-hover": "#f3b75c",
+    "accent-pressed": "#c7852a",
+    "on-accent": "#1a1206",
+    "critical": "#e0607a",
+    "warning": "#e8cf6a",
+    "success": "#8fbf8a",
+    "info": "#82a9c4",
+    "panel-opacity": 0.65
+}

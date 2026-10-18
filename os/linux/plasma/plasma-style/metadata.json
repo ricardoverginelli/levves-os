@@ -1,0 +1,11 @@
+{
+    "KPlugin": {
+        "Id": "leaves",
+        "Name": "Leaves",
+        "Description": "Dark, cool foliage palette with a hiker-amber accent (see DESIGN.md)",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "5.0"
+}

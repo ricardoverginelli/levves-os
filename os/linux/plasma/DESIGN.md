@@ -4,6 +4,9 @@ Shared look for everything we build or theme on Plasma (panels, widgets, color
 scheme, scripts with UI). These are conventions, not hard rules: follow them by
 default, and update this file when a decision changes.
 
+Machine-readable values live in `palette.json` (used by `plasma-style/build.py`);
+keep it in sync with the tables below.
+
 Source wallpaper: `~/Pictures/leaves_2560x1440_sharp2.png` — dark, cool,
 blue-green-gray foliage with tiny crimson stem tips.
 
@@ -51,7 +54,7 @@ blue-green-gray foliage with tiny crimson stem tips.
 `text-faint` (3.3), which is why it's decorative only.
 
 ### Translucency
-Panels: `bg` at ~85% opacity. Popups: `surface`, opaque or ~95%.
+Panels: `bg` at 65% opacity with KWin blur behind (glass). Popups: `surface`, opaque or ~95%.
 
 ## Typography
 | Role | Font | Notes |

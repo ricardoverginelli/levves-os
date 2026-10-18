@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.leaves.perfmeter",
+        "Name": "Leaves Perf Meter",
+        "Description": "Compact CPU/GPU/RAM/disk usage and temperatures for a thin panel",
+        "Icon": "utilities-system-monitor",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
