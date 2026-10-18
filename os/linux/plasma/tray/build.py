@@ -19,6 +19,7 @@ import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.dont_write_bytecode = True  # no __pycache__ in the repo
 sys.path.insert(0, str(HERE))
 import patches  # noqa: E402
 
