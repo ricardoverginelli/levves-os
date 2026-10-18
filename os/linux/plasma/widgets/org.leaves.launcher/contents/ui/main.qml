@@ -1,27 +1,33 @@
 // Centered launcher. Subtle icon in the bar; Super or a click opens a window
 // centered on the active screen (layer shell, no anchors).
 //
-//   ┌ search ─────────────────┬ Lock ──────────┐
-//   │ pinned apps (pin at end)│ Power Off      │
-//   │ ───                     │ Restart        │
-//   │ recent apps, newest     │ Sleep          │
-//   │ first — or search       │ Log Out        │
-//   │ results while typing,   │ ───            │
-//   │ grouped (Apps, Files…)  │ System Settings│
-//   │                         │ (user)         │
-//   └─────────────────────────┴────────────────┘
+//   ┌ Tasks  CPU GPU RAM Disk ┬ search ─────────────────┬ Lock ──────────┐
+//   │ apps with a window      │ pinned apps (pin at end)│ Power Off      │
+//   │ Background              │ ───                     │ Restart        │
+//   │ tray apps, helpers      │ recent apps, newest     │ Sleep          │
+//   │                         │ first — or search       │ Log Out        │
+//   │                         │ results while typing,   │ ───            │
+//   │                         │ grouped (Apps, Files…)  │ System Settings│
+//   │                         │                         │ (user)         │
+//   └─────────────────────────┴─────────────────────────┴────────────────┘
 //
 // Keys: focus stays in the search field; arrows move a highlight between
 // areas. Down = list, Right = side panel (from search only when the cursor is
-// at the end), Left = back, Tab/Shift+Tab = next/previous area, Enter = run,
-// Esc = close. Power Off, Restart and Log Out ask for a second Enter/click.
+// at the end), Left = task manager (from search only when the cursor is at the
+// start), Left/Right from a side area = back, Tab/Shift+Tab = next/previous
+// area, Enter = run, Esc = close. Power Off, Restart and Log Out ask for a
+// second Enter/click.
 // Pins: Alt+Right pins, Alt+Left unpins, Alt+Up/Down reorders pinned apps
 // (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
+// Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
+// asks the app to quit, and doing it again within 5s force-quits it. Click a
+// column header to sort by it (again for by name).
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.components as KirigamiComponents
 import org.kde.layershell as LayerShell
@@ -29,6 +35,8 @@ import org.kde.coreaddons as KCoreAddons
 import org.kde.kcmutils as KCMUtils
 import org.kde.plasma.private.kicker as Kicker
 import org.kde.plasma.private.sessions as Sessions
+import org.kde.ksysguard.process as Process
+import org.kde.taskmanager as TaskManager
 
 PlasmoidItem {
     id: root
@@ -43,6 +51,9 @@ PlasmoidItem {
     readonly property int rowHeight: 36
     readonly property int twoLineRowHeight: 44
     readonly property int sideWidth: 200
+    readonly property int taskWidth: 360
+    readonly property int taskRowHeight: 32
+    readonly property int taskCellWidth: 42
     readonly property int fadeSize: 24     // scroll hint at the list's edges
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
@@ -68,8 +79,9 @@ PlasmoidItem {
     })
 
     // Keyboard state: which area has the highlight
-    property string area: "search"   // "search" | "list" | "side"
+    property string area: "search"   // "tasks" | "search" | "list" | "side"
     property string areaBeforeSide: "search"
+    property string areaBeforeTasks: "search"
     readonly property bool searching: search.text.length > 0
     readonly property var entries: searching ? searchEntries : homeEntries
     property var homeEntries: []
@@ -288,6 +300,197 @@ PlasmoidItem {
         close()
     }
 
+    // ── Task manager ──────────────────────────────────────────────────────
+
+    // One row per running app: systemd's app cgroups, like System Monitor's
+    // Applications page. Sampled (every 2s) only while the launcher is open and
+    // for a minute after, so reopening it shows live numbers right away.
+    readonly property var taskAttributes: ["appName", "iconName", "menuId", "usage", "gpu_usage", "memory",
+                                           "ioCharactersActuallyReadRate", "ioCharactersActuallyWrittenRate"]
+    Process.ApplicationDataModel {
+        id: apps
+        enabled: launcher.visible || taskLinger.running
+        enabledAttributes: root.taskAttributes
+    }
+    Timer { id: taskLinger; interval: 60000 }
+    Process.ProcessController { id: processes }
+
+    // Open windows: an app with one is listed first, the rest under "Background"
+    TaskManager.TasksModel {
+        id: windows
+        groupMode: TaskManager.TasksModel.GroupDisabled
+        filterByScreen: false
+        filterByVirtualDesktop: false
+        filterByActivity: false
+    }
+
+    Connections {
+        target: apps
+        function onDataChanged() { Qt.callLater(root.rebuildTasks) }
+        function onRowsInserted() { Qt.callLater(root.rebuildTasks) }
+        function onRowsRemoved() { Qt.callLater(root.rebuildTasks) }
+        function onModelReset() { Qt.callLater(root.rebuildTasks) }
+    }
+    Connections {
+        target: windows
+        function onRowsInserted() { Qt.callLater(root.rebuildTasks) }
+        function onRowsRemoved() { Qt.callLater(root.rebuildTasks) }
+        function onModelReset() { Qt.callLater(root.rebuildTasks) }
+    }
+
+    // Header icons are the perf meter's (DESIGN.md Icons); cpu/gpu are % of the
+    // whole CPU/GPU, ram KiB, disk read + write in bytes per second
+    readonly property var taskColumns: [
+        { key: "cpu",  icon: "leaves-cpu",             label: "CPU" },
+        { key: "gpu",  icon: "mingcute-monitor-fill",  label: "GPU" },
+        { key: "ram",  icon: "leaves-ram",             label: "Memory" },
+        { key: "disk", icon: "mingcute-server-2-fill", label: "Disk read + write" },
+    ]
+    property string sortKey: "name"   // "name" or a column key (highest first)
+    onSortKeyChanged: rebuildTasks()
+    property int taskIndex: 0
+    // Pids per row key, kept out of the ListModel (it would turn arrays into models)
+    property var taskPids: ({})
+
+    // Rows update in place every sample, so hover and the highlight don't flicker
+    ListModel { id: taskRows }
+
+    function rebuildTasks() {
+        if (!launcher.visible) return
+        const value = (r, name) => apps.data(apps.index(r, taskAttributes.indexOf(name)), Process.ProcessDataModel.Value)
+        const maximum = name => apps.rowCount()
+            ? apps.data(apps.index(0, taskAttributes.indexOf(name)), Process.ProcessDataModel.Maximum) || 0 : 0
+        const cpuMax = maximum("usage") || 100   // 100 per core
+        const ramMax = maximum("memory")
+
+        // Windows by desktop file and by pid
+        const W = TaskManager.AbstractTasksModel
+        const windowById = {}, windowByPid = {}
+        for (let w = 0; w < windows.rowCount(); w++) {
+            const i = windows.index(w, 0)
+            if (!windows.data(i, W.IsWindow)) continue
+            const appId = windows.data(i, W.AppId) ?? ""
+            const pid = windows.data(i, W.AppPid)
+            if (appId && !(appId in windowById)) windowById[appId] = w
+            if (pid && !(pid in windowByPid)) windowByPid[pid] = { row: w, appId: appId }
+        }
+
+        // Adds a row's pids and readings to another's
+        const merge = (into, t) => {
+            into.pids = into.pids.concat(t.pids)
+            for (const k of ["cpu", "gpu", "ram", "disk"]) into[k] += t[k]
+            into.windowRow = Math.max(into.windowRow, t.windowRow)
+            t.merged = true
+        }
+
+        let list = []
+        for (let r = 0; r < apps.rowCount(); r++) {
+            const pids = apps.data(apps.index(r, 0), Process.ProcessDataModel.PIDs)
+            if (!pids || !pids.length) continue
+            const menuId = value(r, "menuId") || ""
+            const name = value(r, "appName") || menuId
+            const t = {
+                key: menuId || name, name: name, icon: value(r, "iconName") || "", menuId: menuId,
+                pids: Array.from(pids),
+                cpu: (value(r, "usage") || 0) / cpuMax * 100,
+                gpu: value(r, "gpu_usage") || 0,
+                ram: value(r, "memory") || 0,
+                disk: (value(r, "ioCharactersActuallyReadRate") || 0) + (value(r, "ioCharactersActuallyWrittenRate") || 0),
+                windowRow: menuId in windowById ? windowById[menuId] : -1,
+            }
+            // Instances launched separately get a cgroup each; they're one row
+            const same = list.find(o => o.key === t.key)
+            if (same) merge(same, t)
+            else list.push(t)
+        }
+        // A window found by pid instead. Chromium browsers move their main
+        // process into a scope of their own (org.chromium.Chromium, no desktop
+        // file); its window names the app it belongs to, so it's merged into it.
+        for (const t of list) {
+            if (t.windowRow >= 0) continue
+            const w = t.pids.map(pid => windowByPid[pid]).find(w => w)
+            if (!w) continue
+            const owner = !t.menuId && w.appId ? list.find(o => o !== t && o.menuId === w.appId) : null
+            t.windowRow = w.row
+            if (owner) merge(owner, t)
+        }
+        list = list.filter(t => !t.merged)
+
+        const byName = (a, b) => a.name.localeCompare(b.name)
+        const order = sortKey === "name" ? byName : (a, b) => (b[sortKey] - a[sortKey]) || byName(a, b)
+        const background = list.filter(t => t.windowRow < 0).sort(order)
+        const rows = list.filter(t => t.windowRow >= 0).sort(order).concat(background)
+        if (background.length) background[0].above = "Background"
+
+        const currentKey = taskIndex < taskRows.count ? taskRows.get(taskIndex).key : ""
+        const sameRows = rows.length === taskRows.count && rows.every((t, i) => taskRows.get(i).key === t.key)
+        if (!sameRows) taskRows.clear()
+        const pids = {}
+        rows.forEach((t, i) => {
+            pids[t.key] = t.pids
+            const row = { key: t.key, name: t.name, icon: t.icon, cpu: t.cpu, gpu: t.gpu, ram: t.ram,
+                          ramPercent: ramMax ? t.ram / ramMax * 100 : 0, disk: t.disk,
+                          windowRow: t.windowRow, above: t.above ?? "" }
+            if (sameRows) taskRows.set(i, row)
+            else taskRows.append(row)
+        })
+        taskPids = pids
+        // Keep the highlight on the same app as rows come, go and re-sort
+        const i = rows.findIndex(t => t.key === currentKey)
+        taskIndex = i >= 0 ? i : Math.max(0, Math.min(taskIndex, rows.length - 1))
+    }
+
+    function switchToTask(index) {
+        const row = index >= 0 && index < taskRows.count ? taskRows.get(index).windowRow : -1
+        if (row < 0) return
+        close()
+        windows.requestActivate(windows.makeModelIndex(row))
+    }
+
+    // The first ask is SIGTERM (the app can save and quit); asking again
+    // within 5s, while it's still listed, is SIGKILL
+    property string endingKey: ""
+    Timer {
+        id: endingTimer
+        interval: 5000
+        onTriggered: root.endingKey = ""
+    }
+
+    function endTask(index) {
+        if (index < 0 || index >= taskRows.count) return
+        const key = taskRows.get(index).key
+        if (!taskPids[key]) return
+        if (endingKey === key) {
+            processes.sendSignal(taskPids[key], Process.Signal.KillSignal)
+            endingKey = ""
+            endingTimer.stop()
+        } else {
+            processes.sendSignal(taskPids[key], Process.Signal.TerminateSignal)
+            endingKey = key
+            endingTimer.restart()
+        }
+    }
+
+    // Usage colors as in the perf meter: warning from 70%, critical from 85%
+    function levelColor(percent) {
+        if (percent >= 85) return Kirigami.Theme.negativeTextColor
+        if (percent >= 70) return Kirigami.Theme.neutralTextColor
+        return Kirigami.Theme.textColor
+    }
+    function formatMemory(kib) {
+        const mib = kib / 1024
+        if (mib < 1000) return Math.round(mib) + "M"
+        const gib = mib / 1024
+        return (gib < 10 ? gib.toFixed(1) : Math.round(gib)) + "G"
+    }
+    // The perf meter's network format: 1000 KiB/s and up switch to MiB/s
+    function formatRate(bytes) {
+        const kib = bytes / 1024
+        if (kib < 1000) return Math.round(kib) + "K"
+        const mib = kib / 1024
+        return (mib < 10 ? mib.toFixed(1) : Math.round(mib)) + "M"
+    }
+
     // ── Power & session ───────────────────────────────────────────────────
 
     Sessions.SessionManagement { id: session }
@@ -346,8 +549,12 @@ PlasmoidItem {
         list.positionViewAtBeginning()
         sideIndex = 0
         confirmIndex = -1
+        taskIndex = 0
+        endingKey = ""
         rebuildHome()
         launcher.visible = true
+        rebuildTasks()
+        taskList.positionViewAtBeginning()
         launcher.requestActivate()
         search.forceActiveFocus()
         openAnim.restart()
@@ -357,6 +564,7 @@ PlasmoidItem {
     function close() {
         if (!launcher.visible || closing) return
         closing = true
+        taskLinger.restart()
         openAnim.stop()
         closeAnim.restart()
     }
@@ -367,7 +575,8 @@ PlasmoidItem {
         id: launcher
         visible: false
         // Layer surfaces need a real size up front (0 is a protocol error)
-        width: 680
+        // The task manager widens it; the search column keeps its 680px-window width
+        width: 680 + root.taskWidth + root.pad + 1
         height: 460
         LayerShell.Window.scope: "leaves-launcher"
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone
@@ -402,7 +611,71 @@ PlasmoidItem {
                 anchors.bottomMargin: root.pad
                 spacing: root.pad
 
-                // Left: search + list
+                // Left: task manager
+                ColumnLayout {
+                    // Fixed width, like the side panel
+                    Layout.preferredWidth: root.taskWidth - root.pad
+                    Layout.maximumWidth: root.taskWidth - root.pad
+                    Layout.fillWidth: false
+                    Layout.fillHeight: true
+                    spacing: 8
+
+                    // Column headers, as tall as the search field; click one to sort by it
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: root.rowHeight
+
+                        Text {
+                            x: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Tasks"
+                            font.pointSize: 9
+                            font.weight: Font.Medium
+                            color: Kirigami.Theme.disabledTextColor
+                            TapHandler { onTapped: root.sortKey = "name" }
+                        }
+                        RowLayout {
+                            spacing: 0
+                            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                            Repeater {
+                                model: root.taskColumns
+                                TaskHeader {}
+                            }
+                        }
+                    }
+
+                    ListView {
+                        id: taskList
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: taskRows
+                        currentIndex: root.taskIndex
+                        boundsBehavior: Flickable.StopAtBounds
+                        highlightMoveDuration: 0
+                        keyNavigationEnabled: false
+                        delegate: TaskRow {}
+
+                        layer.enabled: !atYBeginning || !atYEnd
+                        layer.effect: GE.OpacityMask { maskSource: taskFadeMask }
+
+                        Text {
+                            anchors.centerIn: parent
+                            visible: taskList.count === 0
+                            text: apps.available ? "" : "Needs systemd app cgroups"
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pointSize: 10
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillHeight: true
+                    implicitWidth: 1
+                    color: Qt.alpha(Kirigami.Theme.textColor, 0.10)
+                }
+
+                // Middle: search + list
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -514,20 +787,8 @@ PlasmoidItem {
                 }
             }
 
-            // Alpha mask for the list's scroll hint (only drawn through the effect)
-            Rectangle {
-                id: fadeMask
-                visible: false
-                width: list.width
-                height: list.height
-                readonly property real edge: root.fadeSize / Math.max(height, 1)
-                gradient: Gradient {
-                    GradientStop { position: 0; color: list.atYBeginning ? "black" : "transparent" }
-                    GradientStop { position: fadeMask.edge; color: "black" }
-                    GradientStop { position: 1 - fadeMask.edge; color: "black" }
-                    GradientStop { position: 1; color: list.atYEnd ? "black" : "transparent" }
-                }
-            }
+            ScrollFade { id: fadeMask; view: list }
+            ScrollFade { id: taskFadeMask; view: taskList }
         }
     }
 
@@ -535,7 +796,14 @@ PlasmoidItem {
 
     function handleKey(event) {
         const ctrl = event.modifiers & Qt.ControlModifier
-        if ((event.modifiers & Qt.AltModifier) && area !== "side" && handlePinKey(event.key)) {
+        const alt = event.modifiers & Qt.AltModifier
+        const arrows = [Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down]
+        if (alt && area === "tasks" && arrows.includes(event.key)) {
+            if (event.key === Qt.Key_Left) endTask(taskIndex)
+            event.accepted = true
+            return
+        }
+        if (alt && (area === "search" || area === "list") && handlePinKey(event.key)) {
             event.accepted = true
             list.positionViewAtIndex(list.currentIndex, ListView.Contain)
             return
@@ -546,7 +814,8 @@ PlasmoidItem {
             else close()
             break
         case Qt.Key_Down:
-            if (area === "side") sideIndex = Math.min(sideIndex + 1, sideActions.length - 1)
+            if (area === "tasks") taskIndex = Math.min(taskIndex + 1, taskRows.count - 1)
+            else if (area === "side") sideIndex = Math.min(sideIndex + 1, sideActions.length - 1)
             else if (area === "search") {
                 // While typing, row 0 is already highlighted, so Down goes to row 1
                 if (list.count) { area = "list"; list.currentIndex = searching ? Math.min(1, list.count - 1) : 0 }
@@ -554,7 +823,8 @@ PlasmoidItem {
             else list.currentIndex = Math.min(list.currentIndex + 1, list.count - 1)
             break
         case Qt.Key_Up:
-            if (area === "side") sideIndex = Math.max(sideIndex - 1, 0)
+            if (area === "tasks") taskIndex = Math.max(taskIndex - 1, 0)
+            else if (area === "side") sideIndex = Math.max(sideIndex - 1, 0)
             else if (area === "list") {
                 if (list.currentIndex <= (searching ? 1 : 0)) { area = "search"; list.currentIndex = 0 }
                 else list.currentIndex--
@@ -562,12 +832,14 @@ PlasmoidItem {
             break
         case Qt.Key_Right:
             if (area === "side") break
+            if (area === "tasks") { area = areaBeforeTasks; break }
             if (area === "search" && search.cursorPosition < search.text.length) { event.accepted = false; return }
             goToSide()
             break
         case Qt.Key_Left:
             if (area === "side") area = areaBeforeSide
-            else if (area === "search") { event.accepted = false; return }
+            else if (area === "search" && search.cursorPosition > 0) { event.accepted = false; return }
+            else if (area !== "tasks") goToTasks()
             break
         case Qt.Key_Tab:
             cycleArea(+1)
@@ -578,10 +850,11 @@ PlasmoidItem {
         case Qt.Key_Return:
         case Qt.Key_Enter:
             if (area === "side") runSide(sideIndex)
+            else if (area === "tasks") switchToTask(taskIndex)
             else run(entries[list.currentIndex])
             break
         case Qt.Key_P:
-            if (!ctrl || area === "side") { event.accepted = false; return }
+            if (!ctrl || area === "side" || area === "tasks") { event.accepted = false; return }
             togglePin(entries[list.currentIndex])
             break
         default:
@@ -590,6 +863,7 @@ PlasmoidItem {
         }
         event.accepted = true
         list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+        taskList.positionViewAtIndex(taskIndex, ListView.Contain)
     }
 
     function goToSide() {
@@ -597,11 +871,17 @@ PlasmoidItem {
         area = "side"
     }
 
-    // Tab order: search → list → side panel (the list is skipped when empty)
+    function goToTasks() {
+        areaBeforeTasks = area
+        area = "tasks"
+    }
+
+    // Tab order, left to right: tasks → search → list → side panel (the list is skipped when empty)
     function cycleArea(step) {
-        const order = list.count ? ["search", "list", "side"] : ["search", "side"]
+        const order = list.count ? ["tasks", "search", "list", "side"] : ["tasks", "search", "side"]
         const next = order[(order.indexOf(area) + step + order.length) % order.length]
         if (next === "side") goToSide()
+        else if (next === "tasks") goToTasks()
         else {
             if (next === "list") list.currentIndex = 0
             area = next
@@ -739,6 +1019,161 @@ PlasmoidItem {
                 hoverEnabled: true
                 enabled: pinIcon.visible
                 onClicked: root.togglePin(entryRow.modelData)
+            }
+        }
+    }
+
+    // A list's scroll hint: an alpha mask (only drawn through the effect) that
+    // fades rows out at an edge with more content past it
+    component ScrollFade: Rectangle {
+        id: fade
+        required property Flickable view
+        visible: false
+        width: view.width
+        height: view.height
+        readonly property real edge: root.fadeSize / Math.max(height, 1)
+        gradient: Gradient {
+            GradientStop { position: 0; color: fade.view.atYBeginning ? "black" : "transparent" }
+            GradientStop { position: fade.edge; color: "black" }
+            GradientStop { position: 1 - fade.edge; color: "black" }
+            GradientStop { position: 1; color: fade.view.atYEnd ? "black" : "transparent" }
+        }
+    }
+
+    // Column header icon; the sorted column is drawn in the text color
+    component TaskHeader: Item {
+        id: header
+        required property var modelData
+        readonly property bool active: root.sortKey === modelData.key
+        Layout.preferredWidth: root.taskCellWidth
+        height: 16
+
+        Kirigami.Icon {
+            anchors.right: parent.right
+            width: 16; height: 16
+            source: header.modelData.icon
+            isMask: true
+            color: header.active || headerHover.hovered ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+            Behavior on color {
+                ColorAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+            }
+        }
+        HoverHandler { id: headerHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: root.sortKey = header.active ? "name" : header.modelData.key }
+        PlasmaComponents.ToolTip {
+            text: header.modelData.label
+            visible: headerHover.hovered
+        }
+    }
+
+    // A right-aligned reading; idle ones (nothing happening) are muted
+    component TaskCell: Text {
+        property real level
+        property bool idle
+        Layout.preferredWidth: root.taskCellWidth
+        horizontalAlignment: Text.AlignRight
+        font.pointSize: 9
+        color: idle ? Kirigami.Theme.disabledTextColor : root.levelColor(level)
+    }
+
+    component TaskRow: Item {
+        id: taskRow
+        required property int index
+        required property string key
+        required property string name
+        required property string icon
+        required property real cpu
+        required property real gpu
+        required property real ram
+        required property real ramPercent
+        required property real disk
+        required property int windowRow
+        required property string above
+        readonly property bool ending: root.endingKey === key
+        readonly property bool hovered: taskMouse.containsMouse || endMouse.containsMouse
+        readonly property int aboveHeight: above !== "" ? (index === 0 ? 20 : 28) : 0
+
+        width: ListView.view.width
+        height: aboveHeight + root.taskRowHeight
+
+        Text {
+            visible: taskRow.above !== ""
+            x: 8
+            anchors { bottom: taskBackground.top; bottomMargin: 4 }
+            text: taskRow.above
+            font.pointSize: 9
+            font.weight: Font.Medium
+            color: Kirigami.Theme.disabledTextColor
+        }
+
+        RowBackground {
+            id: taskBackground
+            y: taskRow.aboveHeight
+            width: parent.width
+            height: root.taskRowHeight
+            hovered: taskRow.hovered
+            selected: (root.area === "tasks" && root.taskIndex === taskRow.index) || taskRow.ending
+            tint: taskRow.ending ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+
+            Kirigami.Icon {
+                id: taskIcon
+                x: 8
+                anchors.verticalCenter: parent.verticalCenter
+                width: 24; height: 24
+                source: taskRow.icon || "application-x-executable"
+            }
+
+            // Background apps (no window) in the muted color
+            Text {
+                anchors {
+                    left: taskIcon.right; leftMargin: 8
+                    right: cells.left; rightMargin: taskRow.hovered ? 28 : 4
+                    verticalCenter: parent.verticalCenter
+                }
+                elide: Text.ElideRight
+                font.pointSize: 10
+                color: taskRow.ending ? Kirigami.Theme.negativeTextColor
+                     : taskRow.windowRow >= 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                text: taskRow.ending ? "Again to force quit" : taskRow.name
+            }
+
+            // End task, shown on hover
+            Kirigami.Icon {
+                id: endIcon
+                anchors { right: cells.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                width: 16; height: 16
+                source: "mingcute-close-fill"
+                isMask: true
+                color: endMouse.containsMouse ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+                opacity: endMouse.containsMouse ? 1 : taskRow.hovered ? 0.5 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                }
+            }
+
+            RowLayout {
+                spacing: 0
+                id: cells
+                anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                TaskCell { text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
+                TaskCell { text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
+                TaskCell { text: root.formatMemory(taskRow.ram); level: taskRow.ramPercent }
+                TaskCell { text: root.formatRate(taskRow.disk); idle: taskRow.disk < 512 }
+            }
+
+            MouseArea {
+                id: taskMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: taskRow.windowRow >= 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: root.switchToTask(taskRow.index)
+            }
+            MouseArea {
+                id: endMouse
+                anchors.fill: endIcon
+                anchors.margins: -6
+                hoverEnabled: true
+                onClicked: root.endTask(taskRow.index)
             }
         }
     }
