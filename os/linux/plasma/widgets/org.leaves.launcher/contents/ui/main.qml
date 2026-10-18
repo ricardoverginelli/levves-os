@@ -97,7 +97,7 @@ PlasmoidItem {
             anchors.verticalCenter: parent.verticalCenter
             width: 16
             height: 16
-            source: Qt.resolvedUrl("../icons/leaf.svg")
+            source: "leaves-leaf"
             isMask: true
             color: barButton.containsMouse || launcher.visible ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
             Behavior on color {
@@ -301,7 +301,7 @@ PlasmoidItem {
         { icon: "system-shutdown",    label: "Power Off", confirm: "Press again to power off", run: () => session.requestShutdown(skipPrompt) },
         { icon: "system-reboot",      label: "Restart",   confirm: "Press again to restart",   run: () => session.requestReboot(skipPrompt) },
         { icon: "system-suspend",     label: "Sleep",     run: () => session.suspend() },
-        { icon: Qt.resolvedUrl("../icons/log-out.svg"), label: "Log Out", confirm: "Press again to log out", run: () => session.requestLogout(skipPrompt) },
+        { icon: "leaves-log-out", label: "Log Out", confirm: "Press again to log out", run: () => session.requestLogout(skipPrompt) },
         { icon: "configure",          label: "System Settings", run: () => KCMUtils.KCMLauncher.openSystemSettings("") },
         { user: true,                 label: user.fullName || user.loginName, run: () => KCMUtils.KCMLauncher.openSystemSettings("kcm_users") },
     ]

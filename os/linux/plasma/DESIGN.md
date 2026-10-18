@@ -92,7 +92,9 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   `apply.sh` installs it as `mingcute-<name>`, e.g. `source: "mingcute-play-fill"`.
 - Gaps: when MingCute has nothing that reads at 16px, draw one in its style (24px grid,
   filled, rounded 1-3px corners) in `icons/custom/`; it installs as `leaves-<name>`.
-  So far: `cpu` (MingCute's chip reads as a gear at 16px) and `ram` (a memory stick).
+  So far: `cpu` (MingCute's chip reads as a gear at 16px), `ram` (a memory stick),
+  `leaf` (the launcher) and `log-out`. Draw with `currentColor`, never a fixed color:
+  `icons/install.py` adds KDE's recoloring hooks so the icons take the theme's text color.
 
 ## Motion
 - House curve: **`cubic-bezier(0.2, 0.8, 0.2, 1)`** — fast start, soft landing.

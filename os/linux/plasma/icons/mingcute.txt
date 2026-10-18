@@ -1,9 +1,13 @@
 # MingCute icons used by Leaves (https://www.mingcute.com/), one name per line.
 # Add a name, run ./fetch.py, commit the new SVG. Prefer the -fill style.
+down-fill
 monitor-fill
+moon-fill
 pause-fill
 play-fill
 server-2-fill
 skip-forward-fill
 skip-previous-fill
+sun-fill
+up-fill
 wifi-fill

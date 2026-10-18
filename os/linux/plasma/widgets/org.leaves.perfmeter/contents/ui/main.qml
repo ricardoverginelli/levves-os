@@ -8,6 +8,8 @@ import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.ksysguard.sensors as Sensors
 
+import "../../../../../leaves/bus.js" as LeavesBus
+
 PlasmoidItem {
     id: root
 
@@ -91,9 +93,15 @@ PlasmoidItem {
         Reading { value: tempId ? (temp.value ?? NaN) : NaN; suffix: "°"; widest: "00°" }
     }
 
-    // Download and upload for all interfaces as one reading, e.g. "↓2.4M ↑96K" (bytes per second)
+    // Download and upload for all interfaces as one reading, e.g. "↓2.4M ↑96K" (bytes per second).
+    // Clicking it opens the network popup: the tray in the same bar keeps the
+    // network item out of sight and opens it when asked over the Leaves bus
+    // (shared/bus.js)
     component NetworkMetric: RowLayout {
         spacing: root.innerGap
+
+        TapHandler { onTapped: LeavesBus.call("network", parent.Window.window) }
+        HoverHandler { cursorShape: Qt.PointingHandCursor }
 
         Sensors.Sensor { id: down; sensorId: "network/all/download"; updateRateLimit: 2000 }
         Sensors.Sensor { id: up; sensorId: "network/all/upload"; updateRateLimit: 2000 }

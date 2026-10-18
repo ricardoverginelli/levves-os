@@ -33,19 +33,16 @@ for widget in widgets/*/; do
     fi
 done
 
-# Icons (DESIGN.md): MingCute SVGs go into the user's hicolor theme as
-# mingcute-<name> and our own drawings as leaves-<name>, so any widget can use
-# them by name. Plasma caches icon lookups, so a change means a restart.
-icons="$HOME/.local/share/icons/hicolor/scalable/actions"
-mkdir -p "$icons"
-for svg in icons/mingcute/*.svg icons/custom/*.svg; do
-    case "$svg" in icons/custom/*) prefix=leaves ;; *) prefix=mingcute ;; esac
-    dest="$icons/$prefix-$(basename "$svg")"
-    cmp -s "$svg" "$dest" && continue
-    cp "$svg" "$dest"
-    rm -f "$HOME/.cache/icon-cache.kcache"
-    restart=true
-done
+# Icons (DESIGN.md): MingCute and our own drawings, installed by name
+# (mingcute-<name>, leaves-<name>) so any widget can use them
+[ "$(python3 -I icons/install.py)" = changed ] && restart=true
+
+# Shared QML helpers for the widgets (e.g. the message bus), then the Leaves
+# tray, which needs them; top-bar.js below picks the tray up
+mkdir -p "$HOME/.local/share/leaves"
+cp shared/*.js "$HOME/.local/share/leaves/"
+echo "Building the Leaves tray"
+[ "$(python3 -I tray/build.py)" = changed ] && restart=true
 
 # File search (launcher, KRunner): Fedora only indexes Documents, Pictures,
 # Videos and Music by default

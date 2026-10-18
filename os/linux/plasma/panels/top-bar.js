@@ -1,7 +1,7 @@
 // Plasma layout script: thin top bar.
 //   left:   launcher icon, perf meter (CPU, GPU usage + temp; RAM, disk usage), media controls (only while a player is active)
 //   center: weekday, date and time
-//   right:  system tray
+//   right:  system tray (the Leaves tray, see ../tray/)
 // Re-running replaces the bar instead of adding a second one.
 // Apply: ../apply.sh (or qdbus-qt6 org.kde.plasmashell /PlasmaShell evaluateScript "$(cat top-bar.js)")
 //
@@ -26,9 +26,10 @@ if (target != "secondary-off" && !(target == "secondary" && screenCount < 2))
     buildBar();
 
 function buildBar() {
-    const panel = new Panel;  // new panels go on the primary monitor (screen 0)
-    if (target == "secondary")
-        panel.screen = 1;
+    // New panels land on whichever screen Plasma considers current, so set it:
+    // screen 0 is the primary monitor, 1 the second one
+    const panel = new Panel;
+    panel.screen = target == "secondary" ? 1 : 0;
     panel.currentConfigGroup = ["Leaves"];
     panel.writeConfig("role", role);
     panel.location = "top";
@@ -61,6 +62,8 @@ function buildBar() {
     spacerRight.currentConfigGroup = ["General"];
     spacerRight.writeConfig("expanding", true);
 
-    // Right: system tray
-    panel.addWidget("org.kde.plasma.systemtray");
+    // Right: system tray. The Leaves tray (tray/build.py) when it's installed,
+    // otherwise the stock one (e.g. after a Plasma update the patches don't fit)
+    const leavesTray = "org.leaves.systemtray";
+    panel.addWidget(knownWidgetTypes.indexOf(leavesTray) >= 0 ? leavesTray : "org.kde.plasma.systemtray");
 }
