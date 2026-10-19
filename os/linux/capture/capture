@@ -3,6 +3,7 @@
 # GIF and MP4 recordings, clipboard copy or catbox.moe upload.
 # Usage: capture shot|gif|mp4 region|last clip|upload
 #        capture clipboard upload       (upload the image on the clipboard)
+#        capture replay save|toggle|folder|run   (instant replay, run = the service)
 # Any gif/mp4 call while a recording runs stops it instead (same hotkey toggles).
 # Needs: slurp, spectacle, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
 set -euo pipefail
@@ -13,7 +14,9 @@ state=${XDG_STATE_HOME:-$HOME/.local/state}/capture
 month=$(date +%Y-%m)
 shots=$(xdg-user-dir PICTURES)/Screenshots/$month
 videos=$(xdg-user-dir VIDEOS)/Screencasts/$month
+replays=$(xdg-user-dir VIDEOS)/Replays
 pidfile=$state/recording.pid
+replaypid=$state/replay.pid
 mkdir -p "$state"
 
 notify() {  # summary, body, [icon]
@@ -125,6 +128,82 @@ clipboard() {
     upload "$out"
 }
 
+# Instant replay: capture-replay.service runs "replay run", which keeps a
+# 90 s buffer of the main monitor in RAM while that monitor is on
+replay_seconds=90
+
+# Largest connected output (survives connector renames); empty while it's off,
+# so a turned-off main monitor is waited for instead of recording another one
+main_output() {
+    kscreen-doctor -j | jq -r '[.outputs[] | select(.connected)] |
+        max_by([.modes[].size | .width * .height] | max) | select(.enabled) | .name'
+}
+
+replay_run() {
+    local gsr='' on='' want started failed=''
+    trap '[ -n "$gsr" ] && kill -INT "$gsr" 2>/dev/null; wait; rm -f "$replaypid"' EXIT
+    trap 'exit 0' TERM INT
+    mkdir -p "$replays"
+    while :; do
+        want=$(main_output || true)
+        if [ -n "$gsr" ] && ! kill -0 "$gsr" 2>/dev/null; then
+            wait "$gsr" || true
+            gsr=''; rm -f "$replaypid"
+            if [ -z "$failed" ]; then
+                failed=1
+                grep -q 'CUDA context, error: out of memory' "$state/replay.log" &&
+                    notify "Replay buffer failed" "GPU memory is full (a game?), retrying" dialog-error ||
+                    notify "Replay buffer failed" "Retrying (see $state/replay.log)" dialog-error
+            fi
+            sleep 25 & wait $!
+        elif [ -n "$gsr" ] && [ "$want" != "$on" ]; then
+            kill -INT "$gsr" 2>/dev/null || true; wait "$gsr" || true
+            gsr=''; rm -f "$replaypid"
+        fi
+        if [ -z "$gsr" ] && [ -n "$want" ]; then
+            # -sc calls back "capture <file> replay" after each save
+            gpu-screen-recorder -w "$want" -f 60 -fm cfr -c mp4 -k hevc -bm cbr -q 50000 \
+                -a 'default_output|default_input' -ac aac -cursor yes -v no \
+                -r $replay_seconds -replay-storage ram \
+                -sc "$(readlink -f "$0")" -o "$replays" >"$state/replay.log" 2>&1 &
+            gsr=$!; on=$want; started=$SECONDS
+            echo "$gsr" > "$replaypid"
+        fi
+        # A buffer that kept running a minute clears the failure, so a new one notifies again
+        [ -n "$gsr" ] && [ $((SECONDS - started)) -ge 60 ] && failed=''
+        sleep 5 & wait $!
+    done
+}
+
+replay_save() {
+    [ -s "$replaypid" ] && kill -USR1 "$(cat "$replaypid")" 2>/dev/null ||
+        notify "Replay buffer not running" "" media-record
+}
+
+replay_toggle() {
+    if systemctl --user is-active -q capture-replay.service; then
+        systemctl --user stop capture-replay.service
+        notify "Replay buffer off" "Back on at next login, or Alt+Shift+F10" media-record
+    else
+        systemctl --user start capture-replay.service
+        notify "Replay buffer on" "Alt+F10 saves the last ${replay_seconds}s" media-record
+    fi
+}
+
+replay_saved() {  # file -> month folder; clicking the notification shows it
+    local out=$replays/$month/$(basename "$1")
+    mkdir -p "$replays/$month"
+    mv "$1" "$out"
+    # In the background, so gpu-screen-recorder isn't kept waiting for the click
+    (
+        [ "$(notify-send -a Capture -i media-record -t 4000 -A default='Show in folder' \
+            'Replay saved' "$(basename "$out")")" = default ] &&
+            gdbus call --session --dest org.freedesktop.FileManager1 \
+                --object-path /org/freedesktop/FileManager1 \
+                --method org.freedesktop.FileManager1.ShowItems "['file://$out']" '' >/dev/null
+    ) </dev/null >/dev/null 2>&1 &
+}
+
 # Same hotkey stops a running recording
 if [[ $kind == gif || $kind == mp4 ]] && [ -s "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
     kill -INT "$(cat "$pidfile")"
@@ -135,5 +214,10 @@ case "$kind:$source:$action" in
     shot:region:clip | shot:region:upload | shot:last:clip | shot:last:upload) shot ;;
     gif:region:clip | gif:region:upload | gif:last:clip | mp4:region:clip) record ;;
     clipboard:upload:) clipboard ;;
-    *) sed -n '2,6s/^# \{0,1\}//p' "$0"; exit 2 ;;
+    replay:run:) replay_run ;;
+    replay:save:) replay_save ;;
+    replay:toggle:) replay_toggle ;;
+    replay:folder:) mkdir -p "$replays"; xdg-open "$replays" ;;
+    /*:replay:) replay_saved "$kind" ;;
+    *) sed -n '2,7s/^# \{0,1\}//p' "$0"; exit 2 ;;
 esac

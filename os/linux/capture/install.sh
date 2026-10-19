@@ -9,10 +9,13 @@ cd "$(dirname "$(readlink -f "$0")")"
 bin=$HOME/.local/bin/capture
 apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
 tmpfiles=${XDG_CONFIG_HOME:-$HOME/.config}/user-tmpfiles.d
+units=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 
-# Qt key codes: Print 0x01000009, F19 0x01000042, U 0x55; Shift 0x02000000,
-# Ctrl 0x04000000, Alt 0x08000000. KWin drops Shift from Shift+Alt+Print, so
-# keyd (keyd/gmk104.conf) sends Shift+Alt+F19 for those; both keys are bound.
+# Qt key codes: Print 0x01000009, F10 0x01000039, F19 0x01000042,
+# U 0x55; Shift 0x02000000, Ctrl 0x04000000, Alt 0x08000000. KWin drops Shift
+# from Shift+Alt+Print, so keyd (keyd/gmk104.conf) sends Shift+Alt+F19 for those;
+# both keys are bound. Ctrl+Alt+F10 switches to VT 10, so keyd sends Ctrl+Alt+F19
+# (not F20: xkb maps it to XF86AudioMicMute).
 # id | name | args | keys (comma-separated)
 hotkeys="\
 shot-region-clip|Screenshot region to clipboard|shot region clip|$((0x01000009))
@@ -23,7 +26,10 @@ gif-region-clip|Record GIF of region|gif region clip|$((0x09000009))
 gif-region-upload|Record GIF of region and upload|gif region upload|$((0x0B000009)),$((0x0A000042))
 gif-last-clip|Record GIF of last region|gif last clip|$((0x0D000009))
 mp4-region-clip|Record MP4 of region|mp4 region clip|$((0x0F000009)),$((0x0E000042))
-clipboard-upload|Upload clipboard image|clipboard upload|$((0x0E000055))"
+clipboard-upload|Upload clipboard image|clipboard upload|$((0x0E000055))
+replay-save|Save instant replay|replay save|$((0x09000039))
+replay-toggle|Toggle instant replay buffer|replay toggle|$((0x0B000039))
+replay-folder|Open instant replay folder|replay folder|$((0x0D000042))"
 
 shortcut() {  # component, action, component name, action name, keys as a(ai)
     gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
@@ -41,7 +47,9 @@ if [ "${1:-}" = --uninstall ]; then
             --method org.kde.KGlobalAccel.unregister "capture-$id.desktop" _launch >/dev/null || true
         rm -f "$apps/capture-$id.desktop"
     done <<< "$hotkeys"
-    rm -f "$bin" "$tmpfiles/capture.conf"
+    systemctl --user disable --now capture-replay.service 2>/dev/null || true
+    rm -f "$bin" "$tmpfiles/capture.conf" "$units/capture-replay.service"
+    systemctl --user daemon-reload
     # Spectacle's defaults back: Print launches it, Shift+Print captures the desktop
     shortcut $spectacle _launch Spectacle "Launch Spectacle" "[([$((0x12000053)), 0, 0, 0],), ([$((0x01000009)), 0, 0, 0],)]"
     shortcut $spectacle FullScreenScreenShot Spectacle "Capture Entire Desktop" "[([$((0x03000009)), 0, 0, 0],)]"
@@ -54,7 +62,7 @@ for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq ksc
 done
 
 chmod +x capture
-mkdir -p "$(dirname "$bin")" "$apps" "$tmpfiles"
+mkdir -p "$(dirname "$bin")" "$apps" "$tmpfiles" "$units"
 ln -sfn "$PWD/capture" "$bin"
 # Daily cleanup of old captures (see tmpfiles.conf)
 ln -sfn "$PWD/tmpfiles.conf" "$tmpfiles/capture.conf"
@@ -65,7 +73,6 @@ shortcut $spectacle FullScreenScreenShot Spectacle "Capture Entire Desktop" "$no
 
 while IFS='|' read -r id name args keys; do
     echo "Hotkey: $name"
-    keys="[$(printf '([%s, 0, 0, 0],)\n' ${keys//,/ } | paste -sd,)]"
     # Absolute path: the Plasma session's PATH may not include ~/.local/bin
     cat > "$apps/capture-$id.desktop" <<EOF
 [Desktop Entry]
@@ -76,6 +83,12 @@ Icon=spectacle
 NoDisplay=true
 X-KDE-GlobalAccel-CommandShortcut=true
 EOF
+done <<< "$hotkeys"
+# kglobalaccel drops shortcuts of launchers missing from the sycoca cache
+kbuildsycoca6 2>/dev/null || true
+
+while IFS='|' read -r id name args keys; do
+    keys="[$(printf '([%s, 0, 0, 0],)\n' ${keys//,/ } | paste -sd,)]"
     shortcut "capture-$id.desktop" _launch "$name" "Launch" "$keys"
     # Foreign keys alone leave the shortcut inactive until the next login;
     # flags SetPresent (2) | NoAutoloading (4) activate it now
@@ -84,5 +97,9 @@ EOF
         "['capture-$id.desktop', '_launch', '$name', 'Launch']" "$keys" 6 >/dev/null
 done <<< "$hotkeys"
 
-kbuildsycoca6 2>/dev/null || true
+# Instant replay buffer, started with every Plasma session (restart to pick up changes)
+ln -sfn "$PWD/capture-replay.service" "$units/capture-replay.service"
+systemctl --user daemon-reload
+systemctl --user enable capture-replay.service
+systemctl --user restart capture-replay.service
 echo "Done"

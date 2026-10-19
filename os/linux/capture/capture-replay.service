@@ -1,0 +1,14 @@
+# Instant replay buffer (see README.md). Linked into ~/.config/systemd/user/ by
+# install.sh. Alt+Shift+F10 stops it for the session; login starts it again.
+[Unit]
+Description=Capture instant replay buffer
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/capture replay run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical-session.target
