@@ -1,0 +1,139 @@
+#!/usr/bin/bash
+# ShareX-style capture for KDE Plasma Wayland: region / last-region screenshots,
+# GIF and MP4 recordings, clipboard copy or catbox.moe upload.
+# Usage: capture shot|gif|mp4 region|last clip|upload
+#        capture clipboard upload       (upload the image on the clipboard)
+# Any gif/mp4 call while a recording runs stops it instead (same hotkey toggles).
+# Needs: slurp, spectacle, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
+set -euo pipefail
+
+kind=${1:-}; source=${2:-}; action=${3:-}
+
+state=${XDG_STATE_HOME:-$HOME/.local/state}/capture
+month=$(date +%Y-%m)
+shots=$(xdg-user-dir PICTURES)/Screenshots/$month
+videos=$(xdg-user-dir VIDEOS)/Screencasts/$month
+pidfile=$state/recording.pid
+mkdir -p "$state"
+
+notify() {  # summary, body, [icon]
+    notify-send -a Capture -i "${3:-spectacle}" -t 4000 "$1" "${2:-}" || true
+}
+
+fail() {
+    notify "Capture failed" "$1" dialog-error
+    echo "capture: $1" >&2
+    exit 1
+}
+
+stamp() { date +%Y-%m-%d_%H-%M-%S; }
+
+# Region as "x y w h" in global (layout) coordinates, saved for "last"
+pick_region() {
+    local r
+    if [ "$source" = last ]; then
+        [ -s "$state/last-region" ] || fail "No previous region yet"
+        cat "$state/last-region"
+        return
+    fi
+    # Palette from plasma/DESIGN.md: bg-deep dim, amber accent outline
+    r=$(slurp -d -b '#0b101666' -c '#e9a23bff' -s '#00000000' -w 2 -f '%x %y %w %h') || exit 0
+    echo "$r" > "$state/last-region"
+    echo "$r"
+}
+
+copy_file() {  # paste as a file in Dolphin, Discord, browsers...
+    printf 'file://%s\r\n' "$1" | wl-copy --type text/uri-list
+}
+
+upload() {  # file -> link on the clipboard, logged in history.tsv
+    local url
+    notify "Uploading…" "$(basename "$1")" folder-cloud
+    url=$(curl -fsS --max-time 300 -F reqtype=fileupload -F "fileToUpload=@$1" \
+        https://catbox.moe/user/api.php) || fail "Upload of $(basename "$1") failed"
+    [[ $url == https://* ]] || fail "catbox: $url"
+    printf '%s' "$url" | wl-copy
+    printf '%s\t%s\t%s\n' "$(date -Iseconds)" "$1" "$url" >> "$state/history.tsv"
+    notify "Link copied" "$url"
+}
+
+deliver() {  # file, image|file
+    if [ "$action" = upload ]; then
+        upload "$1"
+    elif [ "$2" = image ]; then
+        wl-copy --type image/png < "$1"
+        notify "Screenshot copied" "$(basename "$1")"
+    else
+        copy_file "$1"
+        notify "Recording copied" "$(basename "$1")"
+    fi
+}
+
+shot() {
+    local x y w h out ox oy
+    read -r x y w h < <(pick_region)
+    mkdir -p "$shots"
+    tmp=$(mktemp --suffix=.png)
+    trap 'rm -f "$tmp"' EXIT
+    # Whole desktop, then crop: Spectacle's picture starts at the layout's top-left
+    spectacle -f -b -n -o "$tmp"
+    read -r ox oy < <(kscreen-doctor -j | jq -r '[.outputs[] | select(.enabled)] |
+        "\(map(.pos.x) | min) \(map(.pos.y) | min)"')
+    out=$shots/$(stamp).png
+    magick "$tmp" -crop "${w}x${h}+$((x - ox))+$((y - oy))" +repage "$out"
+    deliver "$out" image
+}
+
+record() {
+    local x y w h fps out
+    read -r x y w h < <(pick_region)
+    # Encoders want even sizes
+    w=$((w / 2 * 2)); h=$((h / 2 * 2))
+    [ "$kind" = gif ] && fps=15 || fps=30
+    mkdir -p "$videos" "$shots"
+    tmp=$(mktemp --suffix=.mp4)
+    trap 'rm -f "$tmp" "$pidfile"' EXIT
+    gpu-screen-recorder -w "${w}x${h}+${x}+${y}" -f "$fps" \
+        -c mp4 -k h264 -q very_high -cursor yes -o "$tmp" >"$state/recorder.log" 2>&1 &
+    echo $! > "$pidfile"
+    notify "Recording ${kind^^}" "Press the hotkey again to stop" media-record
+    wait "$(cat "$pidfile")" || true
+    if [ ! -s "$tmp" ]; then
+        grep -q 'CUDA context, error: out of memory' "$state/recorder.log" &&
+            fail "GPU memory is full (a game?), the encoder can't start"
+        fail "Recorder produced no video (see $state/recorder.log)"
+    fi
+
+    if [ "$kind" = gif ]; then
+        out=$shots/$(stamp).gif
+        notify "Encoding GIF…" "" media-record
+        ffmpeg -loglevel error -y -i "$tmp" -vf "fps=$fps,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" "$out"
+    else
+        out=$videos/$(stamp).mp4
+        mv "$tmp" "$out"
+    fi
+    deliver "$out" file
+}
+
+clipboard() {
+    local type out
+    type=$(wl-paste --list-types 2>/dev/null | grep -m1 -E '^image/(png|jpeg|gif|webp)$') ||
+        fail "No image on the clipboard"
+    mkdir -p "$shots"
+    out=$shots/clipboard_$(stamp).${type#image/}
+    wl-paste --type "$type" > "$out"
+    upload "$out"
+}
+
+# Same hotkey stops a running recording
+if [[ $kind == gif || $kind == mp4 ]] && [ -s "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+    kill -INT "$(cat "$pidfile")"
+    exit 0
+fi
+
+case "$kind:$source:$action" in
+    shot:region:clip | shot:region:upload | shot:last:clip | shot:last:upload) shot ;;
+    gif:region:clip | gif:region:upload | gif:last:clip | mp4:region:clip) record ;;
+    clipboard:upload:) clipboard ;;
+    *) sed -n '2,6s/^# \{0,1\}//p' "$0"; exit 2 ;;
+esac
