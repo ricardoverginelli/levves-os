@@ -9,7 +9,8 @@
 // focuses a window there and doesn't move the mouse), then toggles Yakuake.
 // A fullscreen game can pull the active monitor back before Yakuake asks, so
 // it's held there until Yakuake's window appears. When Yakuake closes, focus
-// goes back to the window that had it (the game). If Yakuake is open but
+// goes back to the window that had it (the game). If it still opens at the
+// wrong height, it's reopened once. If Yakuake is open but
 // another window has focus, the shortcut focuses Yakuake instead of closing it.
 //
 // Yakuake's own shortcut must be cleared so this one can take the key:
@@ -87,6 +88,36 @@ function holdActiveOutput() {
     switchTo(holdOutput);
 }
 
+// Yakuake shows itself at the size it measured on its previous toggle (for
+// whichever monitor was active then) and only re-measures afterwards; the
+// resize to the new monitor's height doesn't always stick. So once its size
+// has settled, a window that doesn't fit its monitor is reopened: Yakuake has
+// measured the right monitor by then, so the second open is sized correctly.
+var reopenBudget = 0;
+var reopening = false;
+var settling = null;
+var settle = new QTimer();
+settle.singleShot = true;
+settle.interval = 300;
+
+// Yakuake is set to 100% height, so it should end at the monitor's bottom
+// and only lose the panels' height
+function fitsOutput(w) {
+    var g = w.frameGeometry, o = w.output.geometry;
+    return g.y + g.height <= o.y + o.height && g.height >= o.height - 100;
+}
+
+settle.timeout.connect(function () {
+    var w = settling;
+    settling = null;
+    if (!w || fitsOutput(w) || reopenBudget <= 0)
+        return;
+    reopenBudget--;
+    reopening = true;
+    retracting = true;
+    callDBus("org.kde.yakuake", "/yakuake/window", "org.kde.yakuake", "toggleWindowState");
+});
+
 function toggleYakuake() {
     // Open but unfocused: focus it instead of retracting. Yakuake's own
     // ToggleToFocus can't do this on Wayland (it has no activation token).
@@ -100,6 +131,7 @@ function toggleYakuake() {
     retracting = open;
     holdOutput = null;
     if (!open) {
+        reopenBudget = 1;
         var target = targetOutput();
         if (target && target != workspace.activeScreen) {
             returnTo = workspace.activeWindow;
@@ -116,8 +148,15 @@ registerShortcut("Toggle Yakuake", "Open/Retract Yakuake (avoiding fullscreen mo
 workspace.cursorPosChanged.connect(holdActiveOutput);
 
 workspace.windowAdded.connect(function (w) {
-    if (isYakuake(w))
-        holdOutput = null;
+    if (!isYakuake(w))
+        return;
+    holdOutput = null;
+    settling = w;
+    settle.start();
+    w.frameGeometryChanged.connect(function () {
+        if (settling == w)
+            settle.start();
+    });
 });
 
 workspace.windowActivated.connect(function (w) {
@@ -129,7 +168,14 @@ workspace.windowActivated.connect(function (w) {
 workspace.windowRemoved.connect(function (w) {
     if (!isYakuake(w))
         return;
+    settle.stop();
+    settling = null;
     retracting = false;
+    if (reopening) {
+        reopening = false;
+        callDBus("org.kde.yakuake", "/yakuake/window", "org.kde.yakuake", "toggleWindowState");
+        return;
+    }
     if (!returnTo)
         return;
     var back = returnTo;
