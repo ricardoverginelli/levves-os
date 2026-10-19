@@ -47,6 +47,19 @@ blue-green-gray foliage with tiny crimson stem tips.
 | `success` | `#8fbf8a` | OK / done |
 | `info` | `#82a9c4` | Neutral information |
 
+### Terminal (ANSI)
+Built into the Konsole scheme `Leaves` by `yakuake/build.py`. The semantic colors double as
+ANSI: red `critical`, green `success`, yellow `warning`, blue `info`, white `text`. The rest:
+| Role | Hex |
+|---|---|
+| `black` | `#222b32` (= `raised`) |
+| `bright-black` | `#5f6b67` (= `text-faint`) |
+| `magenta` | `#b48cbf` |
+| `cyan` | `#7fbab3` |
+
+Bright variants are the color 25% toward white, faint ones 35% toward `bg`. The cursor is
+`accent`; the background is `bg` at `glass-opacity` with blur, like any other glass surface.
+
 ### Wallpaper references (decorative only)
 `leaf` `#353d3f`, `stem` `#7c394d`.
 

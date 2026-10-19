@@ -17,5 +17,12 @@
     "success": "#8fbf8a",
     "info": "#82a9c4",
     "glass-opacity": 0.4,
-    "popup-radius": 12
+    "popup-radius": 12,
+    "terminal": {
+        "_comment": "ANSI colors not covered above (red/green/yellow/blue/white reuse critical/success/warning/info/text)",
+        "black": "#222b32",
+        "bright-black": "#5f6b67",
+        "magenta": "#b48cbf",
+        "cyan": "#7fbab3"
+    }
 }

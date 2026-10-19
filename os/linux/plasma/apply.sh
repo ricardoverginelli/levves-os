@@ -44,6 +44,12 @@ cp shared/*.js "$HOME/.local/share/leaves/"
 echo "Building the Leaves tray"
 [ "$(python3 -I tray/build.py)" = changed ] && restart=true
 
+# Yakuake (and its Konsole profile): Leaves color scheme, font and skin.
+# Yakuake only reloads them on restart, which would end its sessions, so just say so
+if [ "$(python3 -I yakuake/build.py)" = changed ]; then
+    echo "Yakuake theme updated; restart Yakuake to see it"
+fi
+
 # File search (launcher, KRunner): Fedora only indexes Documents, Pictures,
 # Videos and Music by default
 for folder in Downloads Desktop; do
