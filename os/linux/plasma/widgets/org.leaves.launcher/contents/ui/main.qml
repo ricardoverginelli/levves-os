@@ -20,8 +20,8 @@
 // Pins: Alt+Right pins, Alt+Left unpins, Alt+Up/Down reorders pinned apps
 // (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
 // Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
-// asks the app to quit, and doing it again within 5s force-quits it. Click a
-// column header to sort by it (again for by name).
+// closes the app's windows (SIGTERM if it has none), and doing it again within
+// 5s force-quits it. Click a column header to sort by it (again for by name).
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects as GE
@@ -349,8 +349,9 @@ PlasmoidItem {
     property string sortKey: "name"   // "name" or a column key (highest first)
     onSortKeyChanged: rebuildTasks()
     property int taskIndex: 0
-    // Pids per row key, kept out of the ListModel (it would turn arrays into models)
+    // Pids and window rows per row key, kept out of the ListModel (it would turn arrays into models)
     property var taskPids: ({})
+    property var taskWindows: ({})
 
     // Rows update in place every sample, so hover and the highlight don't flicker
     ListModel { id: taskRows }
@@ -366,11 +367,13 @@ PlasmoidItem {
         // Windows by desktop file and by pid
         const W = TaskManager.AbstractTasksModel
         const windowById = {}, windowByPid = {}
+        const allWindows = []
         for (let w = 0; w < windows.rowCount(); w++) {
             const i = windows.index(w, 0)
             if (!windows.data(i, W.IsWindow)) continue
             const appId = windows.data(i, W.AppId) ?? ""
             const pid = windows.data(i, W.AppPid)
+            allWindows.push({ row: w, appId: appId, pid: pid })
             if (appId && !(appId in windowById)) windowById[appId] = w
             if (pid && !(pid in windowByPid)) windowByPid[pid] = { row: w, appId: appId }
         }
@@ -425,9 +428,11 @@ PlasmoidItem {
         const currentKey = taskIndex < taskRows.count ? taskRows.get(taskIndex).key : ""
         const sameRows = rows.length === taskRows.count && rows.every((t, i) => taskRows.get(i).key === t.key)
         if (!sameRows) taskRows.clear()
-        const pids = {}
+        const pids = {}, windowRows = {}
         rows.forEach((t, i) => {
             pids[t.key] = t.pids
+            windowRows[t.key] = allWindows.filter(w => (t.menuId && w.appId === t.menuId) || t.pids.includes(w.pid))
+                                          .map(w => w.row)
             const row = { key: t.key, name: t.name, icon: t.icon, cpu: t.cpu, gpu: t.gpu, ram: t.ram,
                           ramPercent: ramMax ? t.ram / ramMax * 100 : 0, disk: t.disk,
                           windowRow: t.windowRow, above: t.above ?? "" }
@@ -435,6 +440,7 @@ PlasmoidItem {
             else taskRows.append(row)
         })
         taskPids = pids
+        taskWindows = windowRows
         // Keep the highlight on the same app as rows come, go and re-sort
         const i = rows.findIndex(t => t.key === currentKey)
         taskIndex = i >= 0 ? i : Math.max(0, Math.min(taskIndex, rows.length - 1))
@@ -447,8 +453,9 @@ PlasmoidItem {
         windows.requestActivate(windows.makeModelIndex(row))
     }
 
-    // The first ask is SIGTERM (the app can save and quit); asking again
-    // within 5s, while it's still listed, is SIGKILL
+    // The first ask closes the app's windows like their × (the app can ask to
+    // save and quit normally), or is SIGTERM for an app without one; asking
+    // again within 5s, while it's still listed, is SIGKILL
     property string endingKey: ""
     Timer {
         id: endingTimer
@@ -465,7 +472,9 @@ PlasmoidItem {
             endingKey = ""
             endingTimer.stop()
         } else {
-            processes.sendSignal(taskPids[key], Process.Signal.TerminateSignal)
+            const rows = taskWindows[key] ?? []
+            if (rows.length) rows.forEach(row => windows.requestClose(windows.makeModelIndex(row)))
+            else processes.sendSignal(taskPids[key], Process.Signal.TerminateSignal)
             endingKey = key
             endingTimer.restart()
         }
