@@ -1,5 +1,18 @@
-// KWin script: move Yakuake off any monitor that has a fullscreen (or
-// borderless fullscreen) window, e.g. a game, so it never drops down over it.
+// KWin script: open Yakuake on a monitor without a fullscreen (or borderless
+// fullscreen) window, e.g. a game, so it never drops down over it.
+//
+// Yakuake lays itself out for KWin's active monitor when it opens (it asks
+// KWin for activeOutputName, then plasmashell for that monitor's usable
+// area), and moving its window afterwards leaves its contents sized for the
+// old monitor. So this script owns Yakuake's shortcut instead: it makes the
+// target monitor the active one first (KWin's "switch to screen", which
+// focuses a window there and doesn't move the mouse), then toggles Yakuake.
+// When Yakuake closes, focus goes back to the window that had it (the game).
+//
+// Yakuake's own shortcut must be cleared so this one can take the key:
+//   gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
+//     --method org.kde.KGlobalAccel.setForeignShortcutKeys \
+//     "['yakuake', 'toggle-window-state', 'Yakuake', 'Open/Retract Yakuake']" '@a(ai) []'
 //
 // Install: cp -r yakuake-avoid-fullscreen ~/.local/share/kwin/scripts/
 //   kwriteconfig6 --file kwinrc --group Plugins --key yakuake-avoid-fullscreenEnabled true
@@ -13,9 +26,13 @@ function isOnCurrentDesktop(w) {
     return w.onAllDesktops || w.desktops.indexOf(workspace.currentDesktop) != -1;
 }
 
+function isYakuake(w) {
+    return w.resourceClass == "org.kde.yakuake";
+}
+
 function outputHasFullscreen(output) {
     return workspace.windowList().some(function (w) {
-        if (!w.normalWindow || w.minimized || w.resourceClass == "org.kde.yakuake" || !isOnCurrentDesktop(w))
+        if (!w.normalWindow || w.minimized || isYakuake(w) || !isOnCurrentDesktop(w))
             return false;
         if (w.output != output)
             return false;
@@ -30,30 +47,51 @@ function mainOutput() {
     });
 }
 
-// Yakuake reopens on whichever monitor it was last on, so always pick the
-// target ourselves: the main monitor, or another one if it has a fullscreen window.
-function placeYakuake(w) {
-    var from = w.output;
+// The main monitor, or another one if it has a fullscreen window
+function targetOutput() {
     var main = mainOutput();
-    var target = outputHasFullscreen(main)
-        ? workspace.screens.find(function (o) { return o != main && !outputHasFullscreen(o); })
-        : main;
-    if (!from || !target || target == from)
-        return;
-    // Yakuake sized itself for `from`; keep the same proportions on `target`.
-    var g = w.frameGeometry, src = from.geometry, dst = target.geometry;
-    var width = Math.round(g.width / src.width * dst.width);
-    var height = Math.round(g.height / src.height * dst.height);
-    w.frameGeometry = {
-        x: dst.x + Math.round((dst.width - width) / 2),
-        y: dst.y + (g.y - src.y),
-        width: width,
-        height: height
-    };
-    workspace.activeWindow = w;
+    if (!outputHasFullscreen(main))
+        return main;
+    return workspace.screens.find(function (o) { return o != main && !outputHasFullscreen(o); }) || null;
 }
 
-workspace.windowAdded.connect(function (w) {
-    if (w.resourceClass == "org.kde.yakuake")
-        placeYakuake(w);
+// The window to give focus back to when Yakuake closes; dropped if another
+// window gets focus while Yakuake is open (not counting the one KWin focuses
+// as Yakuake retracts)
+var returnTo = null;
+var retracting = false;
+
+function toggleYakuake() {
+    var open = workspace.windowList().some(isYakuake);
+    retracting = open;
+    if (!open) {
+        var target = targetOutput();
+        if (target && target != workspace.activeScreen) {
+            var previous = workspace.activeWindow;
+            // Two monitors: one step; more: step until it's the target
+            for (var i = 0; i < workspace.screens.length && workspace.activeScreen != target; i++)
+                workspace.slotSwitchToNextScreen();
+            returnTo = previous;
+        }
+    }
+    callDBus("org.kde.yakuake", "/yakuake/window", "org.kde.yakuake", "toggleWindowState");
+}
+
+registerShortcut("Toggle Yakuake", "Open/Retract Yakuake (avoiding fullscreen monitors)", "Meta+/", toggleYakuake);
+
+workspace.windowActivated.connect(function (w) {
+    if (returnTo && !retracting && w && !isYakuake(w) && w != returnTo && workspace.windowList().some(isYakuake))
+        returnTo = null;
+});
+
+workspace.windowRemoved.connect(function (w) {
+    if (!isYakuake(w))
+        return;
+    retracting = false;
+    if (!returnTo)
+        return;
+    var back = returnTo;
+    returnTo = null;
+    if (workspace.windowList().indexOf(back) != -1)
+        workspace.activeWindow = back;
 });

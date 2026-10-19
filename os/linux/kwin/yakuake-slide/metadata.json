@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Id": "yakuake-slide",
+        "Name": "Yakuake: slide from the right",
+        "Description": "Slides Yakuake in from the right edge of its monitor and back out when it retracts",
+        "Category": "Window Open/Close Animation",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-KDE-Ordering": 50,
+    "X-Plasma-API": "javascript",
+    "KPackageStructure": "KWin/Effect"
+}
