@@ -1,0 +1,39 @@
+#!/usr/bin/bash
+# Turn the main (primary) monitor off and back on, to hand it to another device
+# on another input. "off" saves the output's name, mode and position, and "on"
+# restores them, so it survives connector renames after GPU swaps.
+# Usage: main-monitor [toggle|off|on]   (default: toggle)
+set -e
+state=${XDG_STATE_HOME:-$HOME/.local/state}/main-monitor
+
+off() {
+    local saved
+    saved=$(kscreen-doctor -j | jq -r '[.outputs[] | select(.enabled)] |
+        if length < 2 then empty else min_by(.priority) as $o |
+        "\($o.name) \($o.modes[] | select(.id == $o.currentModeId) | .name) \($o.pos.x),\($o.pos.y)"
+        end')
+    [ -n "$saved" ] || { echo "main-monitor: not turning off the only screen" >&2; exit 1; }
+    mkdir -p "$(dirname "$state")"
+    echo "$saved" > "$state"
+    kscreen-doctor "output.${saved%% *}.disable"
+}
+
+on() {
+    local name mode pos
+    read -r name mode pos < "$state" || { echo "main-monitor: nothing to restore" >&2; exit 1; }
+    kscreen-doctor "output.$name.enable" "output.$name.mode.$mode" \
+        "output.$name.position.$pos" "output.$name.priority.1"
+    rm -f "$state"
+}
+
+saved_is_off() {
+    [ -f "$state" ] && kscreen-doctor -j | jq -e --arg n "$(cut -d' ' -f1 "$state")" \
+        'any(.outputs[]; .name == $n and .connected and (.enabled | not))' >/dev/null
+}
+
+case ${1:-toggle} in
+    off) off ;;
+    on) on ;;
+    toggle) if saved_is_off; then on; else off; fi ;;
+    *) echo "Usage: main-monitor [toggle|off|on]" >&2; exit 2 ;;
+esac
