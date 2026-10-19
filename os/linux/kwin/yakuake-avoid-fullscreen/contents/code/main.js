@@ -7,7 +7,9 @@
 // old monitor. So this script owns Yakuake's shortcut instead: it makes the
 // target monitor the active one first (KWin's "switch to screen", which
 // focuses a window there and doesn't move the mouse), then toggles Yakuake.
-// When Yakuake closes, focus goes back to the window that had it (the game).
+// A fullscreen game can pull the active monitor back before Yakuake asks, so
+// it's held there until Yakuake's window appears. When Yakuake closes, focus
+// goes back to the window that had it (the game).
 //
 // Yakuake's own shortcut must be cleared so this one can take the key:
 //   gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
@@ -61,17 +63,40 @@ function targetOutput() {
 var returnTo = null;
 var retracting = false;
 
+function switchTo(output) {
+    // Two monitors: one step; more: step until it's the target
+    for (var i = 0; i < workspace.screens.length && workspace.activeScreen != output; i++)
+        workspace.slotSwitchToNextScreen();
+}
+
+// Until Yakuake has asked which monitor is active (it has by the time its
+// window appears), a fullscreen game can pull the active monitor back: by
+// taking focus again, or by moving the cursor (KWin makes the cursor's monitor
+// the active one). Both are undone right away, a bounded number of times.
+var holdOutput = null;
+var holdBudget = 0;
+
+function holdActiveOutput() {
+    if (!holdOutput || workspace.activeScreen == holdOutput)
+        return;
+    if (--holdBudget < 0) {
+        holdOutput = null;
+        return;
+    }
+    switchTo(holdOutput);
+}
+
 function toggleYakuake() {
     var open = workspace.windowList().some(isYakuake);
     retracting = open;
+    holdOutput = null;
     if (!open) {
         var target = targetOutput();
         if (target && target != workspace.activeScreen) {
-            var previous = workspace.activeWindow;
-            // Two monitors: one step; more: step until it's the target
-            for (var i = 0; i < workspace.screens.length && workspace.activeScreen != target; i++)
-                workspace.slotSwitchToNextScreen();
-            returnTo = previous;
+            returnTo = workspace.activeWindow;
+            switchTo(target);
+            holdOutput = target;
+            holdBudget = 50;
         }
     }
     callDBus("org.kde.yakuake", "/yakuake/window", "org.kde.yakuake", "toggleWindowState");
@@ -79,7 +104,15 @@ function toggleYakuake() {
 
 registerShortcut("Toggle Yakuake", "Open/Retract Yakuake (avoiding fullscreen monitors)", "Meta+/", toggleYakuake);
 
+workspace.cursorPosChanged.connect(holdActiveOutput);
+
+workspace.windowAdded.connect(function (w) {
+    if (isYakuake(w))
+        holdOutput = null;
+});
+
 workspace.windowActivated.connect(function (w) {
+    holdActiveOutput();
     if (returnTo && !retracting && w && !isYakuake(w) && w != returnTo && workspace.windowList().some(isYakuake))
         returnTo = null;
 });
