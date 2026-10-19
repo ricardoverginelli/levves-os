@@ -9,7 +9,8 @@
 // focuses a window there and doesn't move the mouse), then toggles Yakuake.
 // A fullscreen game can pull the active monitor back before Yakuake asks, so
 // it's held there until Yakuake's window appears. When Yakuake closes, focus
-// goes back to the window that had it (the game).
+// goes back to the window that had it (the game). If Yakuake is open but
+// another window has focus, the shortcut focuses Yakuake instead of closing it.
 //
 // Yakuake's own shortcut must be cleared so this one can take the key:
 //   gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
@@ -87,7 +88,15 @@ function holdActiveOutput() {
 }
 
 function toggleYakuake() {
-    var open = workspace.windowList().some(isYakuake);
+    // Open but unfocused: focus it instead of retracting. Yakuake's own
+    // ToggleToFocus can't do this on Wayland (it has no activation token).
+    var yakuake = workspace.windowList().find(isYakuake);
+    if (yakuake && workspace.activeWindow != yakuake) {
+        workspace.activeWindow = yakuake;
+        return;
+    }
+
+    var open = !!yakuake;
     retracting = open;
     holdOutput = null;
     if (!open) {
