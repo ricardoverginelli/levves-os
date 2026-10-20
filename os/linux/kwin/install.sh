@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # Install the Yakuake KWin pieces: the slide-from-the-right effect (docked on
 # the right, full height) and the script that keeps it off fullscreen monitors
-# and owns its shortcut (Meta+/). User-level, no sudo. Safe to re-run.
+# and owns its shortcuts (Meta+/, Meta+N new tab). User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall
 # Yakuake reads its window settings on start: restart it after installing.
 set -e

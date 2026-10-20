@@ -12,6 +12,7 @@
 // goes back to the window that had it (the game). If it still opens at the
 // wrong height, it's reopened once. If Yakuake is open but
 // another window has focus, the shortcut focuses Yakuake instead of closing it.
+// Meta+N adds a tab and shows Yakuake the same way.
 //
 // Yakuake's own shortcut must be cleared so this one can take the key.
 // Install: bash install.sh in linux/kwin (plasma/apply.sh runs it too)
@@ -137,7 +138,16 @@ function toggleYakuake() {
     callDBus("org.kde.yakuake", "/yakuake/window", "org.kde.yakuake", "toggleWindowState");
 }
 
+// A new tab, shown: Yakuake opened (as above) or focused if it isn't already
+function newYakuakeTab() {
+    callDBus("org.kde.yakuake", "/yakuake/sessions", "org.kde.yakuake", "addSession");
+    var yakuake = workspace.windowList().find(isYakuake);
+    if (!yakuake || workspace.activeWindow != yakuake)
+        toggleYakuake();
+}
+
 registerShortcut("Toggle Yakuake", "Open/Retract Yakuake (avoiding fullscreen monitors)", "Meta+/", toggleYakuake);
+registerShortcut("New Yakuake Tab", "Open Yakuake with a new tab", "Meta+N", newYakuakeTab);
 
 workspace.cursorPosChanged.connect(holdActiveOutput);
 
