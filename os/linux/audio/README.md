@@ -1,5 +1,7 @@
 # audio
 
+**Desktop only** (`.only-on`): needs the Audient iD4.
+
 Audient iD4 fix: its mic (input 1) shows up as a stereo source with the voice on
 the left channel only, so recordings (the capture replay buffer, Discord...)
 put you in the left ear. `id4-mic-mono.conf` adds a PipeWire mono source, "iD4

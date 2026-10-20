@@ -1,5 +1,6 @@
 #!/usr/bin/bash
-# Install the iD4 mono mic source (see README.md). User-level, no sudo.
+# Install the iD4 mono mic source (see README.md). Desktop only (needs the
+# Audient iD4, 2708:0009). User-level, no sudo.
 # Restarts PipeWire (a second of silence). Safe to re-run.
 # Undo: bash install.sh --uninstall
 set -e
@@ -21,6 +22,7 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
+lsusb -d 2708:0009 >/dev/null || { echo "No Audient iD4 (2708:0009) on this machine" >&2; exit 1; }
 mkdir -p "$(dirname "$conf")"
 ln -sfn "$PWD/id4-mic-mono.conf" "$conf"
 restart
