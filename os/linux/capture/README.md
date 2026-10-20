@@ -47,8 +47,9 @@ shortcuts stay).
   card stops the encoder from starting, and you get a "GPU memory is full"
   notification.
 - **Instant replay:** `capture-replay.service` starts with the Plasma session
-  and keeps the last 90 s of the main monitor in RAM (about 560 MB): HEVC CBR
-  50 Mbps, 60 fps, desktop audio and mic mixed into one AAC track, cursor
+  and keeps the last 90 s of the main monitor in RAM (about 560 MB): H.264 CBR
+  50 Mbps, 60 fps, a keyframe every second (lossless trims in LosslessCut land
+  within 1 s), desktop audio and mic mixed into one AAC track, cursor
   included. The main monitor is the largest connected one, so it survives
   connector renames; while it's turned off (`main-monitor`) the buffer stops
   and waits, it never records another screen. `Alt+F10` saves to

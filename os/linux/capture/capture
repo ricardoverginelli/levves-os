@@ -162,8 +162,8 @@ replay_run() {
         fi
         if [ -z "$gsr" ] && [ -n "$want" ]; then
             # -sc calls back "capture <file> replay" after each save
-            gpu-screen-recorder -w "$want" -f 60 -fm cfr -c mp4 -k hevc -bm cbr -q 50000 \
-                -a 'default_output|default_input' -ac aac -cursor yes -v no \
+            gpu-screen-recorder -w "$want" -f 60 -fm cfr -c mp4 -k h264 -bm cbr -q 50000 \
+                -a 'default_output|default_input' -ac aac -cursor yes -v no -keyint 1 \
                 -r $replay_seconds -replay-storage ram \
                 -sc "$(readlink -f "$0")" -o "$replays" >"$state/replay.log" 2>&1 &
             gsr=$!; on=$want; started=$SECONDS
