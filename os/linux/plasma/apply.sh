@@ -108,6 +108,9 @@ PY
 done
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
+# Yakuake's KWin effect and script (right-side slide, fullscreen avoidance)
+bash ../kwin/install.sh
+
 if [ "$restart" = true ]; then
     echo "Restarting plasmashell to load the updated style/widgets"
     systemctl --user restart plasma-plasmashell

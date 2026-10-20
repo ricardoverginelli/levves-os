@@ -13,14 +13,8 @@
 // wrong height, it's reopened once. If Yakuake is open but
 // another window has focus, the shortcut focuses Yakuake instead of closing it.
 //
-// Yakuake's own shortcut must be cleared so this one can take the key:
-//   gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
-//     --method org.kde.KGlobalAccel.setForeignShortcutKeys \
-//     "['yakuake', 'toggle-window-state', 'Yakuake', 'Open/Retract Yakuake']" '@a(ai) []'
-//
-// Install: cp -r yakuake-avoid-fullscreen ~/.local/share/kwin/scripts/
-//   kwriteconfig6 --file kwinrc --group Plugins --key yakuake-avoid-fullscreenEnabled true
-//   qdbus-qt6 org.kde.KWin /KWin reconfigure
+// Yakuake's own shortcut must be cleared so this one can take the key.
+// Install: bash install.sh in linux/kwin (plasma/apply.sh runs it too)
 
 function sameRect(a, b) {
     return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;

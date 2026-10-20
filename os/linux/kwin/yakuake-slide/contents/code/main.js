@@ -8,10 +8,7 @@
 // window, so the Scale/Fade open-close effects leave it alone. Yakuake's own
 // settings dock it: Width 30%, Height 100%, Position all the way right.
 //
-// Install: cp -r yakuake-slide ~/.local/share/kwin/effects/
-//   kwriteconfig6 --file kwinrc --group Plugins --key slidingpopupsEnabled false
-//   kwriteconfig6 --file kwinrc --group Plugins --key yakuake-slideEnabled true
-//   qdbus-qt6 org.kde.KWin /KWin reconfigure
+// Install: bash install.sh in linux/kwin (plasma/apply.sh runs it too)
 
 "use strict";
 
