@@ -16,7 +16,7 @@
     "warning": "#e8cf6a",
     "success": "#8fbf8a",
     "info": "#82a9c4",
-    "glass-opacity": 0.4,
+    "glass-opacity": 0.75,
     "popup-radius": 12,
     "terminal": {
         "_comment": "ANSI colors not covered above (red/green/yellow/blue/white reuse critical/success/warning/info/text)",

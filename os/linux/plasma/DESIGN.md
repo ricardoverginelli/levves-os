@@ -74,7 +74,7 @@ translucent fill with KWin's blur behind it. The Plasma style applies it to all
 panels, popups and tooltips (`plasma-style/build.py`); custom windows get it by
 using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 `Rectangle`.
-- Fill: `bg` at 40% opacity (`glass-opacity`), the same for panels, popups, the launcher and tooltips.
+- Fill: `bg` at 75% opacity (`glass-opacity`), the same for panels, popups, the launcher and tooltips.
   Kept low on purpose: the blur flattens what's behind into one tone, so a denser fill reads as solid.
 
 ## Typography
