@@ -1,0 +1,23 @@
+#!/usr/bin/bash
+# Default browser that hands each link to a browser picked by the app that
+# opened it (see rules). Plasma starts it through systemd, so its parent process
+# is never the app; Electron apps (Slack, Discord, VS Code...) pass down
+# CHROME_DESKTOP=<app>.desktop instead. Other apps fall under "*".
+# Usage: browser-router <url>...
+rules=${BROWSER_ROUTER_RULES:-$(dirname "$(readlink -f "$0")")/rules}
+log=${XDG_STATE_HOME:-$HOME/.local/state}/browser-router.log
+from=${CHROME_DESKTOP%.desktop}
+
+browser=
+while read -r app cmd; do
+    case $app in ''|'#'*) continue ;; esac
+    if [ "$app" = '*' ] || [ "$app" = "$from" ]; then
+        browser=$cmd
+        break
+    fi
+done < "$rules"
+
+mkdir -p "$(dirname "$log")"
+echo "$(date '+%F %T') ${from:-unknown} -> ${browser:-none}: $*" >> "$log"
+[ -n "$browser" ] || { echo "browser-router: no rule matched, add a \"*\" line to $rules" >&2; exit 1; }
+exec $browser "$@"
