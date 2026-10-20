@@ -2,17 +2,27 @@
 # Add a name, run ./fetch.py, commit the new SVG. Prefer the -fill style.
 add-fill
 close-fill
+delete-2-fill
 down-fill
+folder-open-fill
+headphone-fill
 lock-fill
 menu-fill
+mic-fill
+midi-fill
 monitor-fill
 moon-fill
+music-2-fill
 pause-fill
 pin-fill
 play-fill
+refresh-2-fill
 server-2-fill
 skip-forward-fill
 skip-previous-fill
+stop-fill
 sun-fill
 up-fill
+volume-fill
+volume-off-fill
 wifi-fill
