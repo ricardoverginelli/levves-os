@@ -50,6 +50,42 @@ if [ "$(python3 -I yakuake/build.py)" = changed ]; then
     echo "Yakuake theme updated; restart Yakuake to see it"
 fi
 
+# Wallpaper: desktop and lock screen use a copy in our data folder
+wallpaper="$HOME/.local/share/wallpapers/leaves.png"
+if ! cmp -s wallpaper/leaves.png "$wallpaper"; then
+    echo "Installing the wallpaper"
+    mkdir -p "$(dirname "$wallpaper")"
+    cp wallpaper/leaves.png "$wallpaper"
+fi
+if ! grep -qx "Image=file://$wallpaper" "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"; then
+    plasma-apply-wallpaperimage "$wallpaper" >/dev/null
+fi
+lock="--file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General"
+kwriteconfig6 $lock --key Image "file://$wallpaper"
+kwriteconfig6 $lock --key PreviewImage "file://$wallpaper"
+
+# Login screen: same wallpaper and Plasma style plus our Plasma settings (colors,
+# theme, cursor, keyboard, monitors). Needs root, so it only asks when any of that changed
+config=${XDG_CONFIG_HOME:-$HOME/.config}
+stamp="$HOME/.local/state/leaves/login-screen"
+login_hash=$({
+    cat "$wallpaper" login-screen/install.sh
+    find "$style" -type f -exec cat {} +
+    for file in kdeglobals plasmarc plasma-localerc kcminputrc kxkbrc \
+                kwinoutputconfig.json fontconfig/fonts.conf; do
+        cat "$config/$file" 2>/dev/null || true
+    done
+} | sha1sum)
+if [ "$(cat "$stamp" 2>/dev/null)" != "$login_hash" ]; then
+    echo "Updating the login screen (asks for your password)"
+    if pkexec sh "$PWD/login-screen/install.sh" "$wallpaper" "$config" "$style"; then
+        mkdir -p "$(dirname "$stamp")"
+        echo "$login_hash" > "$stamp"
+    else
+        echo "Login screen not updated; it will ask again on the next run"
+    fi
+fi
+
 # File search (launcher, KRunner): Fedora only indexes Documents, Pictures,
 # Videos and Music by default
 for folder in Downloads Desktop; do

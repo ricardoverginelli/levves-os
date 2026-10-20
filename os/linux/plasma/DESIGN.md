@@ -7,7 +7,7 @@ default, and update this file when a decision changes.
 Machine-readable values live in `palette.json` (used by `plasma-style/build.py`);
 keep it in sync with the tables below.
 
-Source wallpaper: `~/Pictures/leaves_2560x1440_sharp2.png` — dark, cool,
+Source wallpaper: `wallpaper/leaves.png` (desktop, lock and login screen; `apply.sh` sets all three) — dark, cool,
 blue-green-gray foliage with tiny crimson stem tips.
 
 ## Mood
