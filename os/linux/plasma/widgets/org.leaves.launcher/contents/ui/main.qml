@@ -425,7 +425,8 @@ PlasmoidItem {
         const rows = list.filter(t => t.windowRow >= 0).sort(order).concat(background)
         if (background.length) background[0].above = "Background"
 
-        const currentKey = taskIndex < taskRows.count ? taskRows.get(taskIndex).key : ""
+        const current = taskIndex < taskRows.count ? taskRows.get(taskIndex) : null
+        const currentKey = current ? current.key : ""
         const sameRows = rows.length === taskRows.count && rows.every((t, i) => taskRows.get(i).key === t.key)
         if (!sameRows) taskRows.clear()
         const pids = {}, windowRows = {}
@@ -441,9 +442,14 @@ PlasmoidItem {
         })
         taskPids = pids
         taskWindows = windowRows
-        // Keep the highlight on the same app as rows come, go and re-sort
+        // Keep the highlight on the same app as rows come, go and re-sort, except
+        // when its last window closes: it stays among the windowed apps, on the
+        // one that took its place (or the one above, if it was the last)
         const i = rows.findIndex(t => t.key === currentKey)
-        taskIndex = i >= 0 ? i : Math.max(0, Math.min(taskIndex, rows.length - 1))
+        const windowed = rows.length - background.length
+        const leftForBackground = i >= windowed && current.windowRow >= 0 && windowed > 0
+        taskIndex = i >= 0 && !leftForBackground ? i
+                  : Math.max(0, Math.min(taskIndex, (leftForBackground ? windowed : rows.length) - 1))
     }
 
     function switchToTask(index) {
