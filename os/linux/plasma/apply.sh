@@ -50,6 +50,11 @@ if [ "$(python3 -I yakuake/build.py)" = changed ]; then
     echo "Yakuake theme updated; restart Yakuake to see it"
 fi
 
+# VS Code: Leaves color theme, installed as a local extension
+if command -v code >/dev/null && [ "$(python3 -I vscode/build.py)" = changed ]; then
+    echo "VS Code theme updated; pick Leaves (or Developer: Reload Window) to see it"
+fi
+
 # Wallpaper: desktop and lock screen use a copy in our data folder
 wallpaper="$HOME/.local/share/wallpapers/leaves.png"
 if ! cmp -s wallpaper/leaves.png "$wallpaper"; then
