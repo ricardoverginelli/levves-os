@@ -1,0 +1,4 @@
+# Let the logged-in user read and write Logitech hidraw nodes, so browser
+# configurators (WebHID) can talk to the mouse. Matches USB receivers (0003)
+# and Bluetooth (0005) alike. Must sort before 73-seat-late.rules (uaccess).
+KERNEL=="hidraw*", KERNELS=="*:046D:*", MODE="0660", TAG+="uaccess"
