@@ -1,6 +1,8 @@
 # Which browser opens a link, by the app that opened it.
 # <app>  <browser command>; the first matching line wins, "*" is everyone else.
-# <app> is the app's .desktop name without the suffix, as the log shows it:
+# <app> is the app's .desktop name without the suffix (or the BROWSER_ROUTER_APP
+# its launcher sets), as the log shows it:
 # ~/.local/state/browser-router.log
-slack  google-chrome-stable
-*      brave-browser-stable
+slack        google-chrome-stable
+code-gorila  google-chrome-stable
+*            brave-browser-stable

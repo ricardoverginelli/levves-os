@@ -27,4 +27,7 @@ Plasma starts the default browser through systemd, so the router's parent
 process is never the app that opened the link. Electron apps (Slack, Discord,
 Teams, VS Code...) set `CHROME_DESKTOP=<app>.desktop`, which reaches the
 router, and that's what the rules match. Apps that don't set it can't be told
-apart and always fall under `*`.
+apart and always fall under `*`. A launcher can also name its app itself by exporting
+`BROWSER_ROUTER_APP=<name>`, which wins over `CHROME_DESKTOP`: that's how two
+instances of the same app (e.g. a business VS Code started with its own
+`--user-data-dir`) get different browsers.

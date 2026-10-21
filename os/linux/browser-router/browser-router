@@ -2,11 +2,13 @@
 # Default browser that hands each link to a browser picked by the app that
 # opened it (see rules). Plasma starts it through systemd, so its parent process
 # is never the app; Electron apps (Slack, Discord, VS Code...) pass down
-# CHROME_DESKTOP=<app>.desktop instead. Other apps fall under "*".
+# CHROME_DESKTOP=<app>.desktop instead. A launcher can name its app with
+# BROWSER_ROUTER_APP, which wins (e.g. a second VS Code instance). Other apps
+# fall under "*".
 # Usage: browser-router <url>...
 rules=${BROWSER_ROUTER_RULES:-$(dirname "$(readlink -f "$0")")/rules}
 log=${XDG_STATE_HOME:-$HOME/.local/state}/browser-router.log
-from=${CHROME_DESKTOP%.desktop}
+from=${BROWSER_ROUTER_APP:-${CHROME_DESKTOP%.desktop}}
 
 browser=
 while read -r app cmd; do
