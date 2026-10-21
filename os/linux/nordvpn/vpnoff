@@ -1,5 +1,5 @@
 #!/bin/bash
 # Disconnect NordVPN and stop its background daemon
 nordvpn disconnect
-sudo systemctl stop nordvpnd.socket nordvpnd.service
+sudo systemctl stop nordvpnd.socket nordvpnd.service nordvpnd-killswitch.service
 echo "NordVPN disconnected and daemon stopped."
