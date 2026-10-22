@@ -1,0 +1,12 @@
+# Runs drive-mirror once (see README.md). Linked into ~/.config/systemd/user/
+# by install.sh and started by drive-mirror.timer.
+[Unit]
+Description=Mirror Google Drive onto the Drive Mirror HDD
+ConditionPathIsMountPoint=/mnt/drive-mirror
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/drive-mirror
+Nice=10
+IOSchedulingClass=idle

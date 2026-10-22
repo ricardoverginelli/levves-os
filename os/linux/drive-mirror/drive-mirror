@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+# One-way mirror of Google Drive onto the "Drive Mirror" HDD (see README.md).
+# Usage: drive-mirror [--dry-run] [any rclone flag]
+# Files the sync deletes or overwrites are moved to _rclone-removed/<timestamp>/.
+set -euo pipefail
+
+dest=/mnt/drive-mirror
+remote=gdrive:
+logdir=${XDG_STATE_HOME:-$HOME/.local/state}/drive-mirror
+
+mountpoint -q "$dest" || { echo "$dest isn't mounted" >&2; exit 1; }
+findmnt -no OPTIONS "$dest" | grep -qw rw ||
+    { echo "$dest is mounted read-only (Windows fast startup? see README.md)" >&2; exit 1; }
+
+stamp=$(date +%F_%H%M%S)
+log=$logdir/$stamp.log
+mkdir -p "$logdir"
+find "$logdir" -name '*.log' -mtime +90 -delete
+
+# Windows leftovers on the disk stay untouched. The local encoding is rclone's
+# Windows one, so names NTFS can't hold (a:b, a?) are stored with lookalike
+# characters instead of failing.
+status=0
+rclone sync "$remote" "$dest" \
+    --backup-dir "$dest/_rclone-removed/$stamp" \
+    --exclude '/_rclone-removed/**' \
+    --exclude '/$RECYCLE.BIN/**' \
+    --exclude '/System Volume Information/**' \
+    --exclude '/sync.ffs_lock' \
+    --exclude 'desktop.ini' --ignore-case \
+    --local-encoding 'Slash,LtGt,DoubleQuote,Colon,Question,Asterisk,Pipe,BackSlash,Ctl,RightSpace,RightPeriod,InvalidUtf8,Dot' \
+    --drive-export-formats docx,xlsx,pptx,svg \
+    --fast-list --transfers 6 --checkers 16 \
+    --stats 1m --stats-log-level NOTICE \
+    --log-level INFO --log-file "$log" \
+    "$@" || status=$?
+
+grep -E 'ERROR|Transferred:|Deleted:|Checks:|Errors:' "$log" | tail -8
+echo "Log: $log"
+exit $status
