@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 # Install the Yakuake KWin pieces: the slide-from-the-right effect (docked on
 # the right, full height) and the script that keeps it off fullscreen monitors
-# and owns its shortcuts (Meta+/, Meta+N new tab). User-level, no sudo. Safe to re-run.
+# and owns its shortcuts (Meta+/, Meta+N new tab), plus yakuake-tab, which new
+# tabs run (Claude Code, or a plain shell for Meta+Shift+N). User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall
 # Yakuake reads its window settings on start: restart it after installing.
 set -e
@@ -9,6 +10,9 @@ cd "$(dirname "$(readlink -f "$0")")"
 
 data=${XDG_DATA_HOME:-$HOME/.local/share}/kwin
 yakuake_shortcut="['yakuake', 'toggle-window-state', 'Yakuake', 'Open/Retract Yakuake']"
+bin=$HOME/.local/bin/yakuake-tab
+apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
+shell_tab="['yakuake-shell-tab.desktop', '_launch', 'New Yakuake shell tab', 'Launch']"
 
 kga() {
     gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
@@ -25,6 +29,9 @@ if [ "${1:-}" = --uninstall ]; then
     qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-avoid-fullscreen >/dev/null || true
     qdbus-qt6 org.kde.KWin /KWin reconfigure
     rm -rf "$data/effects/yakuake-slide" "$data/scripts/yakuake-avoid-fullscreen"
+    kga unregister yakuake-shell-tab.desktop _launch || true
+    rm -f "$apps/yakuake-shell-tab.desktop"
+    # $bin stays: Yakuake's profile runs it (plasma/yakuake/build.py)
     # Yakuake's own F12 back, docked at the top again
     kga setForeignShortcutKeys "$yakuake_shortcut" "[([$((0x0100003B)), 0, 0, 0],)]"
     kwriteconfig6 --file yakuakerc --group Window --key Width 90
@@ -56,6 +63,24 @@ qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect yakuake-slide >/
 
 # The script registers Meta+/; Yakuake's own shortcut must not take the key
 kga setForeignShortcutKeys "$yakuake_shortcut" '@a(ai) []'
+
+# New tabs run yakuake-tab; Meta+Shift+N opens one with a plain shell.
+# Absolute path: the Plasma session's PATH may not include ~/.local/bin
+mkdir -p "$(dirname "$bin")" "$apps"
+ln -sfn "$PWD/yakuake-tab" "$bin"
+cat > "$apps/yakuake-shell-tab.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=New Yakuake shell tab
+Exec=$bin --shell
+Icon=utilities-terminal
+NoDisplay=true
+X-KDE-GlobalAccel-CommandShortcut=true
+EOF
+# kglobalaccel drops shortcuts of launchers missing from the sycoca cache
+kbuildsycoca6 >/dev/null 2>&1
+kga doRegister "$shell_tab"
+kga setShortcutKeys "$shell_tab" "[([$((0x1200004E)), 0, 0, 0],)]" 6
 
 # Docked right, full height, 30% wide (the effect slides it in from the right)
 kwriteconfig6 --file yakuakerc --group Window --key Width 30

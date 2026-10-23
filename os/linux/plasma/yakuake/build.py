@@ -272,13 +272,14 @@ def main():
     if not profile.exists():
         write(profile, "[General]\nName=Leaves\nParent=FALLBACK/\n")
     # Every new Yakuake tab starts Claude Code in ~/system, the machine's admin
-    # home base (its CLAUDE.md describes that machine)
+    # home base (its CLAUDE.md describes that machine), through yakuake-tab
+    # (linux/kwin), which gives Meta+Shift+N tabs a plain shell instead
     (Path.home() / "system").mkdir(exist_ok=True)
     for group, key, value in (("Appearance", "ColorScheme", "Leaves"), ("Appearance", "Font", FONT),
                               ("Cursor Options", "UseCustomCursorColor", "true"),
                               ("Cursor Options", "CustomCursorColor", ini(palette["accent"])),
                               ("General", "TerminalMargin", "8"),
-                              ("General", "Command", 'bash -c "cd ~/system && claude"')):
+                              ("General", "Command", str(Path.home() / ".local/bin/yakuake-tab"))):
         changed |= kwrite(profile, group, key, value)
 
     if changed:
