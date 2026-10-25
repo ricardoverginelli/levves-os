@@ -1,4 +1,4 @@
-// A MingCute glyph on a rounded hover/press tint (DESIGN.md: 8px radius, hover tint)
+// A MingCute glyph on a rounded hover/press tint (DESIGN.md: 4px small-control radius, hover tint)
 import QtQuick
 import org.kde.kirigami as Kirigami
 
@@ -11,7 +11,7 @@ Rectangle {
 
     implicitWidth: iconSize + 4
     implicitHeight: iconSize + 4
-    radius: 8
+    radius: 4
     color: mouse.pressed ? Qt.alpha(Kirigami.Theme.textColor, 0.16)
          : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.10)
          : "transparent"

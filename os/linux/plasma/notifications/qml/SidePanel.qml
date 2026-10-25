@@ -60,7 +60,7 @@ PlasmaCore.Window {
     visible: false
     title: "leaves-panel"
     // Square, like Yakuake: no rounded frame edges (glass and blur stay), and a
-    // 1px border line drawn below instead
+    // 1px border line on the inner (left) side drawn below instead
     Component.onCompleted: borders = 0  // (a literal 0 isn't accepted as Qt::Edges)
     // Layer surfaces need a real size up front; the anchors then set the height
     property int screenWidth: 2560
@@ -82,11 +82,11 @@ PlasmaCore.Window {
 
         Keys.onEscapePressed: panel.close()
 
+        // DESIGN.md: an edge-to-edge window draws its border on the inner side only
         Rectangle {
-            anchors.fill: parent
-            color: "transparent"
-            border.width: 1
-            border.color: Leaves.Palette.border
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+            width: 1
+            color: Leaves.Palette.border
         }
 
         Ui.FullRepresentation {

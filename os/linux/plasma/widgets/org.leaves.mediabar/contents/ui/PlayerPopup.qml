@@ -1,6 +1,7 @@
 // The player popup under the media bar: source switcher (only with more than
 // one player), cover with title/artist/album, seekable progress and controls,
-// over a blurred copy of the cover and tinted with its color.
+// over a blurred copy of the cover and tinted with its color, with a faint
+// silhouette of the player's audio rising from the bottom (Visualizer.qml).
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
@@ -32,6 +33,36 @@ Item {
     Layout.maximumHeight: Layout.preferredHeight
 
     HoverHandler { id: hover }
+
+    // The players for the source chips, playing ones first, then by model
+    // row. Row 0 is Plasma's multiplexer (it follows the active player), so
+    // it's left out whenever there are players after it.
+    property var sources: []
+    function sortSources() {
+        const list = []
+        for (let i = 0; i < watchers.count; i++) {
+            const w = watchers.objectAt(i)
+            if (!w || !w.container || (watchers.count > 1 && w.index === 0))
+                continue
+            list.push({ row: w.index, identity: w.identity, container: w.container,
+                        playing: w.status === Mpris.PlaybackStatus.Playing })
+        }
+        list.sort((a, b) => (b.playing - a.playing) || (a.row - b.row))
+        sources = list
+    }
+    Instantiator {
+        id: watchers
+        model: popup.mpris
+        delegate: QtObject {
+            required property int index
+            required property string identity
+            required property var container
+            readonly property int status: container ? container.playbackStatus : -1
+            onStatusChanged: Qt.callLater(popup.sortSources)
+        }
+        onObjectAdded: Qt.callLater(popup.sortSources)
+        onObjectRemoved: Qt.callLater(popup.sortSources)
+    }
 
     // MPRIS only pushes the position on seeks; ask for it while it's visible
     Timer {
@@ -72,13 +103,13 @@ Item {
         }
     }
 
-    // Blurred, darkened cover behind everything, out to the frame's edge
-    // (the style pads popups by 4px inside a 12px corner). Two layers, so a
-    // new cover fades in over the old one once it has loaded.
+    // Blurred, darkened cover behind everything, out to the frame (the style
+    // pads popups by 4px inside an 8px corner) but inside its 1px border.
+    // Two layers, so a new cover fades in over the old one once it has loaded.
     Item {
         id: backdrop
         anchors.fill: parent
-        anchors.margins: -4
+        anchors.margins: -3
         readonly property string url: popup.player ? popup.player.artUrl : ""
         property int front: -1  // the layer shown, -1 for none
 
@@ -96,6 +127,20 @@ Item {
         BlurredArt { id: artB; shown: backdrop.front === 1; onLoaded: backdrop.front = 1 }
     }
 
+    // Over the cover, under the content; out to the frame's border, like the cover
+    Visualizer {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: -3
+        anchors.rightMargin: -3
+        anchors.bottomMargin: -3
+        height: Math.round(parent.height * 0.45)
+        app: popup.player ? popup.player.identity : ""
+        running: popup.shown && popup.playing
+        tint: popup.tint
+    }
+
     function formatTime(us) {
         const total = Math.max(0, Math.floor(us / 1e6))
         const h = Math.floor(total / 3600)
@@ -110,17 +155,16 @@ Item {
         anchors.margins: popup.pad
         spacing: popup.pad
 
-        // Sources: one chip per player (row 0 is the multiplexer, so it's
-        // skipped). Click one to pin it, click the pinned one to follow
-        // whichever player is active again. They split the width evenly.
+        // Sources: one chip per player, playing ones first. Click one to pin
+        // it, click the pinned one to follow whichever player is active again.
+        // They split the width evenly.
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            visible: sources.count > 2
+            visible: popup.sources.length > 1
 
             Repeater {
-                id: sources
-                model: popup.mpris
+                model: popup.sources
                 delegate: SourceChip {}
             }
         }
@@ -133,7 +177,7 @@ Item {
                 Layout.preferredWidth: popup.coverSize
                 Layout.preferredHeight: popup.coverSize
                 Layout.alignment: Qt.AlignTop
-                radius: 8
+                radius: 6
                 color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
 
                 Kirigami.Icon {
@@ -149,7 +193,7 @@ Item {
                 Kirigami.ShadowedImage {
                     id: cover
                     anchors.fill: parent
-                    radius: 8
+                    radius: 6
                     source: popup.player ? popup.player.artUrl : ""
                     fillMode: Image.PreserveAspectCrop
                     sourceSize: Qt.size(popup.coverSize * 2, popup.coverSize * 2)
@@ -304,6 +348,22 @@ Item {
         }
     }
 
+    // The style's 1px frame border, redrawn over it with a trace of the
+    // cover's tint: palette.json `border` with the tint laid over at 25%, so
+    // it reads as part of the cover but stays a clear edge. Sits on the
+    // frame's outermost pixel (the style pads popups by 4px).
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -4
+        radius: 8
+        color: "transparent"
+        border.width: 1
+        border.color: coverColors.ready ? Qt.tint("#2e383d", Qt.alpha(popup.tint, 0.25)) : "#2e383d"
+        Behavior on border.color {
+            ColorAnimation { duration: 240; easing.type: Easing.OutQuint }
+        }
+    }
+
     component BlurredArt: Item {
         id: art
         property string url
@@ -317,7 +377,7 @@ Item {
             NumberAnimation { duration: 240; easing.type: Easing.OutQuint }
         }
 
-        // Rounded to the frame's corner
+        // Rounded to the frame's corner, less its border
         layer.enabled: true
         layer.effect: MultiEffect {
             maskEnabled: true
@@ -330,7 +390,7 @@ Item {
             anchors.fill: parent
             layer.enabled: true
             visible: false
-            Rectangle { anchors.fill: parent; radius: 12 }
+            Rectangle { anchors.fill: parent; radius: 7 }
         }
 
         // Drawn past the edges, so the blur doesn't fade out at the corners
@@ -365,9 +425,10 @@ Item {
 
     component SourceChip: Rectangle {
         id: chip
-        required property int index
-        required property string identity
-        required property var container
+        required property var modelData
+        readonly property int index: modelData.row
+        readonly property string identity: modelData.identity
+        readonly property var container: modelData.container
 
         // The bar's player: the pinned row, or the one the multiplexer follows
         readonly property bool current: popup.pinned
@@ -377,12 +438,11 @@ Item {
               && container.identity === popup.player.identity
         readonly property bool pinnedHere: popup.pinned && current
 
-        visible: index > 0
         Layout.fillWidth: true
         Layout.preferredWidth: 1  // equal shares, whatever the names' lengths
         Layout.minimumWidth: chipRow.implicitWidth + 16
         implicitHeight: 24
-        radius: 8
+        radius: 4
         color: current ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
              : chipMouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
              : "transparent"

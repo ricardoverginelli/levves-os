@@ -39,6 +39,12 @@ blue-green-gray foliage with tiny crimson stem tips.
 | `accent-pressed` | `#c7852a` | Pressed / held |
 | `on-accent` | `#1a1206` | Text and icons on top of `accent` |
 
+Exception, the media popup (`widgets/org.leaves.mediabar`): it takes its look from the cover
+art, so the cover's color (`Kirigami.ImageColors` highlight, held at 62-78% lightness and at
+most 70% saturation) stands in for the accent there: the progress fill, the visualizer (3-10%
+fill, 22% line) and a 25% trace over the popup's border. Behind it, the cover is blurred and
+darkened under the glass fill (`bg` at 75%), so text keeps its contrast on any cover.
+
 ### Semantic
 | Role | Hex | Use |
 |---|---|---|
@@ -114,11 +120,20 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   - The Plasma style draws every popup's frame and blur mask at 8px (`popup-radius` in `palette.json`).
 - Borders: 1px `border`. Every floating surface has one (popups, the launcher, Yakuake, the
   side panel), drawn by the Plasma style for Plasma's popups; inside a surface, only where areas
-  of similar tone meet.
+  of similar tone meet. The media popup redraws its border over the style's with the cover's
+  tint laid over at 25% (see Accent).
 - Bar popups float 4px off the bar with their whole frame (all four corners rounded and
   bordered), so they read as floating rather than glued to it. The tray sets this for its own
   popup and every panel widget's (`tray/patches.py`).
 - Top bar: 28px tall.
+
+- Controls drawn in QML (the side panel, the cheat sheet), so they match wherever they appear:
+  - Slider: 4px `raised` track, fill in `text-muted` (`text-faint` when muted), 12px round
+    handle in `text-muted`, `text` on hover and `accent` while dragged (the one accent).
+  - Segmented tabs: a `raised` track with 2px of padding, the current tab on `surface`; labels
+    `text-muted`, `text` when current or hovered.
+  - Keycap: 24px tall, 4px corners, `raised` fill with a 1px `border`, JetBrains Mono 9pt in
+    `text`; Meta is drawn as the Leaves leaf. Keys in a combo are joined by a `text-faint` "+".
 
 ## Icons
 - Library: **MingCute** (https://www.mingcute.com/, Apache-2.0), **Fill** style by default.
