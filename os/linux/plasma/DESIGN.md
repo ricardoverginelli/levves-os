@@ -98,9 +98,23 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   | 16 | A popup's or panel's content to its edge (the style's frame gives 4, add 12) |
   | 24 | Between sections (with a 1px `border` line in the middle) |
   - Rows with a control (slider, switch) are 40px tall; list rows 36px (44px with two lines).
-- Corner radius: 8px small (buttons, rows, inputs), 12px large (popups, cards). The Plasma
-  style draws every popup's frame and blur mask at 12px (`popup-radius` in `palette.json`).
-- Borders: 1px `border`, only where surfaces of similar tone meet.
+- Corner radius scales with the element's size: the bigger the container, the rounder, but
+  never soft. Pick by the element's shorter side:
+
+  | Element | Shorter side | Radius | Examples |
+  |---|---|---|---|
+  | Small control | up to 32px | 4px | Buttons, inputs, chips, switches, progress bars |
+  | Row or card | 32-120px | 6px | List rows, cards inside a popup, thumbnails, cover art, tooltips |
+  | Floating surface | over 120px | 8px | Bar popups, menus, the launcher, OSDs, snap assist, dialogs |
+  | Edge to edge | spans a whole monitor edge | 0 | The top bar, Yakuake, the side panel |
+
+  - Nested shapes: an inner shape's radius is the outer one minus the padding between them,
+    never below 4px (a 6px card inside an 8px popup with 4px of padding stays 4px).
+  - Pills are the exception: a round toggle or badge uses half its height.
+  - The Plasma style draws every popup's frame and blur mask at 8px (`popup-radius` in `palette.json`).
+- Borders: 1px `border`. Every floating surface has one (popups, the launcher, Yakuake, the
+  side panel), drawn by the Plasma style for Plasma's popups, except on the side it shares with
+  a panel; inside a surface, only where areas of similar tone meet.
 - Top bar: 28px tall.
 
 ## Icons
