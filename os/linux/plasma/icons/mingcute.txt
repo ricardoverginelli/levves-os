@@ -10,6 +10,7 @@ lock-fill
 menu-fill
 mic-fill
 midi-fill
+minimize-fill
 monitor-fill
 moon-fill
 music-2-fill
@@ -17,7 +18,10 @@ pause-fill
 pin-fill
 play-fill
 refresh-2-fill
+restore-fill
+screenshot-fill
 server-2-fill
+settings-6-fill
 skip-forward-fill
 skip-previous-fill
 stop-fill
