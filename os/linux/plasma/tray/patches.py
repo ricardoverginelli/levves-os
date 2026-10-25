@@ -109,6 +109,42 @@ LEAVES = '''
         when: root.leavesClockToolTip !== null
         restoreMode: Binding.RestoreBindingOrValue
     }
+    // Panel widgets in this bar (the clock, the media bar…): the line the panel
+    // draws under an open one becomes the Leaves ActiveLine (shared/) in place of
+    // the style's tab artwork. The tray's own wrappers have no such line.
+    Component { id: leavesActiveLine; ActiveLine {} }
+    property var leavesRestyled: []
+    function leavesRestyleFeedback(item) {
+        if (!item)
+            return
+        const feedback = item.objectName === "org.kde.desktop-CompactApplet" ? item.expandedFeedback : null
+        if (feedback && item.plasmoidItem && !leavesRestyled.includes(feedback)) {
+            leavesRestyled.push(feedback)
+            feedback.imagePath = ""
+            feedback.opacity = 1
+            const applet = item.plasmoidItem
+            leavesActiveLine.createObject(feedback, { active: Qt.binding(() => applet.expanded) })
+        }
+        for (const child of item.children)
+            leavesRestyleFeedback(child)
+    }
+    // Widgets load in any order and can be added later, so look a few times
+    property int leavesRestyleRuns: 0
+    Timer {
+        id: leavesRestyleTimer
+        interval: 2000
+        repeat: true
+        running: root.leavesRestyleRuns < 10
+        onTriggered: {
+            root.leavesRestyleRuns++
+            root.leavesRestyled = root.leavesRestyled.filter(f => f)  // drop destroyed ones
+            root.leavesRestyleFeedback(root.Window.window?.contentItem ?? null)
+        }
+    }
+    Connections {
+        target: Plasmoid.containment
+        function onAppletAdded() { root.leavesRestyleRuns = 0 }
+    }
     function leavesFindApplet(item, pluginName) {
         if (!item)
             return null
@@ -469,7 +505,26 @@ def apply(files):
             "    function updateHighlightedItem() {\n        if (root.leavesOpenHere) {")
     replace(files, HIGHLIGHT,
             "        currentItemHighLight.opacity = systemTrayState.expanded ? 1 : 0",
-            "        currentItemHighLight.opacity = root.leavesOpenHere ? 1 : 0")
+            "        currentItemHighLight.opacity = 1  // Leaves: the ActiveLine fades itself")
+
+    # The open item's line is the Leaves ActiveLine (shared/): 1px, grows left to
+    # right; it grows again on the next item instead of the highlight sliding there
+    replace(files, HIGHLIGHT,
+            "import org.kde.plasma.core as PlasmaCore\n",
+            'import org.kde.plasma.core as PlasmaCore\n\nimport "../../../../../leaves"\n')
+    replace(files, HIGHLIGHT,
+            '    imagePath: "widgets/tabbar"\n',
+            '    imagePath: ""  // Leaves: drawn by the ActiveLine below\n')
+    replace(files, HIGHLIGHT,
+            "    z: -1 // always draw behind icons\n",
+            "    z: -1 // always draw behind icons\n\n"
+            "    ActiveLine {  // Leaves\n"
+            "        active: root.leavesOpenHere && currentItemHighLight.highlightedItem !== null\n"
+            "        key: currentItemHighLight.highlightedItem\n"
+            "    }\n")
+    replace(files, HIGHLIGHT,
+            "        highlightedItem = nextItem;\n        animationEnabled = true;\n",
+            "        highlightedItem = nextItem;\n        animationEnabled = false;  // Leaves: no slide between items\n")
 
     # No tooltips on items that open on hover
     replace(files, PLASMOID_ITEM,

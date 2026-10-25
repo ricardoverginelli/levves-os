@@ -129,7 +129,7 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 
   | Token | Open | Close | Used for |
   |---|---|---|---|
-  | hover | 150ms | 150ms | Hover/press tints, the active line under a bar item |
+  | hover | 150ms | 150ms | Hover/press tints |
   | popup | 240ms | 170ms | Bar popups, the launcher, OSDs |
   | panel | 320ms | 220ms | Large panels and overlays: Yakuake |
   | hover-open | 150ms | 400ms | Rest before a hovered bar item opens / grace before it closes |
@@ -140,4 +140,7 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   Plasma windows; they open with a 0.96 scale plus the fade in QML.
 - Panels docked to a monitor edge (Yakuake, the side panel) slide all the way in from that
   edge on the panel timing, without a fade (`yakuake-slide`, `leaves-popups`).
+- An open bar item is marked by a 1px accent line along its bottom that grows from left to
+  right on popup timing and fades on close (`shared/ActiveLine.qml`): tray items, the perf
+  meter's Wi-Fi reading, and every panel widget (clock, media bar), which the tray restyles.
 - No bounce/overshoot.

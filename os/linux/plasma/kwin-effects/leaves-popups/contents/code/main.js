@@ -41,24 +41,58 @@ function isAnimated(window) {
 }
 
 // The monitor edge the window sits against (its panel's edge): the nearest one.
-// A full-height panel touches the top and bottom too, so among edges it's
-// flush with, the one whose opposite side is free wins (right, for a panel
-// docked right). dx/dy point away from the screen, out through that edge.
+// A tall panel docked right also touches the bottom (and the top, without a bar
+// above it), so among edges it's flush with whose opposite side is free, the
+// one it's thinnest against wins: a panel 22% of the screen wide and nearly
+// full height is docked right. dx/dy point away from the screen, out through
+// that edge; extent is the share of the screen the window covers across it.
 function nearestEdge(window) {
     const screen = window.screen.geometry;
+    const tall = window.height / screen.height, wide = window.width / screen.width;
     const edges = [
-        { dx: 0, dy: -1, gap: window.y - screen.y },
-        { dx: 0, dy: 1, gap: screen.y + screen.height - (window.y + window.height) },
-        { dx: -1, dy: 0, gap: window.x - screen.x },
-        { dx: 1, dy: 0, gap: screen.x + screen.width - (window.x + window.width) },
+        { dx: 0, dy: -1, gap: window.y - screen.y, extent: tall },
+        { dx: 0, dy: 1, gap: screen.y + screen.height - (window.y + window.height), extent: tall },
+        { dx: -1, dy: 0, gap: window.x - screen.x, extent: wide },
+        { dx: 1, dy: 0, gap: screen.x + screen.width - (window.x + window.width), extent: wide },
     ];
     const opposite = i => edges[i ^ 1];  // top↔bottom, left↔right
-    const docked = edges.find((e, i) => e.gap <= 1 && opposite(i).gap > 1);
-    return docked ?? edges.reduce((a, b) => b.gap < a.gap ? b : a);
+    const docked = edges.filter((e, i) => e.gap <= 1 && opposite(i).gap > 1);
+    if (docked.length)
+        return docked.reduce((a, b) => b.extent < a.extent ? b : a);
+    return edges.reduce((a, b) => b.gap < a.gap ? b : a);
+}
+
+// The side of a popup that touches a panel (dock window), pointing into the
+// panel: a tray popup at the screen's right end still comes from the bar above
+function panelSide(window) {
+    const near = (a, b) => Math.abs(a - b) <= 2;
+    const overlaps = (a0, a1, b0, b1) => a0 < b1 && b0 < a1;
+    for (const d of effects.stackingOrder) {
+        if (!d.dock || d.screen !== window.screen)
+            continue;
+        const across = overlaps(window.x, window.x + window.width, d.x, d.x + d.width);
+        const along = overlaps(window.y, window.y + window.height, d.y, d.y + d.height);
+        if (across && near(window.y, d.y + d.height))
+            return { dx: 0, dy: -1 };
+        if (across && near(window.y + window.height, d.y))
+            return { dx: 0, dy: 1 };
+        if (along && near(window.x, d.x + d.width))
+            return { dx: -1, dy: 0 };
+        if (along && near(window.x + window.width, d.x))
+            return { dx: 1, dy: 0 };
+    }
+    return null;
 }
 
 // Where the window starts (opening) or ends (closing), and how
 function motion(window) {
+    if (window.appletPopup) {
+        const dir = panelSide(window) ?? nearestEdge(window);
+        return {
+            away: { value1: dir.dx * shift, value2: dir.dy * shift },
+            open: popupOpen, close: popupClose, fade: true,
+        };
+    }
     const edge = nearestEdge(window);
     if (isLeavesWindow(window) && edge.gap <= 1) {
         // Docked panel: in from its edge, by its own size

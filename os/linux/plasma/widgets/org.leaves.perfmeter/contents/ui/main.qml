@@ -7,7 +7,6 @@ import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.ksysguard.sensors as Sensors
-import org.kde.ksvg as KSvg
 
 import "../../../../../leaves"
 import "../../../../../leaves/bus.js" as LeavesBus
@@ -30,17 +29,14 @@ PlasmoidItem {
         Layout.preferredWidth: Layout.minimumWidth
         Layout.fillHeight: true
 
-        // While the network popup is open, the reading gets the active-tab line the
-        // tray draws under an open item (the Leaves style's amber edge)
-        KSvg.FrameSvgItem {
-            imagePath: "widgets/tabbar"
-            prefix: hasElementPrefix("north-active-tab") ? "north-active-tab" : "active-tab"
+        // While the network popup is open, the reading gets the accent line the
+        // tray draws under an open item (shared/ActiveLine.qml)
+        Item {
             x: row.x + network.x - root.groupGap / 2
             width: network.width + root.groupGap
             height: parent.height
-            z: -1
-            opacity: network.leavesPopupOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuint } }  // DESIGN.md hover
+
+            ActiveLine { active: network.leavesPopupOpen }
         }
 
         RowLayout {
