@@ -127,6 +127,9 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   | hover-open | 150ms | 400ms | Rest before a hovered bar item opens / grace before it closes |
 
 - Popups open out of their panel ("Drop"): an 8px slide from the panel's edge plus a fade,
-  reversed on close. Plasma's popups get it from the KWin effect `kwin-effects/leaves-popups`;
-  our own QML popups (launcher, snap assist, OSD) open with a 0.96 scale plus the fade.
+  reversed on close. The KWin effect `kwin-effects/leaves-popups` does it for Plasma's popups
+  and the launcher (from the top bar), glass included. Snap assist and the S25 OSD aren't
+  Plasma windows; they open with a 0.96 scale plus the fade in QML.
+- Panels docked to a monitor edge (Yakuake, the side panel) slide all the way in from that
+  edge on the panel timing, without a fade (`yakuake-slide`, `leaves-popups`).
 - No bounce/overshoot.

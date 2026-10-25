@@ -43,8 +43,6 @@ PlasmoidItem {
 
     // DESIGN.md motion and spacing
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: 240
-    readonly property int closeDuration: 170
     readonly property int hoverDuration: 150
     readonly property int edgeMargin: 12   // same as the perf meter's
     readonly property int pad: 12
@@ -550,14 +548,14 @@ PlasmoidItem {
 
     // ── Open / close ──────────────────────────────────────────────────────
 
+    // Opening and closing are animated by KWin (kwin-effects/leaves-popups): the
+    // window drops out of the bar like the bar's popups
     function toggle() {
-        if (launcher.visible && !closing) close()
+        if (launcher.visible) close()
         else open()
     }
 
     function open() {
-        closeAnim.stop()
-        closing = false
         search.text = ""
         area = "search"
         list.currentIndex = 0
@@ -572,16 +570,12 @@ PlasmoidItem {
         taskList.positionViewAtBeginning()
         launcher.requestActivate()
         search.forceActiveFocus()
-        openAnim.restart()
     }
 
-    property bool closing: false
     function close() {
-        if (!launcher.visible || closing) return
-        closing = true
+        if (!launcher.visible) return
         taskLinger.restart()
-        openAnim.stop()
-        closeAnim.restart()
+        launcher.visible = false
     }
 
     // ── Window ────────────────────────────────────────────────────────────
@@ -604,20 +598,6 @@ PlasmoidItem {
             id: content
             width: launcher.width - launcher.leftPadding - launcher.rightPadding
             height: launcher.height - launcher.topPadding - launcher.bottomPadding
-
-            ParallelAnimation {
-                id: openAnim
-                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
-                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
-            }
-            SequentialAnimation {
-                id: closeAnim
-                ParallelAnimation {
-                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: root.houseCurve }
-                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: root.houseCurve }
-                }
-                ScriptAction { script: { launcher.visible = false; root.closing = false } }
-            }
 
             RowLayout {
                 anchors.fill: parent
