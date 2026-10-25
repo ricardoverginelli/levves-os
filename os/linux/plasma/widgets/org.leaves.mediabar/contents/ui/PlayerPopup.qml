@@ -1,6 +1,8 @@
 // The player popup under the media bar: source switcher (only with more than
-// one player), cover with title/artist/album, seekable progress and controls.
+// one player), cover with title/artist/album, seekable progress and controls,
+// over a blurred copy of the cover and tinted with its color.
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.mpris as Mpris
@@ -40,6 +42,59 @@ Item {
         onTriggered: popup.player && popup.player.updatePosition()
     }
     onShownChanged: if (shown && player) player.updatePosition()
+
+    // The cover's own color for the progress, like Spotify's Android
+    // notification; held light enough to read on the darkened background
+    property color tint: coverColors.ready ? readable(coverColors.highlight) : Kirigami.Theme.highlightColor
+    Behavior on tint {
+        ColorAnimation { duration: 240; easing.type: Easing.OutQuint }
+    }
+
+    function readable(c) {
+        const l = Math.min(0.78, Math.max(0.62, c.hslLightness))
+        const s = Math.min(0.7, c.hslSaturation)
+        return Qt.hsla(Math.max(0, c.hslHue), s, l, 1)
+    }
+
+    Kirigami.ImageColors {
+        id: coverColors
+        property bool ready: false
+        source: cover
+        onPaletteChanged: ready = cover.status === Image.Ready
+    }
+    Connections {
+        target: cover
+        function onStatusChanged() {
+            if (cover.status === Image.Ready)
+                coverColors.update()
+            else
+                coverColors.ready = false
+        }
+    }
+
+    // Blurred, darkened cover behind everything, out to the frame's edge
+    // (the style pads popups by 4px inside a 12px corner). Two layers, so a
+    // new cover fades in over the old one once it has loaded.
+    Item {
+        id: backdrop
+        anchors.fill: parent
+        anchors.margins: -4
+        readonly property string url: popup.player ? popup.player.artUrl : ""
+        property int front: -1  // the layer shown, -1 for none
+
+        function show(url) {
+            const current = front === 0 ? artA : front === 1 ? artB : null
+            if (url === "")
+                front = -1
+            else if (!current || current.url !== url)
+                (current === artA ? artB : artA).url = url
+        }
+        onUrlChanged: show(url)
+        Component.onCompleted: show(url)
+
+        BlurredArt { id: artA; shown: backdrop.front === 0; onLoaded: backdrop.front = 0 }
+        BlurredArt { id: artB; shown: backdrop.front === 1; onLoaded: backdrop.front = 1 }
+    }
 
     function formatTime(us) {
         const total = Math.max(0, Math.floor(us / 1e6))
@@ -172,7 +227,7 @@ Item {
                     width: Math.max(groove.height, groove.width * track.fraction)
                     height: parent.height
                     radius: parent.radius
-                    color: Kirigami.Theme.highlightColor
+                    color: popup.tint
                 }
             }
 
@@ -246,6 +301,65 @@ Item {
                     onTriggered: popup.player.Next()
                 }
             }
+        }
+    }
+
+    component BlurredArt: Item {
+        id: art
+        property string url
+        property bool shown
+        signal loaded()
+
+        anchors.fill: parent
+        opacity: shown ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity {
+            NumberAnimation { duration: 240; easing.type: Easing.OutQuint }
+        }
+
+        // Rounded to the frame's corner
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: artMask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1
+        }
+        Item {
+            id: artMask
+            anchors.fill: parent
+            layer.enabled: true
+            visible: false
+            Rectangle { anchors.fill: parent; radius: 12 }
+        }
+
+        // Drawn past the edges, so the blur doesn't fade out at the corners
+        Image {
+            id: artImage
+            anchors.fill: parent
+            anchors.margins: -32
+            source: art.url
+            sourceSize: Qt.size(32, 32)
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            visible: false
+            onStatusChanged: if (status === Image.Ready) art.loaded()
+        }
+        MultiEffect {
+            anchors.fill: artImage
+            source: artImage
+            autoPaddingEnabled: false
+            blurEnabled: true
+            blur: 1
+            blurMax: 32
+            brightness: -0.35
+            saturation: 0.1
+        }
+
+        // The glass fill over it, so text reads even on a white cover
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.alpha(Kirigami.Theme.backgroundColor, 0.75)
         }
     }
 
