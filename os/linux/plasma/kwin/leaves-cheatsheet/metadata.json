@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Id": "leaves-cheatsheet",
+        "Name": "Leaves: cheat sheet",
+        "Description": "Meta+F12 shows the Leaves hotkeys and commands (sheet.json)",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "declarativescript",
+    "KPackageStructure": "KWin/Script"
+}

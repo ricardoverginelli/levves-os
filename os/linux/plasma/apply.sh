@@ -152,6 +152,11 @@ open(out, "w").write(code)
 PY
         rm "$template"
     fi
+    # A script's build.py generates files into the installed copy (e.g. the cheat sheet's data)
+    if [ -f "$script/build.py" ]; then
+        python3 -I "$script/build.py" "$dest"
+        rm "$dest/build.py"
+    fi
     kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" true
     qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript "$id" >/dev/null
 done

@@ -1,0 +1,118 @@
+{
+    "_comment": "The cheat sheet (Meta+F12). Sections fill columns in order; 'column' starts a new one. Keys: '+' joins a combo, ' / ' separates alternatives. A row's optional third item names a repo folder whose .only-on file limits it to those machines (build.py drops it elsewhere). 'kind': 'commands' shows the first column as commands, not keys. Keep it in sync when shortcuts change.",
+    "sections": [
+        {
+            "title": "Shell",
+            "column": 0,
+            "rows": [
+                ["Meta", "Launcher: apps, files, power, tasks"],
+                ["Meta+/", "Yakuake (Claude Code)"],
+                ["Meta+N", "Yakuake: new Claude tab"],
+                ["Meta+Shift+N", "Yakuake: new shell tab"],
+                ["Meta+V", "Clipboard history"],
+                ["Meta+F12", "This cheat sheet"],
+                ["Meta+I", "System Settings"],
+                ["Meta+L", "Lock"],
+                ["Ctrl+Alt+Del", "Log out / power menu"]
+            ]
+        },
+        {
+            "title": "Launcher",
+            "rows": [
+                ["Down / Right / Left", "List / power / task manager"],
+                ["Tab / Shift+Tab", "Next / previous area"],
+                ["Ctrl+P", "Pin or unpin the selected app"],
+                ["Alt+Right / Alt+Left", "List: pin / unpin"],
+                ["Alt+Up / Alt+Down", "List: reorder pinned apps"],
+                ["Alt+Left", "Tasks: end the app (again in 5 s: kill)"],
+                ["Esc", "Close"]
+            ]
+        },
+        {
+            "title": "Windows",
+            "column": 1,
+            "rows": [
+                ["Meta+Left / Meta+Right", "Tile to the left / right half"],
+                ["Meta+Shift+Left / Meta+Shift+Right", "Tile and pick the other half"],
+                ["Meta+Up / Meta+Down", "Move to the monitor above / below"],
+                ["Meta+Shift+Up / Meta+PgUp", "Maximize"],
+                ["Meta+Shift+Down / Meta+PgDown", "Minimize"],
+                ["Meta+Backspace", "Restore"],
+                ["Meta+Alt+Left / Meta+Alt+Right", "Focus the window in that direction"],
+                ["Alt+Tab", "Switch windows"],
+                ["Alt+F3", "Window menu"],
+                ["Alt+F4", "Close"],
+                ["Meta+Ctrl+Esc", "Kill a window (click it)"]
+            ]
+        },
+        {
+            "title": "Desktops",
+            "rows": [
+                ["Meta+W", "Overview"],
+                ["Meta+G", "Grid of desktops"],
+                ["Meta+D", "Peek at the desktop"],
+                ["Meta+F1 / Meta+F4", "Go to desktop 1 to 4"],
+                ["Meta+Ctrl+Left / Meta+Ctrl+Right", "Previous / next desktop"],
+                ["Meta+Ctrl+Shift+Left / Meta+Ctrl+Shift+Right", "Take the window along"]
+            ]
+        },
+        {
+            "title": "Capture",
+            "column": 2,
+            "rows": [
+                ["Print", "Region: copy image"],
+                ["Ctrl+Print", "Region: upload, copy link"],
+                ["Shift+Print", "Last region: copy image"],
+                ["Ctrl+Shift+Print", "Last region: upload, copy link"],
+                ["Alt+Print", "GIF of a region (again: stop)"],
+                ["Alt+Shift+Print", "GIF: upload, copy link"],
+                ["Ctrl+Alt+Print", "GIF of the last region"],
+                ["Ctrl+Alt+Shift+Print", "MP4 of a region"],
+                ["Ctrl+Alt+Shift+U", "Upload clipboard image"],
+                ["Meta+Shift+S", "Spectacle"]
+            ]
+        },
+        {
+            "title": "Instant replay",
+            "rows": [
+                ["Alt+F10", "Save the last 90 seconds"],
+                ["Alt+Shift+F10", "Replay buffer off / on"],
+                ["Ctrl+Alt+F10", "Open the replay folder"]
+            ]
+        },
+        {
+            "title": "Screen",
+            "rows": [
+                ["Meta+Shift+M", "Main monitor off / on"],
+                ["Meta+= / Meta+-", "Zoom in / out"],
+                ["Meta+0", "Zoom to actual size"],
+                ["Meta+F6", "Mouse to the screen's center"]
+            ]
+        },
+        {
+            "title": "Keyboard",
+            "column": 3,
+            "rows": [
+                ["/", "Key right of '.': tap '/', hold ';'"],
+                ["Shift+/", "That key with Shift: '?'"],
+                ["Shift+Ç", "':'"],
+                ["Ctrl+]", "'|'"],
+                ["Meta+Alt+K", "Next keyboard layout"]
+            ]
+        },
+        {
+            "title": "Commands",
+            "kind": "commands",
+            "rows": [
+                ["capture", "shot|gif|mp4  region|last  clip|upload"],
+                ["main-monitor", "toggle | off | on (the main monitor)"],
+                ["vpnon / vpnoff", "NordVPN on (optional country) / off"],
+                ["drive-mirror", "Mirror Google Drive to the HDD", "linux/drive-mirror"],
+                ["s25-control", "S25 knobs and soundboard app", "linux/midi/s25-control"],
+                ["yakuake-tab --shell", "Plain shell tab"],
+                ["plasma/apply.sh", "Re-apply the Leaves setup"],
+                ["claude/whats-new.sh", "Commits this machine hasn't applied"]
+            ]
+        }
+    ]
+}
