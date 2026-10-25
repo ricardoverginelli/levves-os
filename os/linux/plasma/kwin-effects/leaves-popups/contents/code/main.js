@@ -62,10 +62,11 @@ function nearestEdge(window) {
     return edges.reduce((a, b) => b.gap < a.gap ? b : a);
 }
 
-// The side of a popup that touches a panel (dock window), pointing into the
-// panel: a tray popup at the screen's right end still comes from the bar above
+// The side of a popup next to a panel (dock window), pointing into the panel:
+// a tray popup at the screen's right end still comes from the bar above. Bar
+// popups float a few pixels off their panel (DESIGN.md), so "next to" allows a gap.
 function panelSide(window) {
-    const near = (a, b) => Math.abs(a - b) <= 2;
+    const near = (a, b) => Math.abs(a - b) <= 8;
     const overlaps = (a0, a1, b0, b1) => a0 < b1 && b0 < a1;
     for (const d of effects.stackingOrder) {
         if (!d.dock || d.screen !== window.screen)

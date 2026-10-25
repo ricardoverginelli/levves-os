@@ -113,8 +113,11 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   - Pills are the exception: a round toggle or badge uses half its height.
   - The Plasma style draws every popup's frame and blur mask at 8px (`popup-radius` in `palette.json`).
 - Borders: 1px `border`. Every floating surface has one (popups, the launcher, Yakuake, the
-  side panel), drawn by the Plasma style for Plasma's popups, except on the side it shares with
-  a panel; inside a surface, only where areas of similar tone meet.
+  side panel), drawn by the Plasma style for Plasma's popups; inside a surface, only where areas
+  of similar tone meet.
+- Bar popups float 4px off the bar with their whole frame (all four corners rounded and
+  bordered), so they read as floating rather than glued to it. The tray sets this for its own
+  popup and every panel widget's (`tray/patches.py`).
 - Top bar: 28px tall.
 
 ## Icons
@@ -158,3 +161,41 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   right on popup timing and fades on close (`shared/ActiveLine.qml`): tray items, the perf
   meter's Wi-Fi reading, and every panel widget (clock, media bar), which the tray restyles.
 - No bounce/overshoot.
+
+## Building a widget or window
+A checklist of what the shared pieces already do, so a new one fits in without redoing it.
+
+**Bar widgets (panel applets in the top bar)**
+- Show the popup as the applet's `fullRepresentation`; Plasma wraps it in its popup window.
+  Don't draw a window background or your own frame: the Plasma style draws the glass, the
+  8px corners and the 1px border, and the tray floats the popup 4px off the bar with its whole
+  frame (`tray/patches.py`). Don't set the popup's `margin` or `removeBorderStrategy`.
+- Anything painted edge to edge inside the popup (a backdrop, cover art) stays inside the
+  border: inset it 1px on all four sides and round it at 7px (8 minus the border).
+- Don't animate the popup window: `kwin-effects/leaves-popups` drops it out of the bar.
+  Animate only what changes inside it, with the Motion tokens.
+- Don't draw an open-state line: the tray swaps the panel's for the growing `ActiveLine`.
+  A reading that opens a popup some other way (like the perf meter's Wi-Fi reading) adds
+  `ActiveLine { active: … }` itself.
+- Opening on hover: `HoverOpener` (`shared/`, 150ms rest, 400ms grace, instant switch while
+  another popup is open), and no tooltip on that item, since it would cover the popup.
+- Widgets in one bar talk over `shared/bus.js`, never by reaching into each other's items.
+
+**Windows of our own** (launcher-style `PlasmaCore.Window`, layer shell)
+- Undecorated plasmashell windows are animated by `leaves-popups`: a free one drops 8px from
+  the top bar with a fade, one flush against a monitor edge slides in from that edge. Show and
+  hide them with `visible`, at full opacity, with no QML open/close animation.
+- Use the style's dialog background for the glass, the 8px frame and the border. A window that
+  spans a whole monitor edge (the side panel) has radius 0 and draws its 1px border on the
+  inner side only.
+
+**Anything that isn't a Plasma window** (KWin declarative scripts like snap assist or the
+cheat sheet, the S25 app)
+- No KWin effect reaches it: open with a 0.96 scale plus a fade (popup timing, OutQuint) and
+  close the same way, faster.
+
+**Every time**
+- Radius by the shorter side (Shape & spacing), spacing on the 4px grid with its standard gaps,
+  colors only from the palette, MingCute Fill icons as masks, Noto Sans at the listed sizes.
+- Motion only with the house curve and the duration tokens; no bounce.
+- Glass for anything floating over other content; one accented thing per view.

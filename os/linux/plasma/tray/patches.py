@@ -111,8 +111,11 @@ LEAVES = '''
     }
     // Panel widgets in this bar (the clock, the media bar…): the line the panel
     // draws under an open one becomes the Leaves ActiveLine (shared/) in place of
-    // the style's tab artwork. The tray's own wrappers have no such line.
+    // the style's tab artwork, and their popups float off the bar like the tray's
+    // (leavesPopupGap, full frame). The tray's own wrappers have no such line.
     Component { id: leavesActiveLine; ActiveLine {} }
+    // Bar popups float this far off the bar, with their whole frame (DESIGN.md)
+    readonly property int leavesPopupGap: 4
     property var leavesRestyled: []
     function leavesRestyleFeedback(item) {
         if (!item)
@@ -124,6 +127,12 @@ LEAVES = '''
             feedback.opacity = 1
             const applet = item.plasmoidItem
             leavesActiveLine.createObject(feedback, { active: Qt.binding(() => applet.expanded) })
+            for (const popup of item.data) {
+                if (popup?.popupDirection !== undefined && popup?.removeBorderStrategy !== undefined) {
+                    popup.margin = leavesPopupGap
+                    popup.removeBorderStrategy = PlasmaCore.AppletPopup.AtScreenEdges
+                }
+            }
         }
         for (const child of item.children)
             leavesRestyleFeedback(child)
@@ -458,6 +467,15 @@ def apply(files):
             removedModel.invalidateFilter();
         });
 """)
+
+    # The popup floats off the bar with its whole frame: rounded and bordered on
+    # the bar side too (Plasma otherwise drops the frame edge against a panel)
+    replace(files, MAIN,
+            "            margin: (Plasmoid.containmentDisplayHints & PlasmaCore.Types.ContainmentPrefersFloatingApplets) ? Kirigami.Units.largeSpacing : 0\n",
+            "            margin: root.leavesPopupGap  // Leaves\n")
+    replace(files, MAIN,
+            "                : PlasmaCore.AppletPopup.AtScreenEdges | PlasmaCore.AppletPopup.AtPanelEdges\n",
+            "                : PlasmaCore.AppletPopup.AtScreenEdges  // Leaves: keep the edge against the bar\n")
 
     # Popups open under leavesAnchor when one is set
     replace(files, MAIN,
