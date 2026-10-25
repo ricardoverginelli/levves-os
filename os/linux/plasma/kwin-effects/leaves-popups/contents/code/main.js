@@ -49,8 +49,14 @@ function stop(window) {
     }
 }
 
-// Slide and fade for opening (from the panel to its place) or closing (the reverse)
+// Slide and fade for opening (from the panel to its place) or closing (the reverse).
+// KWin's blur skips windows that are moving unless they force it, which made
+// the glass go clear during the slide and snap back after; forcing it keeps
+// the blur on the popup (faded with it) the whole way, as Sliding popups does.
+// The flags stay: they only matter while a popup is moving.
 function play(window, opening) {
+    window.setData(Effect.WindowForceBlurRole, true);
+    window.setData(Effect.WindowForceBackgroundContrastRole, true);
     const away = offset(window);
     const home = { value1: 0, value2: 0 };
     const duration = opening ? openDuration : closeDuration;
