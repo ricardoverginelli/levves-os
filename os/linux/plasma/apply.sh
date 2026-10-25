@@ -48,6 +48,9 @@ for file in shared/*.js shared/*.qml; do
 done
 echo "Building the Leaves tray"
 [ "$(python3 -I tray/build.py)" = changed ] && restart=true
+# Notification popups and history; top-bar.js swaps them in for the stock ones
+echo "Building the Leaves notifications"
+[ "$(python3 -I notifications/build.py)" = changed ] && restart=true
 
 # Yakuake (and its Konsole profile): Leaves color scheme, font and skin.
 # Yakuake only reloads them on restart, which would end its sessions, so just say so

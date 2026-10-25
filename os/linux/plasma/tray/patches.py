@@ -73,8 +73,9 @@ LEAVES = '''
     readonly property var leavesRemoved: ["Yakuake", "NordPass", "org.kde.plasma.clipboard", "org.kde.plasma.networkmanagement",
                                           "org.kde.plasma.mediacontroller"]
     readonly property var leavesInChevron: ["steam"]
-    readonly property var leavesPinned: ["org.kde.plasma.volume", "org.kde.plasma.notifications"]
-    readonly property var leavesHoverOpen: ["org.kde.plasma.volume", "org.kde.plasma.notifications",
+    // Notifications: the Leaves ones (../notifications/) or the stock ones
+    readonly property var leavesPinned: ["org.kde.plasma.volume", "org.kde.plasma.notifications", "org.leaves.notifications"]
+    readonly property var leavesHoverOpen: ["org.kde.plasma.volume", "org.kde.plasma.notifications", "org.leaves.notifications",
                                             "org.kde.plasma.brightness"]
 
     // Pointer over the tray's popup (set in the popup, see apply())
@@ -256,9 +257,11 @@ LEAVES = '''
     KItemModels.KSortFilterProxyModel {
         id: pinnedModel
         filterRowCallback: (sourceRow, sourceParent) => root.leavesPlace(sourceModel, sourceRow, sourceParent) === "pinned"
-        // Descending ids: volume, then notifications
+        // Volume, then notifications: org.kde.plasma.volume sorts after the stock
+        // notifications' id but before the Leaves ones' (org.leaves.notifications)
         sortRoleName: "itemId"
-        sortOrder: Qt.DescendingOrder
+        sortOrder: Plasmoid.configuration.extraItems.includes("org.leaves.notifications")
+            ? Qt.AscendingOrder : Qt.DescendingOrder
         Component.onCompleted: sourceModel = Plasmoid.systemTrayModel
     }
 

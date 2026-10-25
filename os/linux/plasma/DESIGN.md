@@ -99,7 +99,9 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 - Library: **MingCute** (https://www.mingcute.com/, Apache-2.0), **Fill** style by default.
   The Line style is only for a deliberate secondary/inactive state of the same icon.
 - Monochrome: icons are drawn as masks in a text token (`Kirigami.Icon { isMask: true }`),
-  never in their own colors. App icons (Spotify, Brave…) stay as the apps ship them.
+  never in their own colors. App icons (Spotify, Brave…) stay as the apps ship them, except
+  where one clashes in a small spot: notification headers swap Spectacle's for MingCute's
+  `screenshot` in `text-muted` (`leavesAppIcons` in `notifications/patches.py`).
 - Sizes: 16px in the bar, rows and buttons; 24px where an icon stands in for an app.
 - Adding one: put its name in `icons/mingcute.txt`, run `icons/fetch.py`, commit the SVG.
   `apply.sh` installs it as `mingcute-<name>`, e.g. `source: "mingcute-play-fill"`.

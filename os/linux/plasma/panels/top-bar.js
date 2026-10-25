@@ -65,5 +65,22 @@ function buildBar() {
     // Right: system tray. The Leaves tray (tray/build.py) when it's installed,
     // otherwise the stock one (e.g. after a Plasma update the patches don't fit)
     const leavesTray = "org.leaves.systemtray";
-    panel.addWidget(knownWidgetTypes.indexOf(leavesTray) >= 0 ? leavesTray : "org.kde.plasma.systemtray");
+    const tray = panel.addWidget(knownWidgetTypes.indexOf(leavesTray) >= 0 ? leavesTray : "org.kde.plasma.systemtray");
+
+    // Notifications: the Leaves ones (notifications/build.py) in place of the
+    // stock ones when installed. Never both: each would show every popup. The
+    // stock id stays in knownItems so the tray doesn't turn it back on.
+    const leavesNotifications = "org.leaves.notifications";
+    const stockNotifications = "org.kde.plasma.notifications";
+    if (knownWidgetTypes.indexOf(leavesNotifications) >= 0) {
+        tray.currentConfigGroup = ["General"];
+        const list = key => {
+            const value = tray.readConfig(key, []);
+            return (Array.isArray(value) ? value : String(value).split(",")).filter(id => id);
+        };
+        const others = id => id != stockNotifications && id != leavesNotifications;
+        tray.writeConfig("extraItems", list("extraItems").filter(others).concat([leavesNotifications]));
+        tray.writeConfig("knownItems", list("knownItems").filter(others).concat([stockNotifications, leavesNotifications]));
+        tray.reloadConfig();
+    }
 }
