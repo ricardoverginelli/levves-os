@@ -88,7 +88,7 @@ ColumnLayout {
             Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutQuint } }
         }
         background: Rectangle {
-            radius: 6
+            radius: 4  // inside the 4px track, never below 4
             color: controls.tab === tabButton.index ? Leaves.Palette.surface : "transparent"
             Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutQuint } }
         }
@@ -119,7 +119,7 @@ ColumnLayout {
         Rectangle {
             implicitWidth: tabs.implicitWidth + 4
             implicitHeight: 32
-            radius: 8
+            radius: 4  // DESIGN.md: small control
             color: Leaves.Palette.raised
 
             RowLayout {

@@ -11,7 +11,7 @@ Leaves.Palette is palette.json (global/Palette.qml, written by build.py).
   menu button; app icons listed in leavesAppIcons are swapped for a MingCute
   one in text-muted (Spectacle's colored logo)
 - buttons: the first action is the primary one (accent), the rest are raised;
-  8px corners
+  4px corners (DESIGN.md radius table)
 - panel: the bell opens a full-height sheet on the right (qml/SidePanel.qml)
   instead of a tray popup: notifications as cards with Do not disturb, then the
   volume mixer and a brightness slider per monitor (qml/Controls.qml); the tray
@@ -89,7 +89,7 @@ ACTION_BUTTON = '''            PlasmaComponents3.ToolButton {
                 Kirigami.Theme.inherit: false
                 Kirigami.Theme.textColor: leavesPrimary ? Leaves.Palette.textOnAccent : Leaves.Palette.text
                 background: Rectangle {
-                    radius: 8
+                    radius: 4  // DESIGN.md: small control
                     color: {
                         const button = leavesActionButton;
                         if (button.leavesPrimary) {
@@ -106,14 +106,14 @@ MENU_BUTTON = '''            PlasmaComponents3.Button {
                 id: menuButton
                 Layout.alignment: Qt.AlignTop
                 Accessible.name: tooltip.text
-                // Leaves: MingCute icon on a raised 8px button
+                // Leaves: MingCute icon on a raised button
                 icon.name: "mingcute-menu-fill"
                 icon.color: Leaves.Palette.text
                 icon.width: 16
                 icon.height: 16
                 padding: 8
                 background: Rectangle {
-                    radius: 8
+                    radius: 4  // DESIGN.md: small control
                     color: menuButton.down || menuButton.checked || menuButton.hovered
                         ? Qt.tint(Leaves.Palette.raised, Leaves.Palette.hover) : Leaves.Palette.raised
                 }
@@ -308,7 +308,7 @@ def apply(files):
             '                    icon.name: "edit-clear-history"\n',
             '                    icon.name: "mingcute-delete-2-fill"  // Leaves\n'
             '                    icon.color: Kirigami.Theme.textColor\n')
-    # Notifications as cards: surface, 12px corners and padding, 8px apart; no
+    # Notifications as cards: surface, 6px corners, 12px padding, 8px apart; no
     # lines between apps (the cards already separate them)
     replace(files, FULL,
             "            topMargin: Kirigami.Units.largeSpacing\n"
@@ -334,7 +334,7 @@ def apply(files):
                 topPadding: 12
                 bottomPadding: 12
                 background: Rectangle {
-                    radius: 12
+                    radius: 6  // DESIGN.md: card
                     color: Leaves.Palette.surface
                 }
 """)
