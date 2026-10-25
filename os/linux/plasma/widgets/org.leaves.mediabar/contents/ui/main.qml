@@ -1,12 +1,16 @@
 // Now-playing controls for a thin panel: "Title · Artist  ⏮ ⏯ ⏭".
 // Collapsed to zero width unless a media player is playing or paused;
 // opens/closes with the DESIGN.md house curve. Click the text to raise the player.
+// Hovering it opens the player popup (PlayerPopup.qml), which also switches
+// between media sources when there's more than one.
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.mpris as Mpris
+
+import "../../../../../leaves"
 
 PlasmoidItem {
     id: root
@@ -22,24 +26,53 @@ PlasmoidItem {
     readonly property int maxTextWidth: 280
     readonly property font barFont: Qt.font({ family: Kirigami.Theme.defaultFont.family, pointSize: 9, weight: Font.Medium })
 
+    // Row 0 of the model is Plasma's multiplexer, which follows whichever
+    // player is active; the players themselves come after it. Picking a
+    // source pins its row; row 0 again means "follow the active one".
+    readonly property alias mpris: mpris
     readonly property var player: mpris.currentPlayer
+    readonly property bool pinned: mpris.currentIndex > 0
     readonly property bool active: player !== null
         && (player.playbackStatus === Mpris.PlaybackStatus.Playing
             || player.playbackStatus === Mpris.PlaybackStatus.Paused)
     readonly property bool playing: active && player.playbackStatus === Mpris.PlaybackStatus.Playing
 
     Plasmoid.status: active ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
-    toolTipMainText: active ? player.track : ""
-    toolTipSubText: active ? [player.artist, player.identity].filter(Boolean).join(" — ") : ""
+    // Hover popups have no tooltips (TODO.md Top bar)
+    toolTipMainText: ""
+    toolTipSubText: ""
 
     Mpris.Mpris2Model { id: mpris }
+
+    function pin(row) {
+        mpris.currentIndex = row
+    }
+
+    onActiveChanged: {
+        if (active)
+            return
+        // A pinned source that stops or quits hands the bar back to the
+        // active one, or the bar would hide with other players still going
+        if (pinned)
+            pin(0)
+        else
+            expanded = false
+    }
 
     function htmlEscaped(text) {
         return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;")
     }
 
-    preferredRepresentation: fullRepresentation
-    fullRepresentation: Item {
+    HoverOpener {
+        id: hoverOpener
+        enabled: root.active
+        open: root.expanded
+        onOpenRequested: root.expanded = true
+        onCloseRequested: root.expanded = false
+    }
+
+    preferredRepresentation: compactRepresentation
+    compactRepresentation: Item {
         id: container
 
         readonly property real openWidth: row.implicitWidth + root.leadingGap
@@ -51,6 +84,9 @@ PlasmoidItem {
         Layout.fillHeight: true
         clip: true
         opacity: root.active ? 1 : 0
+
+        Binding { target: hoverOpener; property: "bar"; value: container.Window.window }
+        Binding { target: hoverOpener; property: "triggerHovered"; value: barHover.hovered }
 
         Behavior on shownWidth {
             NumberAnimation {
@@ -64,6 +100,8 @@ PlasmoidItem {
                 easing.type: root.houseCurve
             }
         }
+
+        HoverHandler { id: barHover }
 
         RowLayout {
             id: row
@@ -116,40 +154,15 @@ PlasmoidItem {
         }
     }
 
-    component ControlButton: Rectangle {
-        property alias icon: glyph.source
-        signal triggered()
+    fullRepresentation: PlayerPopup {
+        id: popup
+        mpris: root.mpris
+        player: root.player
+        pinned: root.pinned
+        playing: root.playing
+        shown: root.expanded
+        onPinRequested: row => root.pin(row)
 
-        implicitWidth: 20
-        implicitHeight: 20
-        radius: 8
-        color: mouse.pressed ? Qt.alpha(Kirigami.Theme.textColor, 0.16)
-             : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.10)
-             : "transparent"
-        opacity: enabled ? 1 : 0.4
-
-        Behavior on color {
-            ColorAnimation {
-                duration: root.hoverDuration
-                easing.type: root.houseCurve
-            }
-        }
-
-        Kirigami.Icon {
-            id: glyph
-            anchors.centerIn: parent
-            width: 16
-            height: 16
-            color: Kirigami.Theme.textColor
-            isMask: true
-        }
-
-        MouseArea {
-            id: mouse
-            anchors.fill: parent
-            hoverEnabled: true
-            enabled: parent.enabled
-            onClicked: parent.triggered()
-        }
+        Binding { target: hoverOpener; property: "popupHovered"; value: popup.hovered }
     }
 }
