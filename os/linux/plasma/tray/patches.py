@@ -10,7 +10,9 @@ Where items go (edit the lists in LEAVES below):
   Media Player, which the Leaves media bar replaces
 - chevron: always in the hidden-items popup
 - Bluetooth: shown only while a device is connected, otherwise in the chevron
-- pinned: volume, then notifications, always shown at the right end; the chevron is at the left end
+- pinned: volume, then notifications, always shown at the right end; the chevron is at the left end.
+  With the Leaves notifications (../notifications/), volume and brightness are removed instead:
+  the notifications' panel holds the mixer and brightness
 - icons: MingCute for the chevron and for items listed in leavesIcon()
 - hover: items in leavesHoverOpen, the network popup (perf meter) and the
   clock (a stock applet in the same bar) open on hover (shared/HoverOpener.qml),
@@ -73,9 +75,17 @@ LEAVES = '''
     readonly property var leavesRemoved: ["Yakuake", "NordPass", "org.kde.plasma.clipboard", "org.kde.plasma.networkmanagement",
                                           "org.kde.plasma.mediacontroller"]
     readonly property var leavesInChevron: ["steam"]
+    // With the Leaves notifications, their panel holds the mixer and brightness,
+    // so those two leave the bar (still loaded: their keys and OSDs keep working)
+    readonly property bool leavesPanel: Plasmoid.configuration.extraItems.includes("org.leaves.notifications")
+    readonly property var leavesInPanel: ["org.kde.plasma.volume", "org.kde.plasma.brightness"]
+    function leavesIsRemoved(itemId) {
+        return leavesMatches(leavesRemoved, itemId) || (leavesPanel && leavesMatches(leavesInPanel, itemId))
+    }
     // Notifications: the Leaves ones (../notifications/) or the stock ones
     readonly property var leavesPinned: ["org.kde.plasma.volume", "org.kde.plasma.notifications", "org.leaves.notifications"]
-    readonly property var leavesHoverOpen: ["org.kde.plasma.volume", "org.kde.plasma.notifications", "org.leaves.notifications",
+    // (not the Leaves notifications: their bell opens a full-height side panel, on click only)
+    readonly property var leavesHoverOpen: ["org.kde.plasma.volume", "org.kde.plasma.notifications",
                                             "org.kde.plasma.brightness"]
 
     // Pointer over the tray's popup (set in the popup, see apply())
@@ -145,7 +155,7 @@ LEAVES = '''
 
     // The status an item gets in the Leaves tray; HiddenStatus means not drawn
     function leavesStatus(itemId, status, applet) {
-        if (leavesMatches(leavesRemoved, itemId))
+        if (leavesIsRemoved(itemId))
             return PlasmaCore.Types.HiddenStatus
         if (leavesMatches(leavesPinned, itemId))
             return PlasmaCore.Types.ActiveStatus  // always shown, even with nothing to report
@@ -187,7 +197,7 @@ LEAVES = '''
             return leavesMatches(leavesPinned, itemId) ? "pinned" : "visible"
         if (status === PlasmaCore.Types.PassiveStatus)
             return "chevron"
-        return leavesMatches(leavesRemoved, itemId) ? "removed" : ""
+        return leavesIsRemoved(itemId) ? "removed" : ""
     }
 
     // MingCute icons the tray draws over an item's own (DESIGN.md Icons); "" keeps the item's.

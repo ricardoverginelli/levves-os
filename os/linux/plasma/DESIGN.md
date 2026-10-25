@@ -89,7 +89,15 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   jiggle; Noto Sans digits are tabular by default.
 
 ## Shape & spacing
-- Spacing on a 4px grid: 4, 8, 12, 16, 24, 32.
+- Spacing on a 4px grid: 4, 8, 12, 16, 24, 32. Standard uses:
+  | Gap | Where |
+  |---|---|
+  | 4 | A label and its control (name above a slider), title and body text |
+  | 8 | Between rows and cards in a list; icon-less inline items (text and its value) |
+  | 12 | Inside a card or row (padding); icon to text; a section's title to its content |
+  | 16 | A popup's or panel's content to its edge (the style's frame gives 4, add 12) |
+  | 24 | Between sections (with a 1px `border` line in the middle) |
+  - Rows with a control (slider, switch) are 40px tall; list rows 36px (44px with two lines).
 - Corner radius: 8px small (buttons, rows, inputs), 12px large (popups, cards). The Plasma
   style draws every popup's frame and blur mask at 12px (`popup-radius` in `palette.json`).
 - Borders: 1px `border`, only where surfaces of similar tone meet.

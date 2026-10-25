@@ -72,15 +72,15 @@ function buildBar() {
     // stock id stays in knownItems so the tray doesn't turn it back on.
     const leavesNotifications = "org.leaves.notifications";
     const stockNotifications = "org.kde.plasma.notifications";
-    if (knownWidgetTypes.indexOf(leavesNotifications) >= 0) {
-        tray.currentConfigGroup = ["General"];
-        const list = key => {
-            const value = tray.readConfig(key, []);
-            return (Array.isArray(value) ? value : String(value).split(",")).filter(id => id);
-        };
-        const others = id => id != stockNotifications && id != leavesNotifications;
-        tray.writeConfig("extraItems", list("extraItems").filter(others).concat([leavesNotifications]));
-        tray.writeConfig("knownItems", list("knownItems").filter(others).concat([stockNotifications, leavesNotifications]));
-        tray.reloadConfig();
-    }
+    // Without the Leaves ones (e.g. a patch stopped fitting), the stock ones are turned back on.
+    tray.currentConfigGroup = ["General"];
+    const list = key => {
+        const value = tray.readConfig(key, []);
+        return (Array.isArray(value) ? value : String(value).split(",")).filter(id => id);
+    };
+    const others = id => id != stockNotifications && id != leavesNotifications;
+    const notifications = knownWidgetTypes.indexOf(leavesNotifications) >= 0 ? leavesNotifications : stockNotifications;
+    tray.writeConfig("extraItems", list("extraItems").filter(others).concat([notifications]));
+    tray.writeConfig("knownItems", list("knownItems").filter(others).concat([stockNotifications, leavesNotifications]));
+    tray.reloadConfig();
 }

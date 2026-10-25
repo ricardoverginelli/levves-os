@@ -112,6 +112,9 @@ def main():
         patches.apply(files)
         use_leaves_globals(files)
         files["contents/ui/global/qmldir"] = QMLDIR
+        # Our own QML: the panel's mixer and brightness (qml/)
+        for qml in sorted((HERE / "qml").glob("*.qml")):
+            files[f"contents/ui/leaves/{qml.name}"] = qml.read_text()
         files["contents/ui/global/Palette.qml"] = palette_qml()
         metadata = json.loads((src / "metadata.json").read_text())
         metadata["KPackageStructure"] = "Plasma/Applet"

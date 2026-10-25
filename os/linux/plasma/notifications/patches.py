@@ -12,6 +12,10 @@ Leaves.Palette is palette.json (global/Palette.qml, written by build.py).
   one in text-muted (Spectacle's colored logo)
 - buttons: the first action is the primary one (accent), the rest are raised;
   8px corners
+- panel: the bell opens a full-height sheet on the right (qml/SidePanel.qml)
+  instead of a tray popup: notifications as cards with Do not disturb, then the
+  volume mixer and a brightness slider per monitor (qml/Controls.qml); the tray
+  takes volume and brightness out of the bar for it
 - colors: timeout bar in text-faint (the accent stays on the primary button),
   critical notifications marked in critical
 """
@@ -38,6 +42,10 @@ BUTTONS = "contents/ui/components/HeadingButtons.qml"
 SUMMARY = "contents/ui/components/Summary.qml"
 ACTIONS = "contents/ui/components/ActionContainer.qml"
 THUMBNAIL = "contents/ui/components/ThumbnailStrip.qml"
+FULL = "contents/ui/FullRepresentation.qml"
+MAIN = "contents/ui/main.qml"
+COMPACT = "contents/ui/CompactRepresentation.qml"
+DRAGGABLE = "contents/ui/DraggableDelegate.qml"
 
 # Extra padding inside the popup, on top of the style's 4px
 PAD = 8
@@ -258,3 +266,126 @@ def apply(files):
     replace(files, DELEGATE_POPUP,
             "        color: Kirigami.Theme.neutralTextColor\n",
             "        color: Kirigami.Theme.negativeTextColor  // Leaves: critical\n")
+
+    # ── Panel ────────────────────────────────────────────────────────────
+    # The bell opens the side panel (qml/SidePanel.qml) instead of a tray popup:
+    # the history (this file) on top, the mixer and brightness (qml/Controls.qml) under it
+    replace(files, FULL,
+            'import "components" as Components\n',
+            'import "components" as Components\nimport "leaves" as LeavesUi\n')
+    replace(files, FULL,
+            "    required property NotificationManager.Notifications historyModel\n",
+            "    required property NotificationManager.Notifications historyModel\n"
+            "    property bool leavesOpen: false  // Leaves: the side panel is open\n")
+    replace(files, FULL,
+            """    Connections {
+        target: fullRepresentationRoot.appletInterface
+        function onExpandedChanged() {
+            if (fullRepresentationRoot.appletInterface.expanded) {""",
+            """    onLeavesOpenChanged: {  // Leaves
+        {
+            if (fullRepresentationRoot.leavesOpen) {""")
+    replace(files, FULL,
+            "            model: fullRepresentationRoot.appletInterface.expanded ? fullRepresentationRoot.historyModel : null\n",
+            "            model: fullRepresentationRoot.leavesOpen ? fullRepresentationRoot.historyModel : null  // Leaves\n")
+    replace(files, FULL,
+            "    header: PlasmaExtras.PlasmoidHeading {\n",
+            """    footer: Item {  // Leaves
+        implicitHeight: leavesControls.implicitHeight
+        LeavesUi.Controls {
+            id: leavesControls
+            anchors { left: parent.left; right: parent.right; top: parent.top }
+        }
+    }
+
+    header: PlasmaExtras.PlasmoidHeading {
+""")
+    # Header: Do not disturb on the left, clear-all (MingCute) on the right, flush with the cards
+    replace(files, FULL,
+            "                fill: parent\n                leftMargin: Kirigami.Units.smallSpacing\n",
+            "                fill: parent\n                leftMargin: 0  // Leaves\n")
+    replace(files, FULL,
+            '                    icon.name: "edit-clear-history"\n',
+            '                    icon.name: "mingcute-delete-2-fill"  // Leaves\n'
+            '                    icon.color: Kirigami.Theme.textColor\n')
+    # Notifications as cards: surface, 12px corners and padding, 8px apart; no
+    # lines between apps (the cards already separate them)
+    replace(files, FULL,
+            "            topMargin: Kirigami.Units.largeSpacing\n"
+            "            bottomMargin: Kirigami.Units.largeSpacing\n"
+            "            spacing: Kirigami.Units.smallSpacing\n",
+            "            topMargin: 12  // Leaves\n"
+            "            bottomMargin: 12\n"
+            "            spacing: 8\n")
+    replace(files, FULL,
+            "                    height: y > 0 ? Math.round(Kirigami.Units.smallSpacing * 2) : 0\n",
+            "                    height: 0  // Leaves: cards, no lines\n")
+    replace(files, FULL,
+            "                        visible: parent.y > 0\n",
+            "                        visible: false  // Leaves\n")
+    replace(files, FULL,
+            "            delegate: DraggableDelegate {\n                id: delegate\n                width: ListView.view.width\n",
+            """            delegate: DraggableDelegate {
+                id: delegate
+                width: ListView.view.width
+                // Leaves: a card
+                leftPadding: 12
+                rightPadding: 12
+                topPadding: 12
+                bottomPadding: 12
+                background: Rectangle {
+                    radius: 12
+                    color: Leaves.Palette.surface
+                }
+""")
+    # Cards have top and bottom padding (the popups have none, so they're unchanged)
+    replace(files, DRAGGABLE,
+            "    implicitHeight: contentItem.implicitHeight\n",
+            "    implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding  // Leaves\n")
+
+    # The bell, keyboard activation and hover all open the side panel
+    replace(files, MAIN,
+            """    fullRepresentation: FullRepresentation {
+        appletInterface: root
+        notificationSettings: notificationSettings
+        clearHistoryAction: clearHistory
+        historyModel: historyModel
+    }
+""",
+            """    // Leaves: no tray popup; the side panel holds the history (leaves/SidePanel.qml)
+    fullRepresentation: Item {}
+    LeavesUi.SidePanel {
+        id: leavesPanel
+        applet: root
+        notificationSettings: notificationSettings
+        clearHistoryAction: clearHistory
+        historyModel: historyModel
+    }
+""")
+    replace(files, MAIN,
+            """    onExpandedChanged: expanded => {
+        if (expanded) {
+            Notifications.Globals.popupNotificationsModel.hideInhibitionSummary();
+        } else {
+            historyModel.lastRead = undefined; // reset to now
+            historyModel.collapseAllGroups();
+        }
+    }
+""",
+            """    // Leaves: whatever expands the applet (a shortcut, the tray) opens the side panel instead
+    onExpandedChanged: expanded => {
+        if (expanded) {
+            root.expanded = false;
+            leavesPanel.toggle();
+        }
+    }
+""")
+    replace(files, MAIN,
+            'import plasma.applet.org.kde.plasma.notifications as Notifications\n',
+            'import plasma.applet.org.kde.plasma.notifications as Notifications\nimport "leaves" as LeavesUi\n')
+    replace(files, COMPACT,
+            "    onPressed: wasExpanded = root.expanded\n",
+            "    onPressed: wasExpanded = leavesPanel.open  // Leaves: the side panel\n")
+    replace(files, COMPACT,
+            "            root.expanded = !wasExpanded;\n",
+            "            if (wasExpanded) leavesPanel.close(); else leavesPanel.show();\n")
