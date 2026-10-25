@@ -1,6 +1,6 @@
 #!/usr/bin/bash
-# Install the Yakuake KWin pieces: the slide-from-the-right effect (docked on
-# the right, full height) and the script that keeps it off fullscreen monitors
+# Install the Yakuake KWin pieces: the slide-from-the-left effect (docked on
+# the left, full height) and the script that keeps it off fullscreen monitors
 # and owns its shortcuts (Meta+/, Meta+N new tab), plus yakuake-tab, which new
 # tabs run (Claude Code, or a plain shell for Meta+Shift+N). User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall
@@ -82,8 +82,9 @@ kbuildsycoca6 >/dev/null 2>&1
 kga doRegister "$shell_tab"
 kga setShortcutKeys "$shell_tab" "[([$((0x1200004E)), 0, 0, 0],)]" 6
 
-# Docked right, full height, 30% wide (the effect slides it in from the right)
+# Docked left, full height, 30% wide (the effect slides it in from the left);
+# the right edge is the Leaves side panel's
 kwriteconfig6 --file yakuakerc --group Window --key Width 30
 kwriteconfig6 --file yakuakerc --group Window --key Height 100
-kwriteconfig6 --file yakuakerc --group Window --key Position 100
-echo "Done; restart Yakuake to dock it on the right"
+kwriteconfig6 --file yakuakerc --group Window --key Position 0
+echo "Done; restart Yakuake to dock it on the left"

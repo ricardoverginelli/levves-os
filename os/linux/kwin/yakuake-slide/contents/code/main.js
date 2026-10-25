@@ -1,4 +1,4 @@
-// KWin effect: slide Yakuake in from the right edge of its monitor, and back
+// KWin effect: slide Yakuake in from the left edge of its monitor, and back
 // out when it retracts.
 //
 // On Wayland, Yakuake always asks KWin's Sliding popups effect to slide it
@@ -6,7 +6,8 @@
 // effect doesn't yield to others. So Sliding popups is turned off, which makes
 // Yakuake skip the request, and this effect animates it instead. It grabs the
 // window, so the Scale/Fade open-close effects leave it alone. Yakuake's own
-// settings dock it: Width 30%, Height 100%, Position all the way right.
+// settings dock it: Width 30%, Height 100%, Position all the way left (the
+// right edge is the Leaves side panel's).
 //
 // Install: bash install.sh in linux/kwin (plasma/apply.sh runs it too)
 
@@ -20,9 +21,9 @@ function isYakuake(window) {
     return window.windowClass.split(" ").includes("org.kde.yakuake") && window.visible;
 }
 
-// Docked to the right edge, so its own width takes it fully off its monitor
+// Docked to the left edge, so its own width takes it fully off its monitor
 function offset(window) {
-    return window.width;
+    return -window.width;
 }
 
 effects.windowAdded.connect(window => {

@@ -170,7 +170,7 @@ for effect in kwin-effects/*/; do
     qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "$id" >/dev/null
 done
 
-# Yakuake's KWin effect and script (right-side slide, fullscreen avoidance)
+# Yakuake's KWin effect and script (left-side slide, fullscreen avoidance)
 bash ../kwin/install.sh
 
 if [ "$restart" = true ]; then
