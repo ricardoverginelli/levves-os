@@ -5,12 +5,16 @@ it), PatchError stops the build so the stock tray stays in use.
 
 Where items go (edit the lists in LEAVES below):
 - removed: never drawn, but still loaded (Meta+V clipboard, the network popup
-  that the perf meter's Wi-Fi reading opens); also Media Player, which the
-  Leaves media bar replaces
+  that the perf meter's Wi-Fi reading opens, placed below the reading, which
+  then shows it as open instead of the tray); also
+  Media Player, which the Leaves media bar replaces
 - chevron: always in the hidden-items popup
 - Bluetooth: shown only while a device is connected, otherwise in the chevron
 - pinned: volume, then notifications, always shown at the right end; the chevron is at the left end
 - icons: MingCute for the chevron and for items listed in leavesIcon()
+- hover: items in leavesHoverOpen, the network popup (perf meter) and the
+  clock (a stock applet in the same bar) open on hover (shared/HoverOpener.qml),
+  without tooltips, which would cover the popup
 """
 
 
@@ -29,8 +33,21 @@ MAIN = "contents/ui/main.qml"
 LOADER = "contents/ui/ItemLoader.qml"
 PLASMOID_ITEM = "contents/ui/PlasmoidItem.qml"
 EXPANDER = "contents/ui/ExpanderArrow.qml"
+HIGHLIGHT = "contents/ui/CurrentItemHighLight.qml"
 
 ICON_OVERLAY = '''
+    // Leaves: opens on hover (root.leavesHoverOpen)
+    HoverHandler { id: leavesHover }
+    HoverOpener {
+        enabled: plasmoidContainer.inVisibleLayout && root.leavesMatches(root.leavesHoverOpen, plasmoidContainer.itemId)
+        triggerHovered: leavesHover.hovered
+        popupHovered: root.leavesPopupHovered
+        open: plasmoidContainer.applet?.expanded ?? false
+        bar: root.Window.window
+        onOpenRequested: plasmoidContainer.applet.expanded = true
+        onCloseRequested: plasmoidContainer.applet.expanded = false
+    }
+
     // Leaves: a MingCute icon drawn over the applet's own, which stays (invisible) for clicks
     readonly property string leavesIconName: root.leavesIcon(itemId, applet?.plasmoid?.icon ?? "")
     Kirigami.Icon {
@@ -57,6 +74,69 @@ LEAVES = '''
                                           "org.kde.plasma.mediacontroller"]
     readonly property var leavesInChevron: ["steam"]
     readonly property var leavesPinned: ["org.kde.plasma.volume", "org.kde.plasma.notifications"]
+    readonly property var leavesHoverOpen: ["org.kde.plasma.volume", "org.kde.plasma.notifications",
+                                            "org.kde.plasma.brightness"]
+
+    // Pointer over the tray's popup (set in the popup, see apply())
+    property bool leavesPopupHovered: false
+
+    // The clock opens on hover too. It's a stock applet, so the tray finds it
+    // among the items of its bar and watches it from here.
+    property Item leavesClock: null
+    property HoverHandler leavesClockPopupHover: null
+    // The panel's tooltip area around the clock
+    readonly property Item leavesClockToolTip: {
+        for (let item = leavesClock?.compactRepresentationItem; item; item = item.parent)
+            if (item.objectName === "org.kde.desktop-CompactApplet" && item.plasmoidItem === leavesClock)
+                return item
+        return null
+    }
+    Binding {
+        target: root.leavesClockToolTip
+        property: "active"
+        value: false
+        when: root.leavesClockToolTip !== null
+        restoreMode: Binding.RestoreBindingOrValue
+    }
+    function leavesFindApplet(item, pluginName) {
+        if (!item)
+            return null
+        if (item.plasmoid?.pluginName === pluginName && item.fullRepresentation !== undefined)
+            return item
+        for (const child of item.children) {
+            const found = leavesFindApplet(child, pluginName)
+            if (found)
+                return found
+        }
+        return null
+    }
+    function leavesWatchClockPopup() {
+        const popup = leavesClock?.fullRepresentationItem
+        if (popup && leavesClockPopupHover?.parent !== popup)
+            leavesClockPopupHover = Qt.createQmlObject("import QtQuick; HoverHandler {}", popup)
+    }
+    Timer {  // the clock may load after the tray
+        interval: 1000
+        repeat: true
+        running: !root.leavesClock
+        onTriggered: {
+            root.leavesClock = root.leavesFindApplet(root.Window.window?.contentItem ?? null,
+                                                     "org.kde.plasma.digitalclock")
+            root.leavesWatchClockPopup()
+        }
+    }
+    Connections {
+        target: root.leavesClock
+        function onFullRepresentationItemChanged() { root.leavesWatchClockPopup() }
+    }
+    HoverOpener {
+        triggerHovered: root.leavesClock?.compactRepresentationItem?.containsMouse ?? false
+        popupHovered: root.leavesClockPopupHover?.hovered ?? false
+        open: root.leavesClock?.expanded ?? false
+        bar: root.Window.window
+        onOpenRequested: root.leavesClock.expanded = true
+        onCloseRequested: root.leavesClock.expanded = false
+    }
 
     function leavesMatches(list, itemId) {
         return list.some(prefix => itemId.startsWith(prefix))
@@ -129,14 +209,45 @@ LEAVES = '''
         hiddenModel.invalidateFilter()
     }
 
-    // Opens/closes a removed item's popup (e.g. the perf meter's Wi-Fi reading → network)
-    function leavesToggle(itemId) {
+    // The item the popup opens under instead of the tray (e.g. the perf meter's
+    // Wi-Fi reading); cleared once another item's popup takes over
+    property Item leavesAnchor: null
+    // The tray looks open (chevron, highlight) only for popups under itself
+    readonly property bool leavesOpenHere: systemTrayState.expanded && !leavesAnchor
+    Binding {
+        target: root.leavesAnchor
+        property: "leavesPopupOpen"
+        value: systemTrayState.expanded
+        when: root.leavesAnchor?.leavesPopupOpen !== undefined
+        restoreMode: Binding.RestoreValue
+    }
+    Binding {
+        target: root.leavesAnchor
+        property: "leavesPopupHovered"
+        value: root.leavesPopupHovered
+        when: root.leavesAnchor?.leavesPopupHovered !== undefined
+        restoreMode: Binding.RestoreValue
+    }
+    Connections {
+        target: systemTrayState
+        function onActiveAppletChanged() {
+            if (systemTrayState.activeApplet?.plasmoid?.pluginName !== "org.kde.plasma.networkmanagement")
+                root.leavesAnchor = null
+        }
+    }
+
+    // Opens/closes a removed item's popup (e.g. the perf meter's Wi-Fi reading → network),
+    // under anchor if given
+    function leavesSetExpanded(itemId, expanded, anchor) {
         for (let i = 0; i < removedModel.rowCount(); i++) {
             const index = removedModel.index(i, 0)
             if (removedModel.data(index, leavesItemIdRole.filterRole) === itemId) {
                 const applet = removedModel.data(index, leavesAppletRole.filterRole)
-                if (applet)
-                    applet.expanded = !applet.expanded
+                if (applet && applet.expanded !== expanded) {
+                    if (expanded)
+                        root.leavesAnchor = anchor ?? null
+                    applet.expanded = expanded
+                }
                 return
             }
         }
@@ -242,6 +353,18 @@ def apply(files):
             "import org.kde.plasma.plasmoid\n",
             'import org.kde.plasma.plasmoid\n\nimport "../../../../../leaves/bus.js" as LeavesBus\n')
 
+    # HoverOpener (shared/), installed next to bus.js
+    for name in [MAIN, PLASMOID_ITEM]:
+        replace(files, name,
+                "import org.kde.plasma.plasmoid\n",
+                'import org.kde.plasma.plasmoid\n\nimport "../../../../../leaves"\n')
+
+    # Tells hover popups when the pointer is over the tray's popup
+    replace(files, MAIN,
+            "                id: expandedRepresentation\n",
+            "                id: expandedRepresentation\n\n"
+            "                HoverHandler { onHoveredChanged: root.leavesPopupHovered = hovered }  // Leaves\n")
+
     # Placement rules, the extra models and their popup tracking
     replace(files, MAIN,
             "    readonly property alias hiddenModel: hiddenModel\n",
@@ -278,7 +401,7 @@ def apply(files):
         leavesIconWatcher.model = Plasmoid.systemTrayModel;
         leavesIconWatcher.active = true;
         root.leavesUnregister = LeavesBus.register("network", () => root.Window.window,
-                                                   () => root.leavesToggle("org.kde.plasma.networkmanagement"));
+                                                   arg => root.leavesSetExpanded("org.kde.plasma.networkmanagement", arg.expanded, arg.anchor));
         Qt.callLater(() => {  // the role numbers above are known only now
             activeModel.invalidateFilter();
             hiddenModel.invalidateFilter();
@@ -286,6 +409,11 @@ def apply(files):
             removedModel.invalidateFilter();
         });
 """)
+
+    # Popups open under leavesAnchor when one is set
+    replace(files, MAIN,
+            "            visualParent: root\n",
+            "            visualParent: root.leavesAnchor ?? root  // Leaves\n")
 
     # Chevron at the left end, then the regular items, then the pinned ones
     replace(files, MAIN,
@@ -318,6 +446,23 @@ def apply(files):
         source: {
             if (Plasmoid.location === PlasmaCore.Types.TopEdge) {
                 return "mingcute-up-fill";""")
+
+    # No open look on the tray while the popup is under another item (leavesAnchor)
+    for old in ["rotation: systemTrayState.expanded ? 180 : 0", "opacity: systemTrayState.expanded ? 0 : 1",
+                "rotation: systemTrayState.expanded ? 0 : -180", "opacity: systemTrayState.expanded ? 1 : 0"]:
+        replace(files, EXPANDER, old, old.replace("systemTrayState.expanded", "root.leavesOpenHere"))
+    replace(files, HIGHLIGHT,
+            "    function updateHighlightedItem() {\n        if (systemTrayState.expanded) {",
+            "    function updateHighlightedItem() {\n        if (root.leavesOpenHere) {")
+    replace(files, HIGHLIGHT,
+            "        currentItemHighLight.opacity = systemTrayState.expanded ? 1 : 0",
+            "        currentItemHighLight.opacity = root.leavesOpenHere ? 1 : 0")
+
+    # No tooltips on items that open on hover
+    replace(files, PLASMOID_ITEM,
+            "    active: inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0))\n",
+            "    active: !root.leavesMatches(root.leavesHoverOpen, itemId)  // Leaves\n"
+            "        && (inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0)))\n")
 
     # Icon overrides for applets (see leavesIcon)
     replace(files, PLASMOID_ITEM,

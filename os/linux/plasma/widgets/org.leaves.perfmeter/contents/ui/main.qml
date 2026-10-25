@@ -7,7 +7,9 @@ import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.ksysguard.sensors as Sensors
+import org.kde.ksvg as KSvg
 
+import "../../../../../leaves"
 import "../../../../../leaves/bus.js" as LeavesBus
 
 PlasmoidItem {
@@ -28,6 +30,19 @@ PlasmoidItem {
         Layout.preferredWidth: Layout.minimumWidth
         Layout.fillHeight: true
 
+        // While the network popup is open, the reading gets the active-tab line the
+        // tray draws under an open item (the Leaves style's amber edge)
+        KSvg.FrameSvgItem {
+            imagePath: "widgets/tabbar"
+            prefix: hasElementPrefix("north-active-tab") ? "north-active-tab" : "active-tab"
+            x: row.x + network.x - root.groupGap / 2
+            width: network.width + root.groupGap
+            height: parent.height
+            z: -1
+            opacity: network.leavesPopupOpen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 120 } }
+        }
+
         RowLayout {
             id: row
             x: root.edgeMargin
@@ -38,7 +53,7 @@ PlasmoidItem {
             Metric { label: "GPU"; icon: "mingcute-monitor-fill"; usageId: "gpu/all/usage"; tempId: "gpu/gpu0/temperature" }
             Metric { label: "RAM"; icon: "leaves-ram"; usageId: "memory/physical/usedPercent" }
             Metric { label: "SSD"; icon: "mingcute-server-2-fill"; usageId: "disk/all/usedPercent" }
-            NetworkMetric {}
+            NetworkMetric { id: network }
         }
     }
 
@@ -65,6 +80,7 @@ PlasmoidItem {
     // Component icon in the muted label color; the name shows as a tooltip
     component MetricIcon: Kirigami.Icon {
         property string label
+        property bool toolTip: true
         implicitWidth: 16
         implicitHeight: 16
         isMask: true
@@ -73,7 +89,7 @@ PlasmoidItem {
         HoverHandler { id: hover }
         PlasmaComponents.ToolTip {
             text: parent.label
-            visible: hover.hovered
+            visible: parent.toolTip && hover.hovered
         }
     }
 
@@ -94,19 +110,36 @@ PlasmoidItem {
     }
 
     // Download and upload for all interfaces as one reading, e.g. "↓2.4M ↑96K" (bytes per second).
-    // Clicking it opens the network popup: the tray in the same bar keeps the
-    // network item out of sight and opens it when asked over the Leaves bus
-    // (shared/bus.js)
+    // Hovering or clicking it opens the network popup below the reading: the tray
+    // in the same bar keeps the network item out of sight and opens it when asked
+    // over the Leaves bus (shared/bus.js)
     component NetworkMetric: RowLayout {
+        id: networkMetric
+        // Set by the tray while its popup is open under this reading
+        property bool leavesPopupOpen: false
+        property bool leavesPopupHovered: false
+
+        function setPopup(expanded) {
+            LeavesBus.call("network", Window.window, { expanded: expanded, anchor: networkMetric })
+        }
+
         spacing: root.innerGap
 
-        TapHandler { onTapped: LeavesBus.call("network", parent.Window.window) }
-        HoverHandler { cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: networkMetric.setPopup(!networkMetric.leavesPopupOpen) }
+        HoverHandler { id: networkHover; cursorShape: Qt.PointingHandCursor }
+        HoverOpener {
+            triggerHovered: networkHover.hovered
+            popupHovered: networkMetric.leavesPopupHovered
+            open: networkMetric.leavesPopupOpen
+            bar: networkMetric.Window.window
+            onOpenRequested: networkMetric.setPopup(true)
+            onCloseRequested: networkMetric.setPopup(false)
+        }
 
         Sensors.Sensor { id: down; sensorId: "network/all/download"; updateRateLimit: 2000 }
         Sensors.Sensor { id: up; sensorId: "network/all/upload"; updateRateLimit: 2000 }
 
-        MetricIcon { source: "mingcute-wifi-fill"; label: "Network" }
+        MetricIcon { source: "mingcute-wifi-fill"; label: "Network"; toolTip: false }  // it opens a popup
         Text {
             readonly property string muted: Kirigami.Theme.disabledTextColor
             visible: !isNaN(down.value ?? NaN)

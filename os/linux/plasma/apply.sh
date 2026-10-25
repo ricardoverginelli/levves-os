@@ -40,7 +40,12 @@ done
 # Shared QML helpers for the widgets (e.g. the message bus), then the Leaves
 # tray, which needs them; top-bar.js below picks the tray up
 mkdir -p "$HOME/.local/share/leaves"
-cp shared/*.js "$HOME/.local/share/leaves/"
+for file in shared/*.js shared/*.qml; do
+    if ! cmp -s "$file" "$HOME/.local/share/leaves/$(basename "$file")"; then
+        cp "$file" "$HOME/.local/share/leaves/"
+        restart=true
+    fi
+done
 echo "Building the Leaves tray"
 [ "$(python3 -I tray/build.py)" = changed ] && restart=true
 

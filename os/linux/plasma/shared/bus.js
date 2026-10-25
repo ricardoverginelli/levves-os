@@ -9,7 +9,10 @@
 // widgets, so handlers are tied to the window (the bar) they live in, and a
 // call reaches the handler in the caller's bar.
 //
-// Handlers so far: "network" (tray) toggles the network popup.
+// Handlers so far: "network" (tray) opens or closes the network popup; the
+// argument is { expanded, anchor }, anchor being the item to open it under
+// (the tray without one). If the anchor has leavesPopupOpen and
+// leavesPopupHovered properties, the tray keeps them up to date while open.
 
 var handlers = []
 
@@ -21,9 +24,31 @@ function register(name, windowOf, handler) {
     return function () { handlers = handlers.filter(h => h !== entry) }
 }
 
-function call(name, window) {
+function call(name, window, arg) {
     const entry = handlers.find(h => h.name === name && h.windowOf() === window)
     if (entry)
-        entry.handler()
+        entry.handler(arg)
     return !!entry
+}
+
+// Hover popups (HoverOpener.qml) open in a bar, one at a time
+var openPopups = []
+
+// close: function that closes it; called when another one opens in the bar.
+// That happens a moment later, and only if it's still open: the tray switches
+// between its own popups itself, and closing the old one in the middle of that
+// switch would close the new one too.
+function setPopupOpen(window, owner, open, close) {
+    openPopups = openPopups.filter(p => p.owner !== owner)
+    if (open) {
+        openPopups.filter(p => p.window === window).forEach(p => Qt.callLater(() => {
+            if (openPopups.includes(p))
+                p.close()
+        }))
+        openPopups.push({ window: window, owner: owner, close: close })
+    }
+}
+
+function popupOpen(window) {
+    return openPopups.some(p => p.window === window)
 }
