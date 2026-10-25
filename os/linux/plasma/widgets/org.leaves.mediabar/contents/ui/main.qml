@@ -12,10 +12,10 @@ PlasmoidItem {
     id: root
 
     // DESIGN.md motion and spacing
-    readonly property var houseCurve: [0.2, 0.8, 0.2, 1, 1, 1]
-    readonly property int openDuration: 200
-    readonly property int closeDuration: 140
-    readonly property int hoverDuration: 120
+    readonly property int houseCurve: Easing.OutQuint
+    readonly property int openDuration: 240
+    readonly property int closeDuration: 170
+    readonly property int hoverDuration: 150
     readonly property int innerGap: 4
     readonly property int groupGap: 8
     readonly property int leadingGap: 16  // space after the perf meter, like gaps between its groups
@@ -55,15 +55,13 @@ PlasmoidItem {
         Behavior on shownWidth {
             NumberAnimation {
                 duration: root.active ? root.openDuration : root.closeDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.houseCurve
+                easing.type: root.houseCurve
             }
         }
         Behavior on opacity {
             NumberAnimation {
                 duration: root.active ? root.openDuration : root.closeDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.houseCurve
+                easing.type: root.houseCurve
             }
         }
 
@@ -133,8 +131,7 @@ PlasmoidItem {
         Behavior on color {
             ColorAnimation {
                 duration: root.hoverDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.houseCurve
+                easing.type: root.houseCurve
             }
         }
 

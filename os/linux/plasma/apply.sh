@@ -157,6 +157,19 @@ PY
 done
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
+# KWin effects: copy the package, enable it, reload it (reconfigure keeps the old code)
+for effect in kwin-effects/*/; do
+    id=$(basename "$effect")
+    dest="$HOME/.local/share/kwin/effects/$id"
+    echo "Installing KWin effect $id"
+    rm -rf "$dest"
+    mkdir -p "$dest"
+    cp -r "$effect"/. "$dest"
+    kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" true
+    qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect "$id" >/dev/null || true
+    qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "$id" >/dev/null
+done
+
 # Yakuake's KWin effect and script (right-side slide, fullscreen avoidance)
 bash ../kwin/install.sh
 

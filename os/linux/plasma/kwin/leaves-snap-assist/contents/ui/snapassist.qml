@@ -23,10 +23,10 @@ Item {
     id: root
 
     // DESIGN.md motion and spacing
-    readonly property var houseCurve: [0.2, 0.8, 0.2, 1, 1, 1]
-    readonly property int openDuration: 200
-    readonly property int closeDuration: 140
-    readonly property int hoverDuration: 120
+    readonly property int houseCurve: Easing.OutQuint
+    readonly property int openDuration: 240
+    readonly property int closeDuration: 170
+    readonly property int hoverDuration: 150
     readonly property int pad: 12
     readonly property int thumbWidth: 240
     readonly property int thumbHeight: 150
@@ -200,14 +200,14 @@ Item {
 
             ParallelAnimation {
                 id: openAnim
-                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
-                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
+                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
             }
             SequentialAnimation {
                 id: closeAnim
                 ParallelAnimation {
-                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
-                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: root.houseCurve }
+                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: root.houseCurve }
                 }
                 ScriptAction { script: { picker.visible = false; root.candidates = []; root.closing = false } }
             }
@@ -241,7 +241,7 @@ Item {
                              : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
                              : "transparent"
                         Behavior on color {
-                            ColorAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                            ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
                     }
 

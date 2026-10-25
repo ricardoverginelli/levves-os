@@ -42,10 +42,10 @@ PlasmoidItem {
     id: root
 
     // DESIGN.md motion and spacing
-    readonly property var houseCurve: [0.2, 0.8, 0.2, 1, 1, 1]
-    readonly property int openDuration: 200
-    readonly property int closeDuration: 140
-    readonly property int hoverDuration: 120
+    readonly property int houseCurve: Easing.OutQuint
+    readonly property int openDuration: 240
+    readonly property int closeDuration: 170
+    readonly property int hoverDuration: 150
     readonly property int edgeMargin: 12   // same as the perf meter's
     readonly property int pad: 12
     readonly property int rowHeight: 36
@@ -113,7 +113,7 @@ PlasmoidItem {
             isMask: true
             color: barButton.containsMouse || launcher.visible ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
             Behavior on color {
-                ColorAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
             }
         }
     }
@@ -607,14 +607,14 @@ PlasmoidItem {
 
             ParallelAnimation {
                 id: openAnim
-                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
-                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
+                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
             }
             SequentialAnimation {
                 id: closeAnim
                 ParallelAnimation {
-                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
-                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: root.houseCurve }
+                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: root.houseCurve }
                 }
                 ScriptAction { script: { launcher.visible = false; root.closing = false } }
             }
@@ -707,7 +707,7 @@ PlasmoidItem {
                         border.width: 1
                         border.color: root.area === "search" ? Qt.alpha(Kirigami.Theme.textColor, 0.16) : "transparent"
                         Behavior on border.color {
-                            ColorAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                            ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
 
                         Kirigami.Icon {
@@ -928,7 +928,7 @@ PlasmoidItem {
              : hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
              : "transparent"
         Behavior on color {
-            ColorAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+            ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
         }
     }
 
@@ -1013,7 +1013,7 @@ PlasmoidItem {
                 color: Kirigami.Theme.textColor
                 opacity: entryRow.pinned || pinMouse.containsMouse ? 0.7 : mouse.containsMouse ? 0.25 : 0
                 Behavior on opacity {
-                    NumberAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                    NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                 }
             }
 
@@ -1070,7 +1070,7 @@ PlasmoidItem {
             isMask: true
             color: header.active || headerHover.hovered ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
             Behavior on color {
-                ColorAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
             }
         }
         HoverHandler { id: headerHover; cursorShape: Qt.PointingHandCursor }
@@ -1162,7 +1162,7 @@ PlasmoidItem {
                 color: endMouse.containsMouse ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
                 opacity: endMouse.containsMouse ? 1 : taskRow.hovered ? 0.5 : 0
                 Behavior on opacity {
-                    NumberAnimation { duration: root.hoverDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.houseCurve }
+                    NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                 }
             }
 

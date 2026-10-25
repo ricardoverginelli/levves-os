@@ -40,7 +40,7 @@ PlasmoidItem {
             height: parent.height
             z: -1
             opacity: network.leavesPopupOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 120 } }
+            Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuint } }  // DESIGN.md hover
         }
 
         RowLayout {

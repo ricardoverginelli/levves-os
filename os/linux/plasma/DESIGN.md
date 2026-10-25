@@ -112,9 +112,21 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
   `icons/install.py` adds KDE's recoloring hooks so the icons take the theme's text color.
 
 ## Motion
-- House curve: **`cubic-bezier(0.2, 0.8, 0.2, 1)`** — fast start, soft landing.
-  - QML: `easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1]`
-  - KWin effects only accept named curves; nearest is `QEasingCurve.OutCubic`.
-- Durations: 120ms hover/press, 200ms popups opening, 280ms large panels/overlays.
-- Closing uses the same curve ~30% faster (e.g. popup closes in 140ms).
+- House curve: **OutQuint** — fast start, soft landing. It's a named curve, so KWin effects
+  (which take only named curves) and QML use exactly the same one.
+  - QML: `easing.type: Easing.OutQuint`
+  - KWin: `curve: QEasingCurve.OutQuint`
+  - CSS: `cubic-bezier(0.2, 0.8, 0.2, 1)` (the old house bezier; within 0.024 of OutQuint)
+- Durations (the "Relaxed" set; closing is ~30% faster, same curve):
+
+  | Token | Open | Close | Used for |
+  |---|---|---|---|
+  | hover | 150ms | 150ms | Hover/press tints, the active line under a bar item |
+  | popup | 240ms | 170ms | Bar popups, the launcher, OSDs |
+  | panel | 320ms | 220ms | Large panels and overlays: Yakuake |
+  | hover-open | 150ms | 400ms | Rest before a hovered bar item opens / grace before it closes |
+
+- Popups open out of their panel ("Drop"): an 8px slide from the panel's edge plus a fade,
+  reversed on close. Plasma's popups get it from the KWin effect `kwin-effects/leaves-popups`;
+  our own QML popups (launcher, snap assist, OSD) open with a 0.96 scale plus the fade.
 - No bounce/overshoot.

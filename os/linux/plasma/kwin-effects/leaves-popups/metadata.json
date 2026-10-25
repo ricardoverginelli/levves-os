@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Id": "leaves-popups",
+        "Name": "Leaves: popups open from their panel",
+        "Description": "Plasma popups slide out of the panel they belong to while fading in, and back into it as they close",
+        "Category": "Window Open/Close Animation",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-KDE-Ordering": 50,
+    "X-Plasma-API": "javascript",
+    "KPackageStructure": "KWin/Effect"
+}

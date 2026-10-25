@@ -12,10 +12,9 @@
 
 "use strict";
 
-// DESIGN.md motion: 280ms for large panels, closing ~30% faster; OutCubic is
-// the nearest named curve to the house curve
-const openDuration = animationTime(280);
-const closeDuration = animationTime(200);
+// DESIGN.md motion: the house curve, 320ms for large panels, closing ~30% faster
+const openDuration = animationTime(320);
+const closeDuration = animationTime(220);
 
 function isYakuake(window) {
     return window.windowClass.split(" ").includes("org.kde.yakuake") && window.visible;
@@ -36,7 +35,7 @@ effects.windowAdded.connect(window => {
     }
     window.slideIn = animate({
         window: window,
-        curve: QEasingCurve.OutCubic,
+        curve: QEasingCurve.OutQuint,
         duration: openDuration,
         type: Effect.Translation,
         from: { value1: offset(window), value2: 0 },
@@ -54,7 +53,7 @@ effects.windowClosed.connect(window => {
     }
     window.slideOut = animate({
         window: window,
-        curve: QEasingCurve.OutCubic,
+        curve: QEasingCurve.OutQuint,
         duration: closeDuration,
         type: Effect.Translation,
         from: { value1: 0, value2: 0 },
