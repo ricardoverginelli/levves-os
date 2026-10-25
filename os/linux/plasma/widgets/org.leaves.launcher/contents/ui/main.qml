@@ -679,7 +679,7 @@ PlasmoidItem {
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: root.rowHeight
-                        radius: 8
+                        radius: 6  // DESIGN.md: rows and inputs at 36px
                         Kirigami.Theme.inherit: false
                         Kirigami.Theme.colorSet: Kirigami.Theme.Button
                         color: Kirigami.Theme.backgroundColor
@@ -903,7 +903,7 @@ PlasmoidItem {
         property bool selected
         property bool hovered
         property color tint: Kirigami.Theme.highlightColor
-        radius: 8
+        radius: 6  // DESIGN.md: rows
         color: selected ? Qt.alpha(tint, 0.18)
              : hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
              : "transparent"

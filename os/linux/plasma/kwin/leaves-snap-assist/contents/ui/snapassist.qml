@@ -236,7 +236,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 2
-                        radius: 8
+                        radius: 6  // DESIGN.md: cards inside a popup
                         color: cell.selected ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18)
                              : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
                              : "transparent"
