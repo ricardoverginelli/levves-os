@@ -110,7 +110,8 @@ record() {
     if [ "$kind" = gif ]; then
         out=$shots/$(stamp).gif
         notify "Encoding GIF…" "" media-record
-        ffmpeg -loglevel error -y -i "$tmp" -vf "fps=$fps,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" "$out"
+        ffmpeg -loglevel error -y -i "$tmp" -vf "fps=$fps,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" "$out" ||
+            fail "GIF encoding failed (is ffmpeg installed?)"
     else
         out=$videos/$(stamp).mp4
         mv "$tmp" "$out"

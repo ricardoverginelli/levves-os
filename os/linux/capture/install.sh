@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # Install the ShareX-style capture hotkeys (see README.md). User-level, no sudo;
 # the packages are: sudo dnf copr enable brycensranch/gpu-screen-recorder-git &&
-#   sudo dnf install gpu-screen-recorder slurp
+#   sudo dnf install gpu-screen-recorder slurp ffmpeg
 # Safe to re-run. Undo: bash install.sh --uninstall
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
