@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Id": "leaves-geometry",
+        "Name": "Leaves: animated window moves",
+        "Description": "Windows glide to their new place and size when tiled, maximized or sent to another monitor, instead of jumping there",
+        "Category": "Appearance",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-KDE-Ordering": 60,
+    "X-Plasma-API": "javascript",
+    "KPackageStructure": "KWin/Effect"
+}
