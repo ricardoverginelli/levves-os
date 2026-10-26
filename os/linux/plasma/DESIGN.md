@@ -118,6 +118,10 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
     never below 4px (a 6px card inside an 8px popup with 4px of padding stays 4px).
   - Pills are the exception: a round toggle or badge uses half its height.
   - The Plasma style draws every popup's frame and blur mask at 8px (`popup-radius` in `palette.json`).
+    Every piece of that frame must measure whole pixels (8px corners, 32px edges): lines in it are
+    filled shapes, never strokes, since Qt counts a stroke's width into the piece's size. Fractional
+    pieces showed as see-through squares where corners meet edges and tick marks along the edges.
+    Check with `QSvgRenderer.boundsOnElement` (see `claude/notes/plasma-svg-frames.md`).
 - Borders: 1px `border`. Every floating surface has one (popups, the launcher, Yakuake, the
   side panel), drawn by the Plasma style for Plasma's popups; inside a surface, only where areas
   of similar tone meet. The media popup redraws its border over the style's with the cover's
