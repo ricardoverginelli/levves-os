@@ -26,10 +26,28 @@ function offset(window) {
     return -window.width;
 }
 
+// KWin's blur skips windows that are moving unless they force it, which made
+// the glass go clear during the slide and snap back after. The flags stay:
+// they only matter while Yakuake is moving.
+function forceBlur(window) {
+    window.setData(Effect.WindowForceBlurRole, true);
+    window.setData(Effect.WindowForceBackgroundContrastRole, true);
+}
+
+// Scale starts its own animation on the window before this effect grabs it,
+// and when that one's time is up (mid-slide) it clears both flags, dropping
+// the glass for the rest of the slide. Put them back.
+effects.windowDataChanged.connect((window, role) => {
+    const forced = role === Effect.WindowForceBlurRole || role === Effect.WindowForceBackgroundContrastRole;
+    if (forced && (window.slideIn || window.slideOut) && !window.data(role))
+        forceBlur(window);
+});
+
 effects.windowAdded.connect(window => {
     if (!isYakuake(window))
         return;
     window.setData(Effect.WindowAddedGrabRole, effect);
+    forceBlur(window);
     if (window.slideOut) {
         cancel(window.slideOut);
         delete window.slideOut;
@@ -48,6 +66,7 @@ effects.windowClosed.connect(window => {
     if (!isYakuake(window))
         return;
     window.setData(Effect.WindowClosedGrabRole, effect);
+    forceBlur(window);
     if (window.slideIn) {
         cancel(window.slideIn);
         delete window.slideIn;
