@@ -6,6 +6,19 @@ cd "$(dirname "$0")"
 # plasmashell keeps a widget's old QML and the style's cached SVGs until restarted
 restart=false
 
+# Base global theme under the Leaves style: Breeze Dark (app colors, icons, cursor).
+# Switching it also resets the Plasma style, so it runs first, and only when it differs
+if [ "$(kreadconfig6 --group KDE --key LookAndFeelPackage)" != org.kde.breezedark.desktop ]; then
+    echo "Setting the Breeze Dark global theme"
+    lookandfeeltool -a org.kde.breezedark.desktop >/dev/null
+fi
+
+# System sounds off: no pop on volume changes, and Plasma's event sounds (dialogs,
+# notifications) muted through their stream role, which WirePlumber remembers
+kwriteconfig6 --file plasmaparc --group General --key AudioFeedback false
+pw-metadata -n route-settings 0 restore.stream.Output/Audio.media.role:Notification \
+    '{ "mute": true, "volumes": [ 1.0, 1.0 ], "channels": [ "FL", "FR" ] }' Spa:String:JSON >/dev/null
+
 style="$HOME/.local/share/plasma/desktoptheme/leaves"
 style_hash() { [ -d "$style" ] && find "$style" -type f -exec sha1sum {} + | sort | sha1sum; }
 before=$(style_hash || true)
