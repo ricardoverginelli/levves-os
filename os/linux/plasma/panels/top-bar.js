@@ -26,6 +26,19 @@ if (target != "secondary-off" && !(target == "secondary" && screenCount < 2))
     buildBar();
 
 function buildBar() {
+    function addStockClock() {
+        const clock = panel.addWidget("org.kde.plasma.digitalclock");
+        clock.currentConfigGroup = ["Appearance"];
+        clock.writeConfig("showDate", true);
+        clock.writeConfig("dateDisplayFormat", "BesideTime");
+        clock.writeConfig("dateFormat", "custom");
+        clock.writeConfig("customDateFormat", "ddd d MMM");
+        clock.writeConfig("autoFontAndSize", false);
+        clock.writeConfig("fontFamily", "Noto Sans");
+        clock.writeConfig("fontSize", 9);
+        clock.writeConfig("fontWeight", 600);  // SemiBold (Qt 6 weight scale)
+    }
+
     // New panels land on whichever screen Plasma considers current, so set it:
     // screen 0 is the primary monitor, 1 the second one
     const panel = new Panel;
@@ -47,16 +60,12 @@ function buildBar() {
     spacerLeft.currentConfigGroup = ["General"];
     spacerLeft.writeConfig("expanding", true);
 
-    const clock = panel.addWidget("org.kde.plasma.digitalclock");
-    clock.currentConfigGroup = ["Appearance"];
-    clock.writeConfig("showDate", true);
-    clock.writeConfig("dateDisplayFormat", "BesideTime");
-    clock.writeConfig("dateFormat", "custom");
-    clock.writeConfig("customDateFormat", "ddd d MMM");
-    clock.writeConfig("autoFontAndSize", false);
-    clock.writeConfig("fontFamily", "Noto Sans");
-    clock.writeConfig("fontSize", 9);
-    clock.writeConfig("fontWeight", 600);  // SemiBold (Qt 6 weight scale)
+    // The Leaves clock (calendar + Google agenda popup), or the stock one if it's missing
+    const leavesClock = "org.leaves.clock";
+    if (knownWidgetTypes.indexOf(leavesClock) >= 0)
+        panel.addWidget(leavesClock);
+    else
+        addStockClock();
 
     const spacerRight = panel.addWidget("org.kde.plasma.panelspacer");
     spacerRight.currentConfigGroup = ["General"];

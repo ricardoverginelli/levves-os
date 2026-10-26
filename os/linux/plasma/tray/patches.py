@@ -14,9 +14,8 @@ Where items go (edit the lists in LEAVES below):
   With the Leaves notifications (../notifications/), volume and brightness are removed instead:
   the notifications' panel holds the mixer and brightness
 - icons: MingCute for the chevron and for items listed in leavesIcon()
-- hover: items in leavesHoverOpen, the network popup (perf meter) and the
-  clock (a stock applet in the same bar) open on hover (shared/HoverOpener.qml),
-  without tooltips, which would cover the popup
+- hover: items in leavesHoverOpen and the network popup (perf meter) open on
+  hover (shared/HoverOpener.qml), without tooltips, which would cover the popup
 """
 
 
@@ -91,24 +90,6 @@ LEAVES = '''
     // Pointer over the tray's popup (set in the popup, see apply())
     property bool leavesPopupHovered: false
 
-    // The clock opens on hover too. It's a stock applet, so the tray finds it
-    // among the items of its bar and watches it from here.
-    property Item leavesClock: null
-    property HoverHandler leavesClockPopupHover: null
-    // The panel's tooltip area around the clock
-    readonly property Item leavesClockToolTip: {
-        for (let item = leavesClock?.compactRepresentationItem; item; item = item.parent)
-            if (item.objectName === "org.kde.desktop-CompactApplet" && item.plasmoidItem === leavesClock)
-                return item
-        return null
-    }
-    Binding {
-        target: root.leavesClockToolTip
-        property: "active"
-        value: false
-        when: root.leavesClockToolTip !== null
-        restoreMode: Binding.RestoreBindingOrValue
-    }
     // Panel widgets in this bar (the clock, the media bar…): the line the panel
     // draws under an open one becomes the Leaves ActiveLine (shared/) in place of
     // the style's tab artwork, and their popups float off the bar like the tray's
@@ -153,45 +134,6 @@ LEAVES = '''
     Connections {
         target: Plasmoid.containment
         function onAppletAdded() { root.leavesRestyleRuns = 0 }
-    }
-    function leavesFindApplet(item, pluginName) {
-        if (!item)
-            return null
-        if (item.plasmoid?.pluginName === pluginName && item.fullRepresentation !== undefined)
-            return item
-        for (const child of item.children) {
-            const found = leavesFindApplet(child, pluginName)
-            if (found)
-                return found
-        }
-        return null
-    }
-    function leavesWatchClockPopup() {
-        const popup = leavesClock?.fullRepresentationItem
-        if (popup && leavesClockPopupHover?.parent !== popup)
-            leavesClockPopupHover = Qt.createQmlObject("import QtQuick; HoverHandler {}", popup)
-    }
-    Timer {  // the clock may load after the tray
-        interval: 1000
-        repeat: true
-        running: !root.leavesClock
-        onTriggered: {
-            root.leavesClock = root.leavesFindApplet(root.Window.window?.contentItem ?? null,
-                                                     "org.kde.plasma.digitalclock")
-            root.leavesWatchClockPopup()
-        }
-    }
-    Connections {
-        target: root.leavesClock
-        function onFullRepresentationItemChanged() { root.leavesWatchClockPopup() }
-    }
-    HoverOpener {
-        triggerHovered: root.leavesClock?.compactRepresentationItem?.containsMouse ?? false
-        popupHovered: root.leavesClockPopupHover?.hovered ?? false
-        open: root.leavesClock?.expanded ?? false
-        bar: root.Window.window
-        onOpenRequested: root.leavesClock.expanded = true
-        onCloseRequested: root.leavesClock.expanded = false
     }
 
     function leavesMatches(list, itemId) {

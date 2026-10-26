@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.leaves.clock",
+        "Name": "Leaves Clock",
+        "Description": "Date and time for the top bar; the popup holds a month calendar and the next 15 days of your Google calendars",
+        "Icon": "preferences-system-time",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
