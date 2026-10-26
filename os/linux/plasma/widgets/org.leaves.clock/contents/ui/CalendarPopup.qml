@@ -4,9 +4,11 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
 import org.kde.plasma.workspace.calendar as PlasmaCalendar
 import org.kde.kirigami as Kirigami
+import "../../../../../leaves"
 
 Item {
     id: popup
@@ -371,7 +373,11 @@ Item {
                 model: popup.selectedDay ? selectedEvents : popup.agenda
                 visible: count > 0
                 spacing: 0
-                QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
+
+                // No scrollbar (the style's groove read as a stray line beside
+                // the list); rows fade out at an edge with more content past it
+                layer.enabled: !atYBeginning || !atYEnd
+                layer.effect: GE.OpacityMask { maskSource: fade }
 
                 section.property: popup.selectedDay ? "" : "dayKey"
                 section.delegate: Text {
@@ -438,6 +444,8 @@ Item {
                     }
                 }
             }
+
+            ScrollFade { id: fade; view: list }
 
             // Nothing to show: no accounts yet, or a free stretch
             ColumnLayout {

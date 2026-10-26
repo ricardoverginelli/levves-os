@@ -37,6 +37,7 @@ import org.kde.plasma.private.kicker as Kicker
 import org.kde.plasma.private.sessions as Sessions
 import org.kde.ksysguard.process as Process
 import org.kde.taskmanager as TaskManager
+import "../../../../../leaves"
 
 PlasmoidItem {
     id: root
@@ -52,7 +53,6 @@ PlasmoidItem {
     readonly property int taskWidth: 360
     readonly property int taskRowHeight: 32
     readonly property int taskCellWidth: 42
-    readonly property int fadeSize: 24     // scroll hint at the list's edges
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
     readonly property string pinsClient: "org.leaves.launcher.favorites"
@@ -1015,23 +1015,6 @@ PlasmoidItem {
                 enabled: pinIcon.visible
                 onClicked: root.togglePin(entryRow.modelData)
             }
-        }
-    }
-
-    // A list's scroll hint: an alpha mask (only drawn through the effect) that
-    // fades rows out at an edge with more content past it
-    component ScrollFade: Rectangle {
-        id: fade
-        required property Flickable view
-        visible: false
-        width: view.width
-        height: view.height
-        readonly property real edge: root.fadeSize / Math.max(height, 1)
-        gradient: Gradient {
-            GradientStop { position: 0; color: fade.view.atYBeginning ? "black" : "transparent" }
-            GradientStop { position: fade.edge; color: "black" }
-            GradientStop { position: 1 - fade.edge; color: "black" }
-            GradientStop { position: 1; color: fade.view.atYEnd ? "black" : "transparent" }
         }
     }
 
