@@ -209,6 +209,34 @@ cheat sheet, the S25 app)
 - No KWin effect reaches it: open with a 0.96 scale plus a fade (popup timing, OutQuint) and
   close the same way, faster.
 
+**Context menus** (our own menus, opened by a click; reference: `../media-actions/Menu.qml`,
+whose `MenuCard` component is the one to copy)
+- Placement: at the pointer, below-right of it, flipped left/up to stay 8px inside the
+  screen. On Wayland a client can't read the pointer, so the menu is a transparent layer-shell
+  overlay over the monitor (`ScreenFromCompositor`, exclusive keyboard) that takes the pointer
+  position when it maps; the middle of the screen if none arrives within 200ms.
+- Card: 220px wide, `surface` fill, 8px radius, 1px `border`, 4px padding. Rows 36px with 4px
+  corners: 16px icon in `text-muted`, 12px from the edge and from the label; label `text` 10pt;
+  an optional hint right-aligned in `text-muted` 9pt (what the item does or uses, e.g.
+  "LosslessCut", "Audio only").
+- States: hover is `text` at 6%, the keyboard highlight `accent` at 18%. Nothing is
+  highlighted until an arrow key is used; hovering a row clears the keyboard highlight.
+- Submenus cascade on hover: the parent row ends in a `right-fill` chevron (`left-fill` when
+  the submenu flips). It opens after the hover-open rest (150ms) and closes 400ms after the
+  pointer rests on a sibling row, so a diagonal trip toward it doesn't close it; reaching the
+  submenu cancels that. Clicking the row opens it at once. The submenu sits 4px beside the
+  parent card with its first row level with the parent row, flips to the left side when it
+  doesn't fit, and is clamped to the screen. The parent row keeps the hover tint while it's open.
+- Contents fit the target: hide what doesn't apply (no "convert to MP4" on an MP4, no Cut for
+  images) rather than disabling it. If only one top-level item would be left, skip that level
+  and show its contents as the menu.
+- Keyboard: Up/Down (Tab/Shift+Tab) move, Enter/Space/Right activate or open a submenu, Left
+  or Backspace go back up, Esc closes.
+- Dismiss: a click outside or Esc. Menu and submenu fade out together (the close half of the
+  0.96 scale + fade), and the chosen action runs once they're gone.
+- Long work started from a menu reports through a notification: a "…ing" one replaced by
+  the result (`notify-send -p` / `-r`), with an action to reveal the output when there is one.
+
 **Every time**
 - Radius by the shorter side (Shape & spacing), spacing on the 4px grid with its standard gaps,
   colors only from the palette, MingCute Fill icons as masks, Noto Sans at the listed sizes.
