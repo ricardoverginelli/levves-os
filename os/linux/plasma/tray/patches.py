@@ -202,8 +202,11 @@ LEAVES = '''
     function leavesStatus(itemId, status, applet) {
         if (leavesIsRemoved(itemId))
             return PlasmaCore.Types.HiddenStatus
+        // Always shown, even with nothing to report, but only when loaded: the stock
+        // notifications are still listed (unloaded) beside the Leaves ones and
+        // would leave an empty slot by the bell
         if (leavesMatches(leavesPinned, itemId))
-            return PlasmaCore.Types.ActiveStatus  // always shown, even with nothing to report
+            return applet ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.HiddenStatus
         if (status !== PlasmaCore.Types.ActiveStatus)
             return status
         if (leavesMatches(leavesInChevron, itemId))
