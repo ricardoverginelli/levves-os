@@ -1,0 +1,223 @@
+#!/usr/bin/python3
+"""Middle-click menu for videos and images in Dolphin: Cut (LosslessCut) or Convert.
+
+Dolphin opens a middle-clicked file with its second associated app; install.sh
+makes that this script. It shows a menu at the pointer, then runs the choice
+with ffmpeg / ImageMagick and writes the result next to the original.
+Usage: media-actions FILE...
+"""
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+from PySide6.QtCore import QMimeDatabase, QObject, QUrl, Property, Slot
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine
+
+HERE = Path(__file__).resolve().parent
+LOSSLESSCUT = "no.mifi.losslesscut"
+# id: label, hint, icon, extension
+FORMATS = {
+    "mp4": ("MP4", "Video", "video-fill", ".mp4"),
+    "mp3": ("MP3", "Audio only", "music-2-fill", ".mp3"),
+    "gif": ("GIF", "Animation", "film-fill", ".gif"),
+    "png": ("PNG", "Lossless image", "pic-fill", ".png"),
+    "jpg": ("JPG", "Smaller image", "pic-fill", ".jpg"),
+}
+
+
+def kind(path):
+    mime = QMimeDatabase().mimeTypeForFile(str(path)).name()
+    if mime == "image/gif":
+        return "gif"
+    return mime.split("/")[0] if mime.startswith(("video/", "image/")) else None
+
+
+def formats_for(paths):
+    """Formats offered for this selection, minus the one it already is (if all match)."""
+    kinds = {kind(p) for p in paths}
+    if kinds <= {"video"}:
+        ids = ["mp4", "mp3", "gif"]
+    elif kinds <= {"image", "gif"}:
+        ids = ["png", "jpg"] + (["mp4"] if kinds == {"gif"} else [])
+    else:
+        ids = []
+    exts = {p.suffix.lower().replace(".jpeg", ".jpg") for p in paths}
+    return [f for f in ids if exts != {FORMATS[f][3]}]
+
+
+def notify(summary, body="", icon="emblem-videos-symbolic", replace=None, actions=()):
+    cmd = ["notify-send", "-a", "Convert", "-i", icon, "-p", summary, body]
+    if replace:
+        cmd[1:1] = ["-r", replace]
+    cmd[1:1] = [f"-A{a}" for a in actions]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True).stdout.split()
+        return out[0] if out else None, out[1] if len(out) > 1 else None
+    except OSError:
+        return None, None
+
+
+def unique(path):
+    """path, or 'name (1).ext', 'name (2).ext'… if taken."""
+    n = 1
+    candidate = path
+    while candidate.exists():
+        candidate = path.with_name(f"{path.stem} ({n}){path.suffix}")
+        n += 1
+    return candidate
+
+
+def streams(path):
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name",
+                          "-of", "json", str(path)], capture_output=True, text=True).stdout
+    found = {"video": [], "audio": []}
+    for s in json.loads(out or "{}").get("streams", []):
+        found.setdefault(s.get("codec_type"), []).append(s.get("codec_name"))
+    return found
+
+
+def ffmpeg(*args):
+    return subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y", *args],
+                          capture_output=True, text=True)
+
+
+def to_mp4(src, out):
+    s = streams(src)
+    if not s["video"]:
+        return "No video track"
+    maps = ["-map", "0:v:0", "-map", "0:a?", "-sn", "-movflags", "+faststart"]
+    # Already MP4-friendly codecs (OBS/replay MKVs): remux, instant and lossless
+    if s["video"][0] in ("h264", "hevc") and set(s["audio"]) <= {"aac", "mp3"}:
+        r = ffmpeg("-i", str(src), *maps, "-c", "copy", str(out))
+        if r.returncode == 0:
+            return None
+    even = ["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-pix_fmt", "yuv420p"]
+    audio = ["-c:a", "aac", "-b:a", "192k"]
+    # NVENC where there's an NVIDIA GPU, x264 otherwise (or if NVENC is busy)
+    r = ffmpeg("-i", str(src), *maps, *even, "-c:v", "h264_nvenc", "-preset", "p5",
+               "-cq", "21", *audio, str(out))
+    if r.returncode != 0:
+        r = ffmpeg("-i", str(src), *maps, *even, "-c:v", "libx264", "-preset", "fast",
+                   "-crf", "20", *audio, str(out))
+    return r.stderr.strip() if r.returncode else None
+
+
+def to_mp3(src, out):
+    if not streams(src)["audio"]:
+        return "No audio track"
+    r = ffmpeg("-i", str(src), "-vn", "-map", "0:a:0", "-c:a", "libmp3lame", "-q:a", "2", str(out))
+    return r.stderr.strip() if r.returncode else None
+
+
+def to_gif(src, out):
+    # Same palette pass as capture's GIFs, capped at 960px wide to keep files sane
+    r = ffmpeg("-i", str(src), "-vf",
+               "fps=15,scale='min(960,iw)':-1:flags=lanczos,"
+               "split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a",
+               str(out))
+    return r.stderr.strip() if r.returncode else None
+
+
+def to_image(src, out):
+    # First frame only (GIFs); JPG has no alpha, so transparency goes on white
+    flatten = ["-background", "white", "-alpha", "remove", "-alpha", "off", "-quality", "92"]
+    cmd = ["magick", f"{src}[0]", *(flatten if out.suffix == ".jpg" else []), str(out)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stderr.strip() if r.returncode else None
+
+
+CONVERTERS = {"mp4": to_mp4, "mp3": to_mp3, "gif": to_gif, "png": to_image, "jpg": to_image}
+
+
+def convert(paths, fmt):
+    label, _, _, ext = FORMATS[fmt]
+    names = paths[0].name if len(paths) == 1 else f"{len(paths)} files"
+    nid, _ = notify(f"Converting to {label}…", names, "media-playback-start")
+    done, errors = [], []
+    for src in paths:
+        out = unique(src.with_suffix(ext))
+        err = CONVERTERS[fmt](src, out)
+        if err:
+            out.unlink(missing_ok=True)
+            errors.append(f"{src.name}: {err.splitlines()[-1]}")
+        else:
+            done.append(out)
+    if errors:
+        notify(f"Couldn't convert to {label}", "\n".join(errors), "dialog-error", nid)
+    if done:
+        body = done[0].name if len(done) == 1 else f"{len(done)} files"
+        _, action = notify(f"Converted to {label}", body, "emblem-ok-symbolic", None if errors else nid,
+                           ["folder=Show in folder"])
+        if action == "folder":
+            subprocess.Popen(["dolphin", "--select", *map(str, done)])
+
+
+def cut(paths):
+    if shutil.which("flatpak") and subprocess.run(["flatpak", "info", LOSSLESSCUT],
+                                                  capture_output=True).returncode == 0:
+        # File forwarding hands files outside the sandbox's folders over the document portal
+        subprocess.Popen(["flatpak", "run", "--branch=stable", "--command=/app/bin/run.sh",
+                          "--file-forwarding", LOSSLESSCUT, "@@", *map(str, paths), "@@"])
+    elif shutil.which("losslesscut"):
+        subprocess.Popen(["losslesscut", *map(str, paths)])
+    else:
+        notify("LosslessCut isn't installed", "flatpak install flathub no.mifi.losslesscut", "dialog-error")
+
+
+class Menu(QObject):
+    def __init__(self, paths):
+        super().__init__()
+        self.paths = paths
+        self.choice = None
+        self._formats = [{"id": f, "label": FORMATS[f][0], "hint": FORMATS[f][1],
+                          "icon": "mingcute-" + FORMATS[f][2]} for f in formats_for(paths)]
+
+    @Property(bool, constant=True)
+    def canCut(self):
+        return all(kind(p) == "video" for p in self.paths)
+
+    @Property("QVariantList", constant=True)
+    def formats(self):
+        return self._formats
+
+    @Slot(str)
+    def choose(self, choice):
+        self.choice = choice
+        QGuiApplication.quit()
+
+
+def main():
+    paths = []
+    for arg in sys.argv[1:]:
+        p = Path(unquote(urlparse(arg).path)) if arg.startswith("file://") else Path(arg)
+        if p.is_file():
+            paths.append(p.resolve())
+    if not paths:
+        sys.exit("Usage: media-actions FILE...")
+
+    app = QGuiApplication(sys.argv)
+    app.setDesktopFileName("media-actions")
+    menu = Menu(paths)
+    if not menu.canCut and not menu._formats:
+        notify("Nothing to do with this file", paths[0].name, "dialog-information")
+        return
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("menu", menu)
+    engine.load(QUrl.fromLocalFile(str(HERE / "Menu.qml")))
+    if not engine.rootObjects():
+        sys.exit("Menu.qml failed to load")
+    app.exec()
+    del engine
+
+    if menu.choice == "cut":
+        cut(paths)
+    elif menu.choice in FORMATS:
+        convert(paths, menu.choice)
+
+
+if __name__ == "__main__":
+    main()

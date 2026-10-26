@@ -4,8 +4,10 @@ add-fill
 close-fill
 delete-2-fill
 down-fill
+film-fill
 folder-open-fill
 headphone-fill
+left-fill
 lock-fill
 menu-fill
 mic-fill
@@ -15,10 +17,13 @@ monitor-fill
 moon-fill
 music-2-fill
 pause-fill
+pic-fill
 pin-fill
 play-fill
 refresh-2-fill
 restore-fill
+right-fill
+scissors-fill
 screenshot-fill
 server-2-fill
 settings-6-fill
@@ -26,7 +31,9 @@ skip-forward-fill
 skip-previous-fill
 stop-fill
 sun-fill
+transfer-horizontal-fill
 up-fill
+video-fill
 volume-fill
 volume-off-fill
 wifi-fill
