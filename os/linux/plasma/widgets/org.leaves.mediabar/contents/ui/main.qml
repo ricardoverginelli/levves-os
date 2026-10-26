@@ -29,9 +29,20 @@ PlasmoidItem {
     // Row 0 of the model is Plasma's multiplexer, which follows whichever
     // player is active; the players themselves come after it. Picking a
     // source pins its row; row 0 again means "follow the active one".
+    // The multiplexer can stay on a player that has stopped (a browser keeps
+    // its MPRIS entry after the tab goes quiet) while another one plays, so
+    // unpinned, any playing player wins, then any paused one.
     readonly property alias mpris: mpris
-    readonly property var player: mpris.currentPlayer
     readonly property bool pinned: mpris.currentIndex > 0
+    readonly property var player: {
+        const followed = mpris.currentPlayer
+        if (pinned)
+            return followed
+        const ranked = [followed].concat(sources)
+        return ranked.find(p => hasStatus(p, Mpris.PlaybackStatus.Playing))
+            || ranked.find(p => hasStatus(p, Mpris.PlaybackStatus.Paused))
+            || followed
+    }
     readonly property bool active: player !== null
         && (player.playbackStatus === Mpris.PlaybackStatus.Playing
             || player.playbackStatus === Mpris.PlaybackStatus.Paused)
@@ -43,6 +54,33 @@ PlasmoidItem {
     toolTipSubText: ""
 
     Mpris.Mpris2Model { id: mpris }
+
+    function hasStatus(p, status) {
+        return !!p && p.playbackStatus === status
+    }
+
+    // The players' containers, multiplexer left out
+    property var sources: []
+    function collectSources() {
+        const list = []
+        for (let i = 0; i < sourceWatch.count; i++) {
+            const w = sourceWatch.objectAt(i)
+            if (w && w.index > 0 && w.container)
+                list.push(w.container)
+        }
+        sources = list
+    }
+    Instantiator {
+        id: sourceWatch
+        model: mpris
+        delegate: QtObject {
+            required property int index
+            required property var container
+            onContainerChanged: root.collectSources()
+        }
+        onObjectAdded: root.collectSources()
+        onObjectRemoved: root.collectSources()
+    }
 
     function pin(row) {
         mpris.currentIndex = row
