@@ -82,6 +82,9 @@ PlasmaCore.Window {
 
         Keys.onEscapePressed: panel.close()
 
+        // Keeps the panel open while the bell opened it on hover (tray/patches.py)
+        HoverHandler { onHoveredChanged: panel.applet.leavesPanelHovered = hovered }
+
         // DESIGN.md: an edge-to-edge window draws its border on the inner side only
         Rectangle {
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom }

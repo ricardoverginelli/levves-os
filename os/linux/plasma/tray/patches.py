@@ -39,14 +39,16 @@ HIGHLIGHT = "contents/ui/CurrentItemHighLight.qml"
 ICON_OVERLAY = '''
     // Leaves: opens on hover (root.leavesHoverOpen)
     HoverHandler { id: leavesHover }
+    // The Leaves notifications open a side panel instead of expanding (leavesPanelOpen)
+    readonly property bool leavesSidePanel: applet?.leavesPanelOpen !== undefined
     HoverOpener {
         enabled: plasmoidContainer.inVisibleLayout && root.leavesMatches(root.leavesHoverOpen, plasmoidContainer.itemId)
         triggerHovered: leavesHover.hovered
-        popupHovered: root.leavesPopupHovered
-        open: plasmoidContainer.applet?.expanded ?? false
+        popupHovered: plasmoidContainer.leavesSidePanel ? plasmoidContainer.applet.leavesPanelHovered : root.leavesPopupHovered
+        open: plasmoidContainer.leavesSidePanel ? plasmoidContainer.applet.leavesPanelOpen : (plasmoidContainer.applet?.expanded ?? false)
         bar: root.Window.window
-        onOpenRequested: plasmoidContainer.applet.expanded = true
-        onCloseRequested: plasmoidContainer.applet.expanded = false
+        onOpenRequested: plasmoidContainer.leavesSidePanel ? plasmoidContainer.applet.leavesShowPanel() : plasmoidContainer.applet.expanded = true
+        onCloseRequested: plasmoidContainer.leavesSidePanel ? plasmoidContainer.applet.leavesClosePanel() : plasmoidContainer.applet.expanded = false
     }
 
     // Leaves: a MingCute icon drawn over the applet's own, which stays (invisible) for clicks
@@ -83,9 +85,9 @@ LEAVES = '''
     }
     // Notifications: the Leaves ones (../notifications/) or the stock ones
     readonly property var leavesPinned: ["org.kde.plasma.volume", "org.kde.plasma.notifications", "org.leaves.notifications"]
-    // (not the Leaves notifications: their bell opens a full-height side panel, on click only)
+    // (the Leaves notifications' bell opens their full-height side panel instead)
     readonly property var leavesHoverOpen: ["org.kde.plasma.volume", "org.kde.plasma.notifications",
-                                            "org.kde.plasma.brightness"]
+                                            "org.leaves.notifications", "org.kde.plasma.brightness"]
 
     // Pointer over the tray's popup (set in the popup, see apply())
     property bool leavesPopupHovered: false

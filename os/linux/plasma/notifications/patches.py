@@ -12,7 +12,7 @@ Leaves.Palette is palette.json (global/Palette.qml, written by build.py).
   one in text-muted (Spectacle's colored logo)
 - buttons: the first action is the primary one (accent), the rest are raised;
   4px corners (DESIGN.md radius table)
-- panel: the bell opens a full-height sheet on the right (qml/SidePanel.qml)
+- panel: the bell (click or hover) opens a full-height sheet on the right (qml/SidePanel.qml)
   instead of a tray popup: notifications as cards with Do not disturb, then the
   volume mixer and a brightness slider per monitor (qml/Controls.qml); the tray
   takes volume and brightness out of the bar for it
@@ -361,6 +361,11 @@ def apply(files):
         clearHistoryAction: clearHistory
         historyModel: historyModel
     }
+    // For the tray's hover opening (tray/patches.py), which follows the side panel, not expanded
+    readonly property bool leavesPanelOpen: leavesPanel.open
+    property bool leavesPanelHovered: false
+    function leavesShowPanel() { leavesPanel.show(); }
+    function leavesClosePanel() { leavesPanel.close(); }
 """)
     replace(files, MAIN,
             """    onExpandedChanged: expanded => {
