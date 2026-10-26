@@ -172,8 +172,8 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
 
 - Popups open out of their panel ("Drop"): an 8px slide from the panel's edge plus a fade,
   reversed on close. The KWin effect `kwin-effects/leaves-popups` does it for Plasma's popups
-  and the launcher (from the top bar), glass included. Snap assist and the S25 OSD aren't
-  Plasma windows; they open with a 0.96 scale plus the fade in QML.
+  and the launcher (from the top bar), glass included. Snap assist, the Alt+Tab switcher and the S25 OSD
+  aren't Plasma windows; they open with a 0.96 scale plus the fade in QML.
 - Panels docked to a monitor edge (Yakuake, the side panel) slide all the way in from that
   edge on the panel timing, without a fade (`yakuake-slide`, `leaves-popups`).
 - An open bar item is marked by a 1px accent line along its bottom that grows from left to

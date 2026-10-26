@@ -1,0 +1,13 @@
+{
+    "KPlugin": {
+        "Id": "leaves-switcher",
+        "Name": "Leaves: switcher",
+        "Description": "A row of window thumbnails: the windows on the monitor under the mouse first, then the rest, each group by last use",
+        "Icon": "preferences-system-windows-switcher-thumbnail-grid",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "declarativeappletscript",
+    "KPackageStructure": "KWin/WindowSwitcher"
+}

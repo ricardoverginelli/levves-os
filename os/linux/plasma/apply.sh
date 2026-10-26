@@ -188,6 +188,18 @@ for effect in kwin-effects/*/; do
     qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "$id" >/dev/null
 done
 
+# Window switcher layouts (Alt+Tab): copy the package, make leaves-switcher the one in use
+for layout in kwin-tabbox/*/; do
+    id=$(basename "$layout")
+    dest="$HOME/.local/share/kwin/tabbox/$id"
+    echo "Installing window switcher $id"
+    rm -rf "$dest"
+    mkdir -p "$dest"
+    cp -r "$layout"/. "$dest"
+done
+kwriteconfig6 --file kwinrc --group TabBox --key LayoutName leaves-switcher
+qdbus-qt6 org.kde.KWin /KWin reconfigure
+
 # Yakuake's KWin effect and script (left-side slide, fullscreen avoidance)
 bash ../kwin/install.sh
 
