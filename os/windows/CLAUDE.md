@@ -9,16 +9,19 @@ scripts/
   setup.py              ← Master orchestrator, runs selected scripts interactively
   setup-vscode.py       ← Installs VS Code extensions
   setup-sharex.py       ← Installs ShareX and imports backup config
-  setup-ahk.py          ← Installs AutoHotkey v2 and registers keyboard.ahk on startup
+  setup-ahk.py          ← Installs AutoHotkey v2 and registers gmk104.ahk on startup
   sharex/
     ShareX-*.sxb        ← ShareX backup config (exported from Application Settings → Export)
   ahk/
-    keyboard.ahk        ← AHK v2 script, registered to run on Windows startup
+    gmk104.ahk          ← AHK v2 keyboard remap, Windows port of linux/keyd/gmk104.conf
 ```
 
 ## Prerequisites
 
-Python 3 must be installed before running any script:
+Python 3 must be installed before running any script. The current machine runs
+Windows 11 IoT Enterprise LTSC, which ships without winget or the Store, so use
+the installer from https://www.python.org/downloads/windows/ (tick "Add to PATH").
+On editions with winget:
 ```bash
 winget install Python.Python.3
 ```
@@ -52,11 +55,22 @@ python setup-ahk.py
 - Config file path: `scripts/sharex/ShareX-*.sxb`
 
 ### setup-ahk.py
-- Installs AutoHotkey v2 via `winget install AutoHotkey.AutoHotkey`
-- Registers `scripts/ahk/keyboard.ahk` as a startup entry in:
+- Installs AutoHotkey v2 from the latest GitHub release (no winget needed); the installer
+  isn't code-signed, so its sha256 is checked against the release digest before running
+- Registers `scripts/ahk/gmk104.ahk` as the `gmk104-ahk` startup entry in:
   `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+  and removes the old `keyboard-ahk` entry if present
+- Starts the script right away; `#SingleInstance Force` replaces a running copy
 - Uses the absolute resolved path at time of running — if the repo moves, re-run the script
-- Does not require admin rights (HKCU scope)
+- The startup entry needs no admin rights (HKCU scope); installing AHK may show a UAC prompt
+
+### ahk/gmk104.ahk
+- Port of `linux/keyd/gmk104.conf` for the ZUOYA GMK104 with the Portuguese (Brazil) ABNT2 layout
+- Hotkeys use scan codes (`SC035`, `SC027`, `SC02B`) to match physical keys like keyd does
+- Keep it in sync with the keyd config when either changes; the keyd F19 sysrq/f10
+  bindings are deliberately not ported (they only work around KWin and the Linux VT switch)
+- Applies to every keyboard: AHK can't filter by device like keyd's `[ids]`
+- Doesn't reach elevated (admin) windows unless AHK itself runs elevated
 
 ## Adding a New Script
 1. Create `setup-<name>.py` at the repo root following the existing pattern
