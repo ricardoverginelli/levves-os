@@ -10,6 +10,7 @@ scripts/
   setup-vscode.py       ← Installs VS Code extensions
   setup-sharex.py       ← Installs ShareX and imports backup config
   setup-ahk.py          ← Installs AutoHotkey v2 and registers gmk104.ahk on startup
+  setup-theme.py        ← Applies the Leaves look (from linux/plasma/) to Windows
   sharex/
     ShareX-*.sxb        ← ShareX backup config (exported from Application Settings → Export)
   ahk/
@@ -63,6 +64,20 @@ python setup-ahk.py
 - Starts the script right away; `#SingleInstance Force` replaces a running copy
 - Uses the absolute resolved path at time of running — if the repo moves, re-run the script
 - The startup entry needs no admin rights (HKCU scope); installing AHK may show a UAC prompt
+
+### setup-theme.py
+- Windows take on the Plasma "Leaves" theme: reads colors from `linux/plasma/palette.json` and
+  the wallpaper from `linux/plasma/wallpaper/leaves.png`, so `linux/plasma/DESIGN.md` stays the
+  single source of truth; change colors there, then re-run
+- Dark apps and system, transparency on (DESIGN.md's glass); the amber accent drives Windows'
+  accent palette but stays off title bars, borders, taskbar and Start (one accented thing per view)
+- Wallpaper (Fill) on the desktop and, via the WinRT LockScreen API, the lock and sign-in screen;
+  Spotlight rotation and lock screen tips off. The file is copied to `%LOCALAPPDATA%\Leaves\`
+- Taskbar: left-aligned (closest to the Leaves launcher at the top left), search box, Task View,
+  Copilot and Widgets hidden. Widgets is guarded by Windows on 24H2 and reported as skipped
+- Not portable without third-party tools: the 28px top bar with a centered clock, Noto Sans as
+  the UI font, Leaves popups and motion, MingCute tray icons
+- Per-user (HKCU), no admin needed; safe to re-run
 
 ### ahk/gmk104.ahk
 - Port of `linux/keyd/gmk104.conf` for the ZUOYA GMK104 with the Portuguese (Brazil) ABNT2 layout
