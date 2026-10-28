@@ -122,6 +122,10 @@ for script in panels/*.js; do
     echo "Applying $script"
     qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$script")"
 done
+# A new tray loads its default items, the stock notifications among them, before
+# top-bar.js swaps in the Leaves ones; the stock popups' singleton outlives the
+# applet and keeps showing every notification (top left, with no screen) until restarted
+restart=true
 
 # KWin shortcuts: halves only, no quarters. Meta+Up/Down move a window between
 # the stacked monitors, Meta+Shift+Up maximizes, Meta+Shift+Down minimizes, and
