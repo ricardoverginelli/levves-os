@@ -75,6 +75,13 @@ python setup-ahk.py
   Spotlight rotation and lock screen tips off. The file is copied to `%LOCALAPPDATA%\Leaves\`
 - Taskbar: left-aligned (closest to the Leaves launcher at the top left), search box, Task View,
   Copilot and Widgets hidden. Widgets is guarded by Windows on 24H2 and reported as skipped
+- Console windows (conhost; LTSC has no Windows Terminal): the Yakuake terminal colors from
+  `yakuake/build.py` (bright = 25% toward white), amber cursor, JetBrains Mono 16px. Slot 0 is
+  both background and ANSI black, so black is `bg` rather than `raised`; no glass, since conhost
+  can't blur. JetBrains Mono v2.304 is installed per user, its sha256 pinned in the script
+- Per-program overrides under `HKCU\Console` (PowerShell's blue) are cleared, and shortcuts
+  carrying their own console block (PowerShell's Start menu and taskbar ones) have it stripped;
+  originals are backed up once to `%LOCALAPPDATA%\Leaves\shortcut-backup\`
 - Not portable without third-party tools: the 28px top bar with a centered clock, Noto Sans as
   the UI font, Leaves popups and motion, MingCute tray icons
 - Per-user (HKCU), no admin needed; safe to re-run
