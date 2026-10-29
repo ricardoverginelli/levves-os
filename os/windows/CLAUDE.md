@@ -20,6 +20,9 @@ scripts/windows/
   updates/
     install.py          ← Turns Windows Update off and keeps it off at every boot (admin)
     disable-updates.ps1 ← The policy/service/task changes; also what the startup task runs
+  debloat/
+    install.py          ← Turns off telemetry, ads, suggestions and background noise (admin)
+    debloat.ps1         ← The changes, a restore point first, a read-only -Survey mode
   gmk104-image-tool/    ← Vendor tool for the GMK104's screen, plus the edited layout it loads
 ```
 
@@ -49,6 +52,7 @@ python windows/sharex/install.py
 python windows/ahk/install.py
 python windows/theme/install.py
 python windows/updates/install.py
+python windows/debloat/install.py
 ```
 
 ## Notes per Script
@@ -109,6 +113,43 @@ python windows/updates/install.py
 - Each run logs to `C:\Program Files\scripts\disable-updates.log`
 - Undo: delete the task and the policy key, then set `Start` back on the services
   (`wuauserv`=3, `UsoSvc`=2, `WaaSMedicSvc`=3, `dosvc`=2)
+
+### debloat/install.py
+- Runs `debloat.ps1` elevated (one UAC prompt) and prints the log summary. LTSC is already
+  lean, so this is privacy, telemetry, ads and background noise, not ripping out components
+- Creates a restore point first ("Before debloat (scripts repo)"; Windows allows one per 24h)
+- `--survey` only lists all-users/provisioned appx packages, capabilities, enabled features,
+  running services, startup entries and non-Microsoft tasks, to `debloat-survey.log`. Every
+  apply run logs the same listing first. Apps are removed only when named with
+  `--remove NAME ...` (installed and provisioned); on 2026-10-29 there was nothing worth removing
+- Telemetry: `DiagTrack` and `dmwappushservice` disabled; Application Experience, CEIP,
+  DiskDiagnostic, Feedback\Siuf and WER QueueReporting tasks disabled; DataCollection, WER,
+  AppCompat, activity history, tailored experiences and SQM/CEIP policies; per-user feedback
+  prompts, inking/typing personalization and the website language list off
+- AI and search: Recall/AI data analysis (HKLM and HKCU) and Copilot off by policy; Cortana,
+  web and cloud results off in search. The Windows Search service stays
+- Ads: ContentDeliveryManager suggestions and silent app installs off, Start recommendations,
+  account notifications and Settings suggestions off. Lock screen values stay with `theme/`
+- Edge stays installed and updating (WebView2 shares the updater; plugin installers, license
+  managers and Claude desktop render with it); policies turn off startup boost, background
+  mode, first-run, recommendations and diagnostic data, and its auto-launch Run entry is removed
+- Game DVR off; High performance power plan, with USB selective suspend (Audient iD4 dropouts)
+  and PCIe link state power management off
+- Registers `update-defender-signatures` (SYSTEM, weekly, Sundays 12:00) running
+  `MpCmdRun.exe -SignatureUpdate -MMPC`, since signatures normally come through Windows
+  Update, which `updates/` turns off; runs it once right away
+- Re-reads every registry value it set and reports any that didn't stick
+- Never touches Defender settings, SmartScreen, the firewall, UAC, Secure Boot/TPM (Vanguard),
+  audio services, Print Spooler, Windows Search, BITS, `bcdedit`/EFI or the other disks
+- No startup task: with Windows Update off, nothing turns these back on. Safe to re-run
+- Logs to `C:\Program Files\scripts\debloat.log`
+- Undo: roll back to the restore point, or per group: delete the policy values it set (under
+  `HKLM\SOFTWARE\Policies\Microsoft\Windows\{DataCollection,Windows Error Reporting,AppCompat,
+  System,CloudContent,WindowsAI,Windows Search,GameDVR}`, `...\Microsoft\SQMClient`,
+  `...\Microsoft\Edge` and `HKCU\Software\Policies\Microsoft\Windows`); set `DiagTrack` `Start`=2
+  and `dmwappushservice` `Start`=3; re-enable the tasks with `Enable-ScheduledTask`; set the
+  HKCU ContentDeliveryManager/Explorer values back to 1; `powercfg /setactive SCHEME_BALANCED`;
+  `Unregister-ScheduledTask update-defender-signatures`
 
 ### ahk/gmk104.ahk
 - Port of `linux/keyd/gmk104.conf` for the ZUOYA GMK104 with the Portuguese (Brazil) ABNT2 layout

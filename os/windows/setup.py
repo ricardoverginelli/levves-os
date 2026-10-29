@@ -42,6 +42,12 @@ SCRIPTS = [
         "description": "Disable Windows Update and keep it off with a startup task (needs admin)",
         "script": "updates/install.py",
     },
+    {
+        "key": "debloat",
+        "label": "Debloat",
+        "description": "Telemetry, ads, suggestions and background noise off (needs admin)",
+        "script": "debloat/install.py",
+    },
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
