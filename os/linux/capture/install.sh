@@ -57,7 +57,7 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor; do
+for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info; do
     command -v $cmd >/dev/null || { echo "Missing: $cmd" >&2; exit 1; }
 done
 

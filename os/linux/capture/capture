@@ -5,7 +5,7 @@
 #        capture clipboard upload       (upload the image on the clipboard)
 #        capture replay save|toggle|folder|run   (instant replay, run = the service)
 # Any gif/mp4 call while a recording runs stops it instead (same hotkey toggles).
-# Needs: slurp, spectacle, python3-pyqt6, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
+# Needs: slurp, spectacle, wayland-info, python3-pyqt6, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
 set -euo pipefail
 
 kind=${1:-}; source=${2:-}; action=${3:-}
@@ -88,10 +88,12 @@ shot() {
     freezer=''
     trap 'rm -f "$tmp"; [ -z "$freezer" ] || kill "$freezer" 2>/dev/null' EXIT
     # Whole desktop first, while tooltips and menus are still open, then crop:
-    # Spectacle's picture starts at the layout's top-left
+    # Spectacle's picture starts at the layout's top-left. That's the Wayland
+    # layout (xdg-output, as slurp and Qt see it), not kscreen-doctor's saved
+    # positions, which keep a disabled monitor's gap (eDP-1 at x=2560 alone)
     spectacle -f -b -n -o "$tmp"
-    read -r ox oy < <(kscreen-doctor -j | jq -r '[.outputs[] | select(.enabled)] |
-        "\(map(.pos.x) | min) \(map(.pos.y) | min)"')
+    read -r ox oy < <(wayland-info -i xdg_output | awk -F'[:,] *' '/logical_x/ {
+        if (n++ == 0 || $2 < x) x = $2; if (n == 1 || $4 < y) y = $4 } END { print x, y }')
     [ "$source" = last ] || freeze "$tmp" "$ox" "$oy"
     read -r x y w h < <(pick_region)
     out=$shots/$(stamp).png
