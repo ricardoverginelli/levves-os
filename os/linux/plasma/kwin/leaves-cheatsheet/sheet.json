@@ -9,6 +9,7 @@
                 ["Meta+/", "Yakuake (Claude Code)"],
                 ["Meta+N", "Yakuake: new Claude tab"],
                 ["Meta+Shift+N", "Yakuake: new shell tab"],
+                ["Meta+Alt+N", "Yakuake: new business Claude tab", "linux/yakuake-business-tab"],
                 ["Meta+V", "Clipboard history"],
                 ["Meta+F12", "This cheat sheet"],
                 ["Meta+I", "System Settings"],

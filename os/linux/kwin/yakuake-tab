@@ -1,22 +1,27 @@
 #!/usr/bin/bash
 # What a new Yakuake tab runs (its Konsole profile's command, set by
-# plasma/yakuake/build.py): Claude Code in ~/system, or a plain shell when the
-# tab was opened with --shell (Meta+Shift+N).
-# Yakuake can't pick a profile per tab, so --shell leaves a flag for the next
-# tab, then opens one through the KWin script's "New Yakuake Tab" shortcut, so
-# it avoids fullscreen monitors like Meta+N does.
-flag=${XDG_RUNTIME_DIR:-/tmp}/yakuake-shell-tab
+# plasma/yakuake/build.py): Claude Code in ~/system, a plain shell when the
+# tab was opened with --shell (Meta+Shift+N), or the given command with
+# --run COMMAND (e.g. yakuake-business-tab, machine-only).
+# Yakuake can't pick a profile per tab, so --shell and --run leave the command
+# in a flag for the next tab, then open one through the KWin script's "New
+# Yakuake Tab" shortcut, so it avoids fullscreen monitors like Meta+N does.
+flag=${XDG_RUNTIME_DIR:-/tmp}/yakuake-next-tab
 
-if [ "${1:-}" = --shell ]; then
-    touch "$flag"
+case "${1:-}" in
+--shell) next=bash ;;
+--run) next=${2:?--run needs a command} ;;
+esac
+if [ -n "${next:-}" ]; then
+    printf '%s' "$next" >"$flag"
     exec qdbus-qt6 org.kde.kglobalaccel /component/kwin \
         org.kde.kglobalaccel.Component.invokeShortcut "New Yakuake Tab"
 fi
 
 # Only a fresh flag counts: an old one is left from a tab that never opened
 if [ -n "$(find "$flag" -newermt '-10 seconds' 2>/dev/null)" ]; then
-    rm -f "$flag"
-    exec bash
+    next=$(cat "$flag")
 fi
 rm -f "$flag"
+[ -n "${next:-}" ] && exec bash -c "$next"
 cd ~/system && exec claude
