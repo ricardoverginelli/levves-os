@@ -115,6 +115,9 @@ python windows/updates/install.py
 - Hotkeys use scan codes (`SC035`, `SC027`, `SC02B`) to match physical keys like keyd does
 - Keep it in sync with the keyd config when either changes; the keyd F19 sysrq/f10
   bindings are deliberately not ported (they only work around KWin and the Linux VT switch)
+- Numpad 5 (`SC04C`, NumLock on or off) toggles the default recording device's mute through the
+  Core Audio COM API, since Windows has no mic-mute key like keyd's `micmute`; a 1s tooltip
+  stands in for Plasma's OSD
 - Applies to every keyboard: AHK can't filter by device like keyd's `[ids]`
 - Doesn't reach elevated (admin) windows unless AHK itself runs elevated
 

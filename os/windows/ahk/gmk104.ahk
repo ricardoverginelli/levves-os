@@ -28,6 +28,25 @@ SC035:: {
     }
 }
 
+; Numpad 5 toggles the mic. Windows has no mic-mute key like keyd's micmute,
+; so mute the default recording device directly; a tooltip stands in for
+; Plasma's OSD. SC04C is the physical key, NumLock on or off
+SC04C:: {
+    ; IMMDeviceEnumerator -> default capture endpoint (eCapture, eConsole)
+    devices := ComObject("{BCDE0395-E52F-467C-8E3D-C4579291692E}", "{A95664D2-9614-4F35-A746-DE8DB63617E6}")
+    ComCall(4, devices, "int", 1, "int", 0, "ptr*", &device := 0)
+    ; IMMDevice::Activate -> IAudioEndpointVolume
+    iid := Buffer(16)
+    DllCall("ole32\CLSIDFromString", "str", "{5CDF2C82-841E-4546-9722-0CF74078229A}", "ptr", iid)
+    ComCall(3, device, "ptr", iid, "uint", 23, "ptr", 0, "ptr*", &volume := 0)
+    ComCall(15, volume, "int*", &muted := 0)          ; GetMute
+    ComCall(14, volume, "int", !muted, "ptr", 0)      ; SetMute
+    ObjRelease(volume)
+    ObjRelease(device)
+    ToolTip muted ? "Mic on" : "Mic muted"
+    SetTimer () => ToolTip(), -1000
+}
+
 ; Shift + key right of '.' -> '?'
 +SC035::SendText "?"
 
