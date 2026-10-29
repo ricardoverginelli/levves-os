@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Reboot to Windows
+Comment=Restart into Windows once, skipping GRUB
+Exec=reboot-to-windows
+Icon=system-reboot
+Categories=System;
+Keywords=windows;reboot;restart;dual boot;

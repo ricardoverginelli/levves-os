@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+# Restart straight into Windows once (UEFI BootNext), then back to the normal
+# boot order (Fedora). Asks first; -y skips the question.
+set -euo pipefail
+
+if [ "${1:-}" != -y ]; then
+    kdialog --title "Reboot to Windows" --yesno "Close everything and restart into Windows?" || exit 0
+fi
+sudo -n /usr/local/sbin/efi-bootnext-windows || {
+    kdialog --title "Reboot to Windows" --error "Couldn't set the next boot to Windows. Run install.sh again."
+    exit 1
+}
+# Plasma's own logout, so apps can save; plain systemctl reboot when not in Plasma
+gdbus call --session --dest org.kde.Shutdown --object-path /Shutdown \
+    --method org.kde.Shutdown.logoutAndReboot >/dev/null 2>&1 || systemctl reboot

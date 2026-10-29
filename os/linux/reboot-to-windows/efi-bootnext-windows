@@ -1,0 +1,9 @@
+#!/usr/bin/bash
+# Root helper for reboot-to-windows: make the next boot (only) start the
+# firmware's "Windows Boot Manager" entry, skipping GRUB. Installed root-owned
+# to /usr/local/sbin and allowed without a password by a sudoers drop-in, so it
+# takes no arguments.
+set -euo pipefail
+id=$(efibootmgr | sed -n 's/^Boot\([0-9A-Fa-f]\{4\}\)\*\? Windows Boot Manager\b.*/\1/p' | head -n1)
+[ -n "$id" ] || { echo "No 'Windows Boot Manager' UEFI entry" >&2; exit 1; }
+efibootmgr -q --bootnext "$id"
