@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+# Meta+Alt+N: a new Yakuake tab with Claude Code in ~/system on the business
+# login (~/.claude-gorila), opened through kwin/yakuake-tab like Meta+Shift+N.
+if [ "${1:-}" = --in-tab ]; then
+    cd ~/system && CLAUDE_CONFIG_DIR=$HOME/.claude-gorila exec claude
+fi
+exec "$HOME/.local/bin/yakuake-tab" --run "$(readlink -f "$0") --in-tab"
