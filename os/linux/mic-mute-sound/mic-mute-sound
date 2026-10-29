@@ -1,0 +1,23 @@
+#!/usr/bin/bash
+# Plays a short cue whenever the default mic is muted (falling tone) or
+# unmuted (rising tone), whatever did it: Plasma's mic-mute key (Numpad 5 on
+# the GMK104 via keyd), the volume applet, a laptop's mic key. See README.md.
+sounds=${XDG_DATA_HOME:-$HOME/.local/share}/mic-mute-sound
+
+mute_state() {
+    # "<source name> Mute: <yes|no>", so switching default mics doesn't beep
+    echo "$(pactl get-default-source) $(pactl get-source-mute @DEFAULT_SOURCE@)"
+}
+
+last=$(mute_state)
+pactl subscribe | while read -r line; do
+    case $line in *" on source #"*|*" on server"*) ;; *) continue ;; esac
+    now=$(mute_state)
+    if [ "$now" != "$last" ] && [ "${now%% *}" = "${last%% *}" ]; then
+        case $now in
+            *"Mute: yes") pw-play "$sounds/muted.oga" & ;;
+            *"Mute: no") pw-play "$sounds/unmuted.oga" & ;;
+        esac
+    fi
+    last=$now
+done

@@ -1,0 +1,14 @@
+# mic-mute-sound background service (see README.md). Linked into
+# ~/.config/systemd/user/ by install.sh.
+[Unit]
+Description=Sound cue when the mic is muted or unmuted
+PartOf=graphical-session.target
+After=graphical-session.target pipewire-pulse.service
+
+[Service]
+ExecStart=%h/.local/bin/mic-mute-sound
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
