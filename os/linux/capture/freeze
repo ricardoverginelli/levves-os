@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+# The frozen desktop shown under slurp while a region is picked: one freeze.qml
+# window per screen, each showing its part of the picture (100% scaling).
+# PyQt6 instead of Qt's qml tool, which only comes with the Qt devel packages.
+# Usage: freeze <desktop.png> <layout left x> <layout top y>
+# Prints "ready" once it's on every screen.
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import QRectF, QUrl
+from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtQml import QQmlComponent, QQmlEngine
+
+app = QGuiApplication(sys.argv)
+image, left, top = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+engine = QQmlEngine()
+component = QQmlComponent(engine, QUrl.fromLocalFile(str(Path(__file__).resolve().with_name("freeze.qml"))))
+
+windows = []
+waiting = len(app.screens())
+
+
+def drawn():
+    global waiting
+    waiting -= 1
+    if waiting == 0:
+        print("ready", flush=True)
+
+
+for screen in app.screens():
+    win = component.createWithInitialProperties({
+        "target": screen,
+        "source": QUrl.fromLocalFile(image),
+        "clip": QRectF(screen.geometry().translated(-left, -top)),
+    })
+    if win is None:
+        sys.exit(component.errorString())
+    win.drawn.connect(drawn)
+    win.show()
+    windows.append(win)
+
+sys.exit(app.exec())

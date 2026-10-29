@@ -5,7 +5,7 @@
 #        capture clipboard upload       (upload the image on the clipboard)
 #        capture replay save|toggle|folder|run   (instant replay, run = the service)
 # Any gif/mp4 call while a recording runs stops it instead (same hotkey toggles).
-# Needs: slurp, spectacle, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
+# Needs: slurp, spectacle, python3-pyqt6, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
 set -euo pipefail
 
 kind=${1:-}; source=${2:-}; action=${3:-}
@@ -72,16 +72,28 @@ deliver() {  # file, image|file
     fi
 }
 
+# Shows the desktop picture on every screen until the script exits, so the
+# region is picked on a frozen screen (freeze.qml); waits until it's drawn
+freeze() {  # desktop.png, layout left x, layout top y
+    local fd ready
+    exec {fd}< <(exec "$(dirname "$(readlink -f "$0")")/freeze" "$@" 2>&1)
+    freezer=$!
+    read -r -t 3 -u "$fd" ready || true
+}
+
 shot() {
     local x y w h out ox oy
-    read -r x y w h < <(pick_region)
     mkdir -p "$shots"
     tmp=$(mktemp --suffix=.png)
-    trap 'rm -f "$tmp"' EXIT
-    # Whole desktop, then crop: Spectacle's picture starts at the layout's top-left
+    freezer=''
+    trap 'rm -f "$tmp"; [ -z "$freezer" ] || kill "$freezer" 2>/dev/null' EXIT
+    # Whole desktop first, while tooltips and menus are still open, then crop:
+    # Spectacle's picture starts at the layout's top-left
     spectacle -f -b -n -o "$tmp"
     read -r ox oy < <(kscreen-doctor -j | jq -r '[.outputs[] | select(.enabled)] |
         "\(map(.pos.x) | min) \(map(.pos.y) | min)"')
+    [ "$source" = last ] || freeze "$tmp" "$ox" "$oy"
+    read -r x y w h < <(pick_region)
     out=$shots/$(stamp).png
     magick "$tmp" -crop "${w}x${h}+$((x - ox))+$((y - oy))" +repage "$out"
     deliver "$out" image

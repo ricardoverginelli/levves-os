@@ -25,9 +25,15 @@ region selection.
 
 ```bash
 sudo dnf copr enable brycensranch/gpu-screen-recorder-git
-sudo dnf install gpu-screen-recorder slurp
+sudo dnf install gpu-screen-recorder slurp python3-pyqt6
 bash install.sh              # bash install.sh --uninstall to undo
 ```
+
+Monitors driven by an Intel GPU (on a hybrid laptop, often the external
+ports) need RPM Fusion's full VA-API driver, since Fedora's has H.264 encoding
+removed: `sudo dnf swap libva-intel-media-driver intel-media-driver --allowerasing`.
+Without it, recordings and the replay buffer on those monitors fail with
+"h264 is not supported by your hardware".
 
 `install.sh` links `capture` into `~/.local/bin`, adds one hidden launcher per
 hotkey (`~/.local/share/applications/capture-*.desktop`), binds them through
@@ -39,8 +45,11 @@ shortcuts stay).
 
 - **Region:** `slurp` picks it, and the region is saved to
   `~/.local/state/capture/last-region` for the "last region" hotkeys.
-- **Screenshot:** Spectacle captures the whole desktop in the background, and
-  `magick` crops it. Assumes 100% display scaling.
+- **Screenshot:** Spectacle captures the whole desktop in the background as
+  soon as the hotkey is pressed, and `magick` crops it. While the region is
+  picked, `freeze` (a layer-shell overlay in `freeze.qml`, run with PyQt6) shows
+  that picture on every screen, so tooltips and open menus stay visible and
+  end up in the shot. Assumes 100% display scaling.
 - **Recording:** `gpu-screen-recorder` records the region with NVENC (H.264,
   30 fps for MP4, 15 fps for GIF). GIFs are converted with an ffmpeg palette
   (sierra2_4a dither, as ShareX does). It needs free VRAM: a game filling the

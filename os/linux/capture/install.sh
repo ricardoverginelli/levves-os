@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # Install the ShareX-style capture hotkeys (see README.md). User-level, no sudo;
 # the packages are: sudo dnf copr enable brycensranch/gpu-screen-recorder-git &&
-#   sudo dnf install gpu-screen-recorder slurp ffmpeg
+#   sudo dnf install gpu-screen-recorder slurp ffmpeg python3-pyqt6
 # Safe to re-run. Undo: bash install.sh --uninstall
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
@@ -73,7 +73,8 @@ shortcut $spectacle FullScreenScreenShot Spectacle "Capture Entire Desktop" "$no
 
 while IFS='|' read -r id name args keys; do
     echo "Hotkey: $name"
-    # Absolute path: the Plasma session's PATH may not include ~/.local/bin
+    # Absolute path: the Plasma session's PATH may not include ~/.local/bin.
+    # No startup notification: its busy cursor would end up in screenshots
     cat > "$apps/capture-$id.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -81,6 +82,7 @@ Name=$name
 Exec=$bin $args
 Icon=spectacle
 NoDisplay=true
+StartupNotify=false
 X-KDE-GlobalAccel-CommandShortcut=true
 EOF
 done <<< "$hotkeys"
