@@ -39,3 +39,13 @@ video-fill
 volume-fill
 volume-off-fill
 wifi-fill
+shuffle-2-fill
+repeat-fill
+repeat-one-fill
+search-3-fill
+heart-fill
+heart-line
+album-fill
+playlist-2-fill
+add-fill
+fullscreen-fill
