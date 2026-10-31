@@ -309,8 +309,21 @@ PlasmoidItem {
         id: apps
         enabled: launcher.visible || taskLinger.running
         enabledAttributes: root.taskAttributes
+        cgroupMapping: Object.keys(root.taskServices).reduce((map, unit) => { map[unit] = unit; return map }, ({}))
     }
     Timer { id: taskLinger; interval: 60000 }
+
+    // Our own user services, listed under "Services". They're outside the app-*
+    // cgroups, so the model only sees them through cgroupMapping (the value is a
+    // group key: non-empty text, one per row, or units vanish or merge), and names
+    // them by the end of their cgroup path: the unit is the row's identity.
+    readonly property var taskServices: ({
+        "capture-replay.service":    { name: "Capture Replay", icon: "mingcute-video-fill" },
+        "leaves-music-dock.service": { name: "Leaves Music",   icon: "mingcute-music-2-fill" },
+        "mic-mute-sound.service":    { name: "Mic Mute Sound", icon: "mingcute-mic-fill" },
+        "s25-control.service":       { name: "S25 Control",    icon: "mingcute-midi-fill" },
+        "soloist.service":           { name: "Soloist",        icon: "mingcute-headphone-fill" },
+    })
     Process.ProcessController { id: processes }
 
     // Open windows: an app with one is listed first, the rest under "Background"
@@ -389,9 +402,13 @@ PlasmoidItem {
             const pids = apps.data(apps.index(r, 0), Process.ProcessDataModel.PIDs)
             if (!pids || !pids.length) continue
             const menuId = value(r, "menuId") || ""
-            const name = value(r, "appName") || menuId
+            const appName = value(r, "appName") || menuId
+            const unit = Object.keys(taskServices).find(u => appName.endsWith("/" + u))
+            const service = unit ? taskServices[unit] : null
+            const name = service ? service.name : appName
             const t = {
-                key: menuId || name, name: name, icon: value(r, "iconName") || "", menuId: menuId,
+                key: menuId || name, name: name, icon: service ? service.icon : value(r, "iconName") || "",
+                menuId: menuId, service: !!service,
                 pids: Array.from(pids),
                 cpu: (value(r, "usage") || 0) / cpuMax * 100,
                 gpu: value(r, "gpu_usage") || 0,
@@ -419,9 +436,11 @@ PlasmoidItem {
 
         const byName = (a, b) => a.name.localeCompare(b.name)
         const order = sortKey === "name" ? byName : (a, b) => (b[sortKey] - a[sortKey]) || byName(a, b)
-        const background = list.filter(t => t.windowRow < 0).sort(order)
-        const rows = list.filter(t => t.windowRow >= 0).sort(order).concat(background)
+        const background = list.filter(t => t.windowRow < 0 && !t.service).sort(order)
+        const services = list.filter(t => t.windowRow < 0 && t.service).sort(order)
+        const rows = list.filter(t => t.windowRow >= 0).sort(order).concat(background, services)
         if (background.length) background[0].above = "Background"
+        if (services.length) services[0].above = "Services"
 
         const current = taskIndex < taskRows.count ? taskRows.get(taskIndex) : null
         const currentKey = current ? current.key : ""
@@ -444,7 +463,7 @@ PlasmoidItem {
         // when its last window closes: it stays among the windowed apps, on the
         // one that took its place (or the one above, if it was the last)
         const i = rows.findIndex(t => t.key === currentKey)
-        const windowed = rows.length - background.length
+        const windowed = rows.length - background.length - services.length
         const leftForBackground = i >= windowed && current.windowRow >= 0 && windowed > 0
         taskIndex = i >= 0 && !leftForBackground ? i
                   : Math.max(0, Math.min(taskIndex, (leftForBackground ? windowed : rows.length) - 1))
