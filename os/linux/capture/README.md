@@ -14,7 +14,7 @@ hotkeys from `windows/sharex/ShareX-*.sxb`, plus a ShadowPlay-style instant repl
 | `Ctrl+Alt+Print` | GIF of last region → copy file |
 | `Shift+Ctrl+Alt+Print` | MP4 of region → copy file |
 | `Shift+Ctrl+Alt+U` | Upload clipboard image → copy link |
-| `Alt+F10` | Save the last 90 s (instant replay) |
+| `Alt+F10` | Save the last 60 s (instant replay) |
 | `Alt+Shift+F10` | Instant replay buffer off / on |
 | `Ctrl+Alt+F10` | Open the replay folder |
 
@@ -56,7 +56,7 @@ shortcuts stay).
   card stops the encoder from starting, and you get a "GPU memory is full"
   notification.
 - **Instant replay:** `capture-replay.service` starts with the Plasma session
-  and keeps the last 90 s of the main monitor in RAM (about 560 MB): H.264 CBR
+  and keeps the last 60 s of the main monitor in RAM (about 375 MB): H.264 CBR
   50 Mbps, 60 fps, a keyframe every second (lossless trims in LosslessCut land
   within 1 s), desktop audio and mic mixed into one AAC track, cursor
   included. The main monitor is the largest connected one, so it survives

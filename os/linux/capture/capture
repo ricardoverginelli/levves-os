@@ -144,8 +144,8 @@ clipboard() {
 }
 
 # Instant replay: capture-replay.service runs "replay run", which keeps a
-# 90 s buffer of the main monitor in RAM while that monitor is on
-replay_seconds=90
+# 60 s buffer of the main monitor in RAM while that monitor is on
+replay_seconds=60
 
 # Largest connected output (survives connector renames); empty while it's off,
 # so a turned-off main monitor is waited for instead of recording another one
