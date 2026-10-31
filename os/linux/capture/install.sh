@@ -60,6 +60,7 @@ fi
 for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info; do
     command -v $cmd >/dev/null || { echo "Missing: $cmd" >&2; exit 1; }
 done
+python3 -c "import PyQt6.QtQml" 2>/dev/null || { echo "Missing package: sudo dnf install python3-pyqt6"; exit 1; }
 
 chmod +x capture
 mkdir -p "$(dirname "$bin")" "$apps" "$tmpfiles" "$units"
