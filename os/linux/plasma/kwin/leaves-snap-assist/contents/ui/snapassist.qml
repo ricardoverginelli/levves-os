@@ -13,7 +13,10 @@
 // Keys: arrows move the highlight, Enter/Space picks, Esc or a click outside
 // cancels (the first window stays tiled).
 //
-// Plain Meta+Left/Right stay KWin's own quick tiling (no picker).
+// The shortcuts have no keys of their own: kwin/leaves-windows owns
+// Meta+Shift+Left/Right (spanning columns on a monitor with a layout) and
+// invokes these on a monitor without one. Plain Meta+Left/Right tile halves
+// there (no picker), also through leaves-windows.
 import QtQuick
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami

@@ -129,7 +129,7 @@ restart=true
 
 # KWin shortcuts: halves only, no quarters. Meta+Up/Down move a window between
 # the stacked monitors, Meta+Shift+Up maximizes, Meta+Shift+Down minimizes, and
-# Meta+Shift+Left/Right are freed for the snap assist script. Keys are Qt key
+# Meta+Shift+Left/Right are freed for the leaves-windows script (see below). Keys are Qt key
 # codes: Meta 0x10000000, Shift 0x02000000, Up 0x01000013, Down 0x01000015,
 # PgUp 0x01000016, PgDown 0x01000017. Everything is cleared first, so a key
 # moving from one action to another never conflicts.
@@ -181,8 +181,19 @@ qdbus-qt6 org.kde.KWin /KWin reconfigure
 
 # Window layouts (leaves-windows): Meta+M arms Meta+1/2/3 for a moment (KWin
 # doesn't match multi-key sequences on Wayland). Meta+1/2/3 belonged to the old
-# taskbar's "activate task manager entry". Key codes: M 0x4D, 1-3 0x31-0x33
+# taskbar's "activate task manager entry". Key codes: M 0x4D, 1-3 0x31-0x33,
+# Left 0x01000012, Right 0x01000014
 kwin_shortcut "Leaves Layout Arm" "Leaves Layout Arm" "[([$((0x1000004D)), 0, 0, 0],)]"
+# Meta+Left/Right and Meta+Shift+Left/Right move and span windows in a layout;
+# leaves-windows falls back to quick tiling and snap assist (now keyless) without one
+kwin_shortcut "Window Quick Tile Left" "Quick Tile Window to the Left" "$none"
+kwin_shortcut "Window Quick Tile Right" "Quick Tile Window to the Right" "$none"
+kwin_shortcut "Leaves Snap Assist Left" "Leaves Snap Assist Left" "$none"
+kwin_shortcut "Leaves Snap Assist Right" "Leaves Snap Assist Right" "$none"
+kwin_shortcut "Leaves Move Left" "Leaves Move Left" "[([$((0x11000012)), 0, 0, 0],)]"
+kwin_shortcut "Leaves Move Right" "Leaves Move Right" "[([$((0x11000014)), 0, 0, 0],)]"
+kwin_shortcut "Leaves Span Left" "Leaves Span Left" "[([$((0x13000012)), 0, 0, 0],)]"
+kwin_shortcut "Leaves Span Right" "Leaves Span Right" "[([$((0x13000014)), 0, 0, 0],)]"
 for n in 1 2 3; do
     gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
         --method org.kde.KGlobalAccel.setForeignShortcutKeys \

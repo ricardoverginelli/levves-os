@@ -118,7 +118,9 @@ PlasmoidItem {
                 geometry: tasks.data(i, R.Geometry),
             })
         }
-        const tiled = columnIds.map(id => all.find(w => w.wid === id)).filter(w => w)
+        // A window spanning columns is listed once
+        const tiled = columnIds.map(id => all.find(w => w.wid === id))
+                               .filter((w, i, list) => w && list.indexOf(w) === i)
         const rest = all.filter(w => tiled.indexOf(w) === -1)
                         .sort((a, b) => (a.minimized - b.minimized) || (b.last - a.last))
         const order = tiled.concat(rest)

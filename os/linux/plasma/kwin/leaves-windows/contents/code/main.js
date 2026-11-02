@@ -15,9 +15,26 @@
 //   - a column whose window closes, is minimized or leaves the monitor goes to
 //     the most recent background window.
 // The windows that lose their column stay behind, untiled. A maximized or
-// fullscreen window keeps its column and goes back into it afterwards; one
-// dragged out of its column floats until it's put back in a tile (or the
-// layout is applied again). Windows narrower than their minimum width float.
+// fullscreen window keeps its column and goes back into it afterwards.
+// Dragging a column's window onto another column swaps the two (onto another
+// monitor's column, that column's window goes behind); dropping it on its own
+// column lets it float until it's put back (Meta+Left/Right, a Shift drag into
+// a tile, or the layout applied again). Scripts can't see the Alt key, so
+// floating is "drop it where it was".
+//
+// Keys on a monitor with a layout (without one, the old ones):
+//   Meta+Left/Right        move the window one column along, swapping with the
+//                          window there; a window behind goes into the edge column
+//                          (no layout: KWin's half tiling)
+//   Meta+Shift+Right/Left  span: grow the window over the next column (the other
+//                          way at the monitor's edge) / give back the last one it
+//                          grew into; the window it covers goes behind
+//                          (no layout: the snap assist picker, kwin/leaves-snap-assist)
+//   Meta+Up/Down           KWin's move to the monitor above/below; with a layout
+//                          there, the window takes a column like a picked one
+// A spanned window floats over its columns and holds all of them.
+// A column too narrow for its window's minimum width grows to it, taking the
+// room from the others; if the minimums can't all fit, the widest one floats.
 //
 //   ┌─────────┬─────────┬─────────┐
 //   │ 3rd     │ 1st     │ 2nd     │  columns: the 3 most recent windows
@@ -50,6 +67,11 @@ const RECONCILE_MS = 50;     // let a burst of window events settle first
 const GAME_DEBOUNCE_MS = 300;  // games switch modes in several steps
 const KWIN_PADDING = 4;      // KWin's default tile padding (= not one of our layouts)
 const MAX_COLUMNS = 3;
+const MIN_OTHER_COLUMN = 400;  // room a wide window leaves each other column when it claims one
+const WIDEN_SLACK = 2;       // px: tile widths round, so don't chase single pixels
+
+// Spans: the sides a window grew to, in order ("l"/"r"), so shrinking gives back the last
+const growth = {};
 const ARM_MS = 1500;         // Meta+M to Meta+1/2/3, renewed by each layout picked
 const EARLY_MS = 400;        // a digit landing just before the M (all three pressed together)
 
@@ -166,8 +188,11 @@ function slotsFor(output, count) {
     return s;
 }
 
-function fits(w, tile) {
-    return w.minSize.width <= tile.absoluteGeometry.width;
+// Wide enough room on the monitor: its column can grow to the window's
+// minimum width (widen) and still leave the others some room
+function fits(w, tiles) {
+    const total = tiles.reduce((sum, t) => sum + t.absoluteGeometry.width, 0);
+    return w.minSize.width <= total - (tiles.length - 1) * MIN_OTHER_COLUMN;
 }
 
 function candidates(output) {
@@ -175,9 +200,10 @@ function candidates(output) {
                                          && isOnCurrentDesktop(w) && !w.minimized);
 }
 
-// A column's window away from its tile for a moment: it keeps the column
+// A column's window away from its tile for a moment (maximized, fullscreen
+// or being dragged): it keeps the column
 function parked(w) {
-    return w.maximizeMode != 0 || w.fullScreen;
+    return w.maximizeMode != 0 || w.fullScreen || w.move;
 }
 
 function untile(w) {
@@ -185,13 +211,73 @@ function untile(w) {
         w.tile = null;
 }
 
-// Put each column's window into its tile, and nothing else
+// The columns a window holds, first to last ([-1, -1] for none)
+function spanOf(s, w) {
+    return [s.indexOf(w), s.lastIndexOf(w)];
+}
+
+function spanned(s, w) {
+    return s.indexOf(w) != s.lastIndexOf(w);
+}
+
+// Put each column's window into its tile, and nothing else; a spanned window
+// floats over the union of its tiles
 function commit(output, tiles, s) {
     s.forEach((w, i) => {
         tiles[i].windows.forEach(x => { if (x != w) untile(x); });
-        if (w && w.tile != tiles[i] && !parked(w))
-            w.tile = tiles[i];
+        if (!w || parked(w))
+            return;
+        const span = spanOf(s, w);
+        if (span[0] == span[1]) {
+            if (w.tile != tiles[i])
+                w.tile = tiles[i];
+            return;
+        }
+        if (i != span[0])
+            return;
+        untile(w);
+        const a = tiles[span[0]].absoluteGeometry, b = tiles[span[1]].absoluteGeometry;
+        const g = {x: a.x, y: a.y, width: b.x + b.width - a.x, height: a.height};
+        if (!sameRect(w.frameGeometry, g))
+            w.frameGeometry = g;
     });
+}
+
+// Grow columns narrower than their window's minimum width, taking the room
+// from the others in proportion to what they have above their own minimum.
+// Columns resized wider by hand stay as they are.
+function widen(tiles, s) {
+    const total = tiles.reduce((sum, t) => sum + t.absoluteGeometry.width, 0);
+    const need = s.map(w => w && !parked(w) && !spanned(s, w) ? w.minSize.width : 0);
+    const sum = list => list.reduce((a, b) => a + b, 0);
+    // The minimums don't all fit: the widest window floats
+    while (sum(need) > total) {
+        const i = need.indexOf(Math.max.apply(null, need));
+        floating[key(s[i])] = true;
+        untile(s[i]);
+        s[i] = null;
+        need[i] = 0;
+    }
+    const widths = tiles.map(t => t.absoluteGeometry.width);
+    let deficit = 0;
+    widths.forEach((width, i) => {
+        if (width < need[i] - WIDEN_SLACK) {
+            deficit += need[i] + WIDEN_SLACK - width;
+            widths[i] = need[i] + WIDEN_SLACK;
+        }
+    });
+    if (!deficit)
+        return;
+    const room = widths.map((width, i) => Math.max(width - need[i] - WIDEN_SLACK, 0));
+    const totalRoom = sum(room);
+    if (totalRoom <= 0)
+        return;
+    widths.forEach((width, i) => widths[i] = width - deficit * room[i] / totalRoom);
+    let x = 0;
+    for (let i = 0; i < tiles.length - 1; i++) {
+        tiles[i].relativeGeometry = {x: x / total, y: 0, width: widths[i] / total, height: 1};
+        x += widths[i];
+    }
 }
 
 function reconcile(output) {
@@ -212,9 +298,22 @@ function reconcile(output) {
             s[i] = null;
             return;
         }
+        if (spanned(s, w) && !parked(w)) {
+            const j = tiles.indexOf(w.tile);
+            if (j != -1) {
+                // Shift-dragged into one of the tiles: that column only
+                s.forEach((x, k) => { if (x == w && k != j) s[k] = null; });
+                s[j] = w;
+            } else if (w.tile) {
+                floating[key(w)] = true;  // snapped some other way
+                s.forEach((x, k) => { if (x == w) s[k] = null; });
+            }
+            delete returning[key(w)];
+            return;
+        }
         if (w.tile == tiles[i] || parked(w))
             return;
-        if (returning[key(w)] && !w.move) {
+        if (returning[key(w)]) {
             delete returning[key(w)];
             return;  // commit puts it back
         }
@@ -264,7 +363,7 @@ function reconcile(output) {
                 });
             }
         }
-        if (!fits(w, tiles[i]))
+        if (!fits(w, tiles))
             return;
         if (s[i])
             untile(s[i]);
@@ -276,17 +375,23 @@ function reconcile(output) {
     s.forEach((w, i) => {
         if (w)
             return;
-        const next = here.filter(x => s.indexOf(x) == -1 && !floating[key(x)] && fits(x, tiles[i]))
+        const next = here.filter(x => s.indexOf(x) == -1 && !floating[key(x)] && fits(x, tiles))
                          .sort(byRecency)[0];
         if (next)
             s[i] = next;
     });
 
+    widen(tiles, s);
     commit(output, tiles, s);
 }
 
 function reconcileAll() {
     workspace.screens.forEach(reconcile);
+    // Forget how windows grew once they no longer span
+    Object.keys(growth).forEach(k => {
+        if (!Object.keys(slots).some(o => slots[o].some(w => w && key(w) == k && spanned(slots[o], w))))
+            delete growth[k];
+    });
 }
 
 // Split the monitor into `count` equal columns (1 = no layout) and fill them
@@ -315,7 +420,7 @@ function applyLayout(output, count) {
     const s = slotsFor(output, tiles.length);
     const chosen = [];
     candidates(output).sort(byRecency).forEach(w => {
-        if (chosen.length < tiles.length && fits(w, tiles[chosen.length]))
+        if (chosen.length < tiles.length && fits(w, tiles))
             chosen.push(w);
     });
     chosen.sort((a, b) => (a.frameGeometry.x + a.frameGeometry.width / 2) - (b.frameGeometry.x + b.frameGeometry.width / 2));
@@ -324,6 +429,7 @@ function applyLayout(output, count) {
             w.setMaximize(false, false);
         s[i] = w;
     });
+    widen(tiles, s);
     commit(output, tiles, s);
 }
 
@@ -403,6 +509,108 @@ function layoutShortcut(count) {
     };
 }
 
+// ── Moving and spanning with the keys ─────────────────────────────────────
+
+// The focused window and its monitor's columns, if that monitor has a layout
+function focusedInLayout() {
+    const w = workspace.activeWindow;
+    if (!w || !isTileable(w) || w.minimized)
+        return null;
+    const tiles = columns(w.output);
+    if (!tiles.length)
+        return null;
+    reconcile(w.output);  // up to date before rearranging
+    return {w: w, tiles: tiles, s: slotsFor(w.output, tiles.length)};
+}
+
+// Runs of columns held by the same window (an empty column is a run of its own)
+function blocks(s) {
+    const out = [];
+    s.forEach(w => {
+        const last = out[out.length - 1];
+        if (w && last && last.w == w)
+            last.n++;
+        else
+            out.push({w: w, n: 1});
+    });
+    return out;
+}
+
+// Meta+Left/Right: the window's columns trade places with the next run along
+function moveWindow(side) {
+    const c = focusedInLayout();
+    if (!c) {
+        if (side == "left")
+            workspace.slotWindowQuickTileLeft();
+        else
+            workspace.slotWindowQuickTileRight();
+        return;
+    }
+    const w = c.w, s = c.s;
+    delete floating[key(w)];
+    if (s.indexOf(w) == -1) {
+        // From behind (or floating): into the edge column
+        const i = side == "left" ? 0 : s.length - 1;
+        const other = s[i];
+        if (other && !spanned(s, other))
+            untile(other);
+        s[i] = w;
+    } else {
+        const bs = blocks(s);
+        const b = bs.findIndex(x => x.w == w);
+        const t = side == "left" ? b - 1 : b + 1;
+        if (t < 0 || t >= bs.length)
+            return;
+        const moved = bs[b];
+        bs[b] = bs[t];
+        bs[t] = moved;
+        let k = 0;
+        bs.forEach(x => { for (let n = 0; n < x.n; n++) s[k++] = x.w; });
+    }
+    commit(w.output, c.tiles, s);
+    schedule();
+}
+
+// Meta+Shift+Right grows the window over the next column (the one before it at
+// the monitor's edge); Meta+Shift+Left gives back the last column it grew into
+function spanWindow(side) {
+    const c = focusedInLayout();
+    if (!c) {
+        callDBus("org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component", "invokeShortcut",
+                 side == "left" ? "Leaves Snap Assist Left" : "Leaves Snap Assist Right");
+        return;
+    }
+    const w = c.w, s = c.s;
+    if (s.indexOf(w) == -1)
+        return;
+    const span = spanOf(s, w);
+    const grown = growth[key(w)] || (growth[key(w)] = []);
+    if (side == "right") {
+        let t, dir;
+        if (span[1] + 1 < s.length) {
+            t = span[1] + 1;
+            dir = "r";
+        } else if (span[0] > 0) {
+            t = span[0] - 1;
+            dir = "l";
+        } else {
+            return;  // already across the whole monitor
+        }
+        const other = s[t];
+        if (other && !spanned(s, other))
+            untile(other);
+        s[t] = w;
+        grown.push(dir);
+    } else {
+        if (!spanned(s, w))
+            return;
+        const dir = grown.pop() || "r";
+        s[dir == "r" ? span[1] : span[0]] = null;
+    }
+    commit(w.output, c.tiles, s);
+    schedule();  // a column given back goes to the most recent window behind
+}
+
 // ── Games ─────────────────────────────────────────────────────────────────
 
 function gameOnMain() {
@@ -414,12 +622,16 @@ function gameOnMain() {
 let gaming = false;
 
 // Move a window to the other monitor, shrunk to fit if it floats
+let sending = false;  // windows moved for a game join their new monitor by recency, not as picks
+
 function sendAway(w, target) {
     const s = slots[w.output.name];
-    if (s && s.indexOf(w) != -1)
-        s[s.indexOf(w)] = null;
+    if (s)
+        s.forEach((x, k) => { if (x == w) s[k] = null; });
     untile(w);
+    sending = true;
     workspace.sendClientToScreen(w, target);
+    sending = false;
     if (w.maximizeMode != 0 || w.fullScreen)
         return;
     const a = workArea(target), g = w.frameGeometry;
@@ -480,13 +692,83 @@ function claim(w, kind) {
         c.kind = kind;
 }
 
+// ── Dragging a column's window ────────────────────────────────────────────
+
+// The column a window being dragged came from: {output (name), index}
+const dragFrom = {};
+
+function contains(r, p) {
+    return p.x >= r.x && p.x < r.x + r.width && p.y >= r.y && p.y < r.y + r.height;
+}
+
+function dragStarted(w) {
+    const s = slots[w.output.name];
+    if (s && s.indexOf(w) != -1)
+        dragFrom[key(w)] = {output: w.output.name, index: s.indexOf(w), moving: w.move};
+}
+
+// The window's columns on the monitor it was dragged from go to `other` (its
+// first column) or empty
+function release(old, w, index, other) {
+    if (!old)
+        return;
+    old.forEach((x, k) => { if (x == w) old[k] = k == index ? other : null; });
+}
+
+// Dropped on another column: the two swap (on another monitor's column, that
+// column's window goes behind). Dropped on its own column: it floats. A resize
+// (still in its tile) changes nothing.
+function dragFinished(w) {
+    const from = dragFrom[key(w)];
+    delete dragFrom[key(w)];
+    if (!from)
+        return;
+    const old = slots[from.output];
+    const sameOutput = w.output.name == from.output;
+    const tiles = columns(w.output);
+    const s = slots[w.output.name];
+    if (!from.moving || (sameOutput && w.tile && tiles.indexOf(w.tile) == from.index)) {
+        schedule();  // a resize, or put back: commit restores a span's geometry
+        return;
+    }
+    const p = workspace.cursorPos;
+    const j = tiles.findIndex(t => contains(t.absoluteGeometry, p));
+    if (!s || j == -1 || (sameOutput && j == from.index)) {
+        release(old, w, from.index, null);
+        untile(w);
+        floating[key(w)] = true;
+        schedule();
+        return;
+    }
+    const other = s[j];
+    delete floating[key(w)];
+    release(old, w, from.index, sameOutput ? other : null);
+    if (!sameOutput && other)
+        untile(other);
+    if (other && spanned(s, other))
+        s.forEach((x, k) => { if (x == other && k != from.index) s[k] = null; });
+    s[j] = w;
+    // Tiled right away: the next reconcile would take an untiled one for dragged out
+    w.tile = tiles[j];
+    if (sameOutput && other)
+        other.tile = tiles[from.index];
+    schedule();
+}
+
 function watch(w) {
+    w.interactiveMoveResizeStarted.connect(() => dragStarted(w));
+    w.interactiveMoveResizeFinished.connect(() => dragFinished(w));
     const back = () => {
         if (!parked(w))
             returning[key(w)] = true;
     };
     w.maximizedChanged.connect(back);
     w.fullScreenChanged.connect(back);
+    // Moved to another monitor (Meta+Up/Down): it takes a column there like a picked window
+    w.outputChanged.connect(() => {
+        if (!sending && !w.move && isTileable(w))
+            claim(w, "pick");
+    });
     [w.minimizedChanged, w.outputChanged, w.tileChanged, w.maximizedChanged, w.fullScreenChanged,
      w.desktopsChanged, w.frameGeometryChanged].forEach(signal => signal.connect(schedule));
 }
@@ -509,6 +791,7 @@ workspace.windowRemoved.connect(w => {
     claims = claims.filter(c => c.window != w);
     delete floating[key(w)];
     delete returning[key(w)];
+    delete dragFrom[key(w)];
     schedule();
 });
 
@@ -551,6 +834,14 @@ registerShortcut("Leaves Layout Arm", "Leaves: pick a layout (then Meta+1/2/3)",
 registerShortcut("Leaves Layout 1", "Leaves: no layout on this monitor (after Meta+M)", "Meta+1", layoutShortcut(1));
 registerShortcut("Leaves Layout 2", "Leaves: two columns on this monitor (after Meta+M)", "Meta+2", layoutShortcut(2));
 registerShortcut("Leaves Layout 3", "Leaves: three columns on this monitor (after Meta+M)", "Meta+3", layoutShortcut(3));
+registerShortcut("Leaves Move Left", "Leaves: move the window a column left (no layout: tile left)",
+                 "Meta+Left", () => moveWindow("left"));
+registerShortcut("Leaves Move Right", "Leaves: move the window a column right (no layout: tile right)",
+                 "Meta+Right", () => moveWindow("right"));
+registerShortcut("Leaves Span Right", "Leaves: span the window over the next column (no layout: snap assist)",
+                 "Meta+Shift+Right", () => spanWindow("right"));
+registerShortcut("Leaves Span Left", "Leaves: give back the last column spanned (no layout: snap assist)",
+                 "Meta+Shift+Left", () => spanWindow("left"));
 registerStripShortcuts();
 
 schedule();

@@ -33,8 +33,9 @@
             "title": "Windows",
             "column": 1,
             "rows": [
-                ["Meta+Left / Meta+Right", "Tile to the left / right half"],
-                ["Meta+Shift+Left / Meta+Shift+Right", "Tile and pick the other half"],
+                ["Meta+Left / Meta+Right", "Move a column left / right (no layout: tile halves)"],
+                ["Meta+Shift+Right / Meta+Shift+Left", "Span a column more / less (no layout: tile and pick)"],
+                ["Meta+M+1 / 2 / 3", "Layout: free / 2 / 3 columns"],
                 ["Meta+Up / Meta+Down", "Move to the monitor above / below"],
                 ["Meta+Shift+Up / Meta+PgUp", "Maximize"],
                 ["Meta+Shift+Down / Meta+PgDown", "Minimize"],
