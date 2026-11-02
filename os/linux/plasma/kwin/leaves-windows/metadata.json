@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Id": "leaves-windows",
+        "Name": "Leaves: window layouts",
+        "Description": "Column layouts per monitor (Meta+M then 1/2/3) and keeps other windows off the main monitor while a game is fullscreen",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "javascript",
+    "KPackageStructure": "KWin/Script"
+}

@@ -179,6 +179,17 @@ PY
 done
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
+# Window layouts (leaves-windows): Meta+M arms Meta+1/2/3 for a moment (KWin
+# doesn't match multi-key sequences on Wayland). Meta+1/2/3 belonged to the old
+# taskbar's "activate task manager entry". Key codes: M 0x4D, 1-3 0x31-0x33
+kwin_shortcut "Leaves Layout Arm" "Leaves Layout Arm" "[([$((0x1000004D)), 0, 0, 0],)]"
+for n in 1 2 3; do
+    gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
+        --method org.kde.KGlobalAccel.setForeignShortcutKeys \
+        "['plasmashell', 'activate task manager entry $n', 'plasmashell', 'Activate Task Manager Entry $n']" "$none" >/dev/null
+    kwin_shortcut "Leaves Layout $n" "Leaves Layout $n" "[([$((0x10000030 + n)), 0, 0, 0],)]"
+done
+
 # KWin effects: copy the package, enable it, reload it (reconfigure keeps the old code)
 for effect in kwin-effects/*/; do
     id=$(basename "$effect")

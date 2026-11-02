@@ -1,0 +1,5 @@
+{
+    "_comment": "Windows matched by class (resourceClass, resourceName or desktop file name, any case). Find a window's class with: qdbus-qt6 org.kde.KWin /KWin queryWindowInfo (then click it). games: fullscreen games the automatic checks miss (Steam steam_app_*, Wine/Proton .exe and gamescope are already games). exceptions: windows that never go into a column and stay put when a game starts (steam: the client and its friends list; its games are steam_app_*). Re-run plasma/apply.sh after editing.",
+    "games": [],
+    "exceptions": ["steam"]
+}
