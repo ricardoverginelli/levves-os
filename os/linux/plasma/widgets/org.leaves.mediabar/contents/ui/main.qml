@@ -22,7 +22,7 @@ PlasmoidItem {
     readonly property int hoverDuration: 150
     readonly property int innerGap: 4
     readonly property int groupGap: 8
-    readonly property int leadingGap: 16  // space after the perf meter, like gaps between its groups
+    readonly property int trailingGap: 16  // space before the tray, like the gaps between the perf meter's groups
     readonly property int maxTextWidth: 280
     readonly property font barFont: Qt.font({ family: Kirigami.Theme.defaultFont.family, pointSize: 9, weight: Font.Medium })
 
@@ -113,7 +113,7 @@ PlasmoidItem {
     compactRepresentation: Item {
         id: container
 
-        readonly property real openWidth: row.implicitWidth + root.leadingGap
+        readonly property real openWidth: row.implicitWidth + root.trailingGap
         property real shownWidth: root.active ? openWidth : 0
 
         Layout.minimumWidth: shownWidth
@@ -143,7 +143,6 @@ PlasmoidItem {
 
         RowLayout {
             id: row
-            x: root.leadingGap
             anchors.verticalCenter: parent.verticalCenter
             spacing: root.groupGap
 

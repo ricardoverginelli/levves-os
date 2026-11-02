@@ -2,7 +2,7 @@
     "KPlugin": {
         "Id": "leaves-top-bar-follow",
         "Name": "Leaves: top bar follows fullscreen",
-        "Description": "Shows a copy of the Leaves top bar on the second monitor while the main monitor has a fullscreen window",
+        "Description": "Makes the second monitor's Leaves top bar a full one while the main monitor has a fullscreen window",
         "Authors": [{ "Name": "Ricardo Verginelli" }],
         "License": "MIT",
         "Version": "1.0"
