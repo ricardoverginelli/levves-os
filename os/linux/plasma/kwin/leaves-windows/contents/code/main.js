@@ -3,7 +3,8 @@
 // Layouts: Meta+M then Meta+1/2/3 (Meta held) splits the focused window's
 // monitor into 1, 2 or 3 columns (1 = no layout, windows float as usual).
 // KWin doesn't match multi-key sequences on Wayland, so Meta+M arms Meta+1/2/3
-// for a moment instead; on their own they do nothing. The columns are
+// for a moment instead (each layout picked renews it, and a digit just before
+// the M counts, for all three pressed at once); on their own they do nothing. The columns are
 // KWin's own tiles, with no gaps, so their borders can be dragged to resize.
 // The most recently used windows hold the columns:
 //   - applying a layout fills them from the left with the most recent windows
@@ -37,6 +38,11 @@
 // Not tiled or moved: dialogs, Yakuake, picture-in-picture, always-on-top and
 // skip-taskbar windows, games, minimized windows and lists.json's exceptions.
 //
+// The bar's window strip (widgets/org.leaves.windows) shows each monitor's
+// layout and columns: this script writes them into the strips' "state" setting
+// through plasmashell's scripting (a KWin script can't serve D-Bus), and the
+// strip picks a layout with the keyless "Leaves Layout <monitor> <n>" shortcuts.
+//
 // Install: plasma/apply.sh (build.py fills LISTS below from lists.json)
 
 const LISTS = /*LISTS*/{"games": [], "exceptions": []};
@@ -44,7 +50,8 @@ const RECONCILE_MS = 50;     // let a burst of window events settle first
 const GAME_DEBOUNCE_MS = 300;  // games switch modes in several steps
 const KWIN_PADDING = 4;      // KWin's default tile padding (= not one of our layouts)
 const MAX_COLUMNS = 3;
-const ARM_MS = 1500;         // Meta+M to Meta+1/2/3
+const ARM_MS = 1500;         // Meta+M to Meta+1/2/3, renewed by each layout picked
+const EARLY_MS = 400;        // a digit landing just before the M (all three pressed together)
 
 // ── Windows ───────────────────────────────────────────────────────────────
 
@@ -321,14 +328,78 @@ function applyLayout(output, count) {
 }
 
 let armedUntil = 0;
+let early = null;  // {count, at}: a digit pressed before Meta+M
 
+function applyToFocused(count) {
+    const w = workspace.activeWindow;
+    applyLayout(w ? w.output : workspace.activeScreen, count);
+    schedule();
+}
+
+function arm() {
+    armedUntil = Date.now() + ARM_MS;
+    if (early && Date.now() - early.at < EARLY_MS)
+        applyToFocused(early.count);
+    early = null;
+}
+
+// ── The bar's window strip ────────────────────────────────────────────────
+
+function uuid(w) {
+    return w.internalId.toString().replace(/[{}]/g, "").toLowerCase();
+}
+
+const STRIP_SCRIPT = 'for (const p of panels()) for (const w of p.widgets()) if (w.type == "org.leaves.windows") {'
+    + ' w.currentConfigGroup = ["General"]; w.writeConfig("state", STATE); w.reloadConfig(); }';
+let published = null;
+
+// {monitor name: {columns: n, windows: [uuid or null per column]}}
+function publish() {
+    const state = {};
+    workspace.screens.forEach(o => {
+        const s = slots[o.name];
+        state[o.name] = {columns: s ? s.length : 1, windows: s ? s.map(w => w ? uuid(w) : null) : []};
+    });
+    const json = JSON.stringify(state);
+    if (json == published)
+        return;
+    published = json;
+    callDBus("org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell", "evaluateScript",
+             STRIP_SCRIPT.replace("STATE", JSON.stringify(json)));
+}
+
+// The strip's layout picker: one keyless shortcut per monitor and layout
+const stripShortcuts = [];
+
+function registerStripShortcuts() {
+    workspace.screens.forEach(o => {
+        const name = o.name;
+        if (stripShortcuts.indexOf(name) != -1)
+            return;
+        stripShortcuts.push(name);
+        for (let n = 1; n <= MAX_COLUMNS; n++) {
+            const count = n;
+            registerShortcut("Leaves Layout " + name + " " + count,
+                             "Leaves: " + count + " column(s) on " + name + " (the bar's layout picker)", "", () => {
+                const output = workspace.screens.find(x => x.name == name);
+                if (output) {
+                    applyLayout(output, count);
+                    schedule();
+                }
+            });
+        }
+    });
+}
+
+// Held Meta+M stays armed: switching between 2 and 3 needs no new M
 function layoutShortcut(count) {
     return function () {
-        if (Date.now() > armedUntil)
+        if (Date.now() > armedUntil) {
+            early = {count: count, at: Date.now()};
             return;
-        armedUntil = 0;
-        const w = workspace.activeWindow;
-        applyLayout(w ? w.output : workspace.activeScreen, count);
+        }
+        armedUntil = Date.now() + ARM_MS;
+        applyToFocused(count);
     };
 }
 
@@ -385,7 +456,10 @@ function updateGame() {
 const reconcileTimer = new QTimer();
 reconcileTimer.singleShot = true;
 reconcileTimer.interval = RECONCILE_MS;
-reconcileTimer.timeout.connect(reconcileAll);
+reconcileTimer.timeout.connect(() => {
+    reconcileAll();
+    publish();
+});
 
 const gameTimer = new QTimer();
 gameTimer.singleShot = true;
@@ -463,6 +537,7 @@ function watchTiles(output) {
 workspace.screens.forEach(watchTiles);
 workspace.screensChanged.connect(() => {
     workspace.screens.forEach(watchTiles);
+    registerStripShortcuts();
     schedule();
 });
 // Each virtual desktop has its own tiles
@@ -472,9 +547,10 @@ workspace.currentDesktopChanged.connect(() => {
 });
 
 registerShortcut("Leaves Layout Arm", "Leaves: pick a layout (then Meta+1/2/3)", "Meta+M",
-                 () => { armedUntil = Date.now() + ARM_MS; });
+                 arm);
 registerShortcut("Leaves Layout 1", "Leaves: no layout on this monitor (after Meta+M)", "Meta+1", layoutShortcut(1));
 registerShortcut("Leaves Layout 2", "Leaves: two columns on this monitor (after Meta+M)", "Meta+2", layoutShortcut(2));
 registerShortcut("Leaves Layout 3", "Leaves: three columns on this monitor (after Meta+M)", "Meta+3", layoutShortcut(3));
+registerStripShortcuts();
 
 schedule();

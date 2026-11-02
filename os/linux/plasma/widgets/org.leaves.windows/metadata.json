@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.leaves.windows",
+        "Name": "Leaves Windows",
+        "Description": "The bar's window strip: this monitor's layout (1-3 columns) and its windows, with live previews on hover",
+        "Icon": "preferences-system-windows",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

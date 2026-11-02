@@ -1,7 +1,8 @@
 // Plasma layout script: thin top bars, one per monitor.
-//   main monitor:   launcher icon, perf meter (CPU, GPU usage + temp; RAM, disk usage), window strip
+//   main monitor:   launcher icon, window strip, perf meter (CPU, GPU usage + temp; RAM, disk usage)
 //                   | weekday, date and time | media controls (only while a player is active), system tray
-//   other monitors: window strip | weekday, date and time
+//   other monitors: launcher icon, window strip | weekday, date and time
+// The launcher and the strip open every bar, so they sit in the same place on all of them.
 // While the main monitor has a fullscreen window (e.g. a game), the second monitor's bar
 // becomes a full one like the main bar's (the leaves-top-bar-follow KWin script asks).
 // Re-running replaces the bars instead of adding more.
@@ -71,13 +72,12 @@ function buildBar(screen, role, variant, full) {
     panel.floating = false;
     panel.opacity = "translucent";  // translucent + KWin blur behind it
 
-    // Left: launcher icon and perf meter (full bars), then the window strip
-    if (full) {
-        panel.addWidget("org.leaves.launcher");
-        panel.addWidget("org.leaves.perfmeter");
-    }
+    // Left: launcher icon, window strip, then the perf meter (full bars)
+    panel.addWidget("org.leaves.launcher");
     if (knownWidgetTypes.indexOf(strip) >= 0)
         panel.addWidget(strip);
+    if (full)
+        panel.addWidget("org.leaves.perfmeter");
 
     // Center: clock, held in the middle by two flexible spacers
     const spacerLeft = panel.addWidget("org.kde.plasma.panelspacer");
