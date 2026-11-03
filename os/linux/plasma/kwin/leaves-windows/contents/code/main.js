@@ -32,6 +32,10 @@
 //                          (no layout: the snap assist picker, kwin/leaves-snap-assist)
 //   Meta+Up/Down           KWin's move to the monitor above/below; with a layout
 //                          there, the window takes a column like a picked one
+// A maximized window goes back into its column first, and the move or span
+// applies from there (no layout: KWin's half tiling un-maximizes on its own).
+// Everywhere: Meta+Shift+Down un-maximizes a maximized window, and minimizes
+// one that isn't (KWin's Maximize key, Meta+Shift+Up, toggles back).
 // A spanned window floats over its columns and holds all of them.
 // A column too narrow for its window's minimum width grows to it, taking the
 // room from the others; if the minimums can't all fit, the widest one floats.
@@ -536,6 +540,25 @@ function blocks(s) {
     return out;
 }
 
+// A maximized window keeps its columns, so the keys rearrange them out of sight:
+// it comes back into them (watch() marks it returning)
+function unmaximize(w) {
+    if (w.maximizeMode != 0)
+        w.setMaximize(false, false);
+}
+
+// Meta+Shift+Down: a maximized window back to its size (its column, with a
+// layout), any other one minimized
+function restoreOrMinimize() {
+    const w = workspace.activeWindow;
+    if (!w)
+        return;
+    if (w.maximizeMode != 0)
+        unmaximize(w);
+    else if (w.minimizable)
+        w.minimized = true;
+}
+
 // Meta+Left/Right: the window's columns trade places with the next run along
 function moveWindow(side) {
     const c = focusedInLayout();
@@ -559,15 +582,16 @@ function moveWindow(side) {
         const bs = blocks(s);
         const b = bs.findIndex(x => x.w == w);
         const t = side == "left" ? b - 1 : b + 1;
-        if (t < 0 || t >= bs.length)
-            return;
-        const moved = bs[b];
-        bs[b] = bs[t];
-        bs[t] = moved;
-        let k = 0;
-        bs.forEach(x => { for (let n = 0; n < x.n; n++) s[k++] = x.w; });
+        if (t >= 0 && t < bs.length) {  // at the edge: only un-maximized
+            const moved = bs[b];
+            bs[b] = bs[t];
+            bs[t] = moved;
+            let k = 0;
+            bs.forEach(x => { for (let n = 0; n < x.n; n++) s[k++] = x.w; });
+        }
     }
     commit(w.output, c.tiles, s);
+    unmaximize(w);
     schedule();
 }
 
@@ -581,8 +605,15 @@ function spanWindow(side) {
         return;
     }
     const w = c.w, s = c.s;
-    if (s.indexOf(w) == -1)
-        return;
+    if (s.indexOf(w) != -1)
+        spanSlots(w, s, side);
+    commit(w.output, c.tiles, s);
+    unmaximize(w);
+    schedule();  // a column given back goes to the most recent window behind
+}
+
+// One span key's change to the columns (none across the whole monitor / in one column)
+function spanSlots(w, s, side) {
     const span = spanOf(s, w);
     const grown = growth[key(w)] || (growth[key(w)] = []);
     if (side == "right") {
@@ -607,8 +638,6 @@ function spanWindow(side) {
         const dir = grown.pop() || "r";
         s[dir == "r" ? span[1] : span[0]] = null;
     }
-    commit(w.output, c.tiles, s);
-    schedule();  // a column given back goes to the most recent window behind
 }
 
 // ── Games ─────────────────────────────────────────────────────────────────
@@ -842,6 +871,8 @@ registerShortcut("Leaves Span Right", "Leaves: span the window over the next col
                  "Meta+Shift+Right", () => spanWindow("right"));
 registerShortcut("Leaves Span Left", "Leaves: give back the last column spanned (no layout: snap assist)",
                  "Meta+Shift+Left", () => spanWindow("left"));
+registerShortcut("Leaves Restore Or Minimize", "Leaves: un-maximize the window, or minimize it if it isn't maximized",
+                 "Meta+Shift+Down", restoreOrMinimize);
 registerStripShortcuts();
 
 schedule();

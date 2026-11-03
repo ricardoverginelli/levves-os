@@ -128,8 +128,8 @@ done
 restart=true
 
 # KWin shortcuts: halves only, no quarters. Meta+Up/Down move a window between
-# the stacked monitors, Meta+Shift+Up maximizes, Meta+Shift+Down minimizes, and
-# Meta+Shift+Left/Right are freed for the leaves-windows script (see below). Keys are Qt key
+# the stacked monitors, Meta+Shift+Up maximizes, Meta+PgDown minimizes, and
+# Meta+Shift+Left/Right/Down are freed for the leaves-windows script (see below). Keys are Qt key
 # codes: Meta 0x10000000, Shift 0x02000000, Up 0x01000013, Down 0x01000015,
 # PgUp 0x01000016, PgDown 0x01000017. Everything is cleared first, so a key
 # moving from one action to another never conflicts.
@@ -149,7 +149,7 @@ kwin_shortcut "Window One Screen Down" "Move Window One Screen Down" "$none"
 kwin_shortcut "Window One Screen Up" "Move Window One Screen Up" "[([$((0x11000013)), 0, 0, 0],)]"
 kwin_shortcut "Window One Screen Down" "Move Window One Screen Down" "[([$((0x11000015)), 0, 0, 0],)]"
 kwin_shortcut "Window Maximize" "Maximize Window" "[([$((0x13000013)), 0, 0, 0],), ([$((0x11000016)), 0, 0, 0],)]"
-kwin_shortcut "Window Minimize" "Minimize Window" "[([$((0x13000015)), 0, 0, 0],), ([$((0x11000017)), 0, 0, 0],)]"
+kwin_shortcut "Window Minimize" "Minimize Window" "[([$((0x11000017)), 0, 0, 0],)]"
 
 # KWin scripts: copy the package, render main.js from its template, enable, reload
 for script in kwin/*/; do
@@ -194,6 +194,8 @@ kwin_shortcut "Leaves Move Left" "Leaves Move Left" "[([$((0x11000012)), 0, 0, 0
 kwin_shortcut "Leaves Move Right" "Leaves Move Right" "[([$((0x11000014)), 0, 0, 0],)]"
 kwin_shortcut "Leaves Span Left" "Leaves Span Left" "[([$((0x13000012)), 0, 0, 0],)]"
 kwin_shortcut "Leaves Span Right" "Leaves Span Right" "[([$((0x13000014)), 0, 0, 0],)]"
+# Meta+Shift+Down un-maximizes first (back into the window's column), then minimizes
+kwin_shortcut "Leaves Restore Or Minimize" "Leaves Restore Or Minimize" "[([$((0x13000015)), 0, 0, 0],)]"
 for n in 1 2 3; do
     gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
         --method org.kde.KGlobalAccel.setForeignShortcutKeys \
