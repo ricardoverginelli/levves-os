@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+# Linked into ~/.local/bin as google-chrome-stable and brave-browser-stable, so
+# it shadows /usr/bin: starts the real browser with Windows-style middle-click
+# autoscroll turned on.
+exec "/usr/bin/$(basename "$0")" --enable-blink-features=MiddleClickAutoscroll "$@"
