@@ -12,6 +12,10 @@
  */
 @import "../dist/tokens.css";
 
+/* Layer order, declared before anything else so it holds whichever file loads first: with
+   Tailwind, its base reset (button { background: transparent }) must sit below these pieces. */
+@layer theme, base, components, utilities;
+
 @layer components {
   /* ── Text ─────────────────────────────────────────────────────────────── */
   .lv-caps {
