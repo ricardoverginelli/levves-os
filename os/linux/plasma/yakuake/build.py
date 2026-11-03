@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Theme Yakuake as "Leaves" from ../palette.json.
+"""Theme Yakuake as "Leaves" from design/dist/palette.json.
 
 - Konsole color scheme ~/.local/share/konsole/Leaves.colorscheme (glass: bg at
   glass-opacity with KWin blur), used by Yakuake's default profile along with
@@ -23,7 +23,7 @@ CONFIG = Path.home() / ".config"
 SCHEME = Path.home() / ".local/share/konsole/Leaves.colorscheme"
 SKIN = Path.home() / ".local/share/yakuake/skins/leaves"
 
-palette = json.loads((HERE.parent / "palette.json").read_text())
+palette = json.loads((HERE.parents[3] / "design/dist/palette.json").read_text())
 glass = palette["glass-opacity"]
 
 BAR = 28      # tab bar and title bar height (DESIGN.md: top bar is 28px too)

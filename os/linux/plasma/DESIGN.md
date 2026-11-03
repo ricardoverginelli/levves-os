@@ -4,8 +4,9 @@ Shared look for everything we build or theme on Plasma (panels, widgets, color
 scheme, scripts with UI). These are conventions, not hard rules: follow them by
 default, and update this file when a decision changes.
 
-Machine-readable values live in `palette.json` (used by `plasma-style/build.py`);
-keep it in sync with the tables below.
+The values come from the Levves design system: `design/tokens/` in the repo root, generated into
+`design/dist/palette.json`, which the builds here read. The tables below are for reading; to change a
+value, change the token and rebuild (`design/DESIGN.md`).
 
 Source wallpaper: `wallpaper/leaves.png` (desktop, lock and login screen; `apply.sh` sets all three) — dark, cool,
 blue-green-gray foliage with tiny crimson stem tips.

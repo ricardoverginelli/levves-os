@@ -24,7 +24,7 @@ from pathlib import Path
 
 # The Plasma theme is the source of truth; colors and wallpaper come from it
 PLASMA_DIR = Path(__file__).resolve().parents[2] / "linux" / "plasma"
-PALETTE_FILE = PLASMA_DIR / "palette.json"
+PALETTE_FILE = Path(__file__).resolve().parents[3] / "design" / "dist" / "palette.json"
 WALLPAPER_SRC = PLASMA_DIR / "wallpaper" / "leaves.png"
 # Windows keeps pointing at the wallpaper file, so use a copy outside the repo
 WALLPAPER = Path(os.environ["LOCALAPPDATA"]) / "Leaves" / "leaves.png"

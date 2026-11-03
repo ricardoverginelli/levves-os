@@ -6,6 +6,7 @@ It also makes LosslessCut cuts replace their file: LosslessCut can't write over
 the file it has open, so it exports X-cut.mp4 (template set by install.sh), and
 once that's finished X.mp4 goes to the Trash and the cut takes its name.
 """
+import json
 import os
 import re
 import subprocess
@@ -20,8 +21,8 @@ from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 CAPTURE = Path(__file__).resolve().parent / "capture"
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "capture"
 ICON = Path.home() / ".local/share/icons/hicolor/scalable/actions/mingcute-live-fill.svg"
-# plasma/DESIGN.md: accent and text
-ON, OFF = "#e9a23b", "#dde3df"
+PALETTE = json.loads((Path(__file__).resolve().parents[3] / "design/dist/palette.json").read_text())  # the Levves tokens
+ON, OFF = PALETTE["accent"], PALETTE["text"]
 SECONDS = 60  # capture's replay_seconds
 
 

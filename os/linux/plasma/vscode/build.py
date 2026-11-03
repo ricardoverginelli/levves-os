@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Theme VS Code as "Leaves" from ../palette.json.
+"""Theme VS Code as "Leaves" from design/dist/palette.json.
 
 Writes the color theme (workbench, syntax, terminal) into a small extension,
 packs it as a .vsix and installs it with `code --install-extension`. Pick it
@@ -22,7 +22,7 @@ VERSION = "1.0.0"
 THEME_FILE = "themes/leaves-color-theme.json"
 INSTALLED = Path.home() / f".vscode/extensions/{PUBLISHER}.{NAME}-{VERSION}"
 
-p = json.loads((HERE.parent / "palette.json").read_text())
+p = json.loads((HERE.parents[3] / "design/dist/palette.json").read_text())
 t = p["terminal"]
 
 

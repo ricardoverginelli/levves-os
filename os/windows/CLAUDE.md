@@ -78,9 +78,9 @@ python os/windows/debloat/install.py
 - The startup entry needs no admin rights (HKCU scope); installing AHK may show a UAC prompt
 
 ### theme/install.py
-- Windows take on the Plasma "Leaves" theme: reads colors from `os/linux/plasma/palette.json` and
-  the wallpaper from `os/linux/plasma/wallpaper/leaves.png`, so `os/linux/plasma/DESIGN.md` stays the
-  single source of truth; change colors there, then re-run
+- Windows take on the Plasma "Leaves" theme: reads colors from `design/dist/palette.json` and
+  the wallpaper from `os/linux/plasma/wallpaper/leaves.png`, so the design tokens (`design/tokens/`)
+  stay the single source of truth; change a token, rebuild, then re-run
 - Dark apps and system, transparency on (DESIGN.md's glass); the amber accent drives Windows'
   accent palette but stays off title bars, borders, taskbar and Start (one accented thing per view)
 - Wallpaper (Fill) on the desktop and, via the WinRT LockScreen API, the lock and sign-in screen;

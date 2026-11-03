@@ -31,7 +31,7 @@ ID = "org.leaves.notifications"
 STOCK = "org.kde.plasma.notifications"
 DEST = Path.home() / ".local/share/plasma/plasmoids" / ID
 CACHE = Path.home() / ".cache/leaves/notifications"
-PALETTE = HERE.parent / "palette.json"
+PALETTE = HERE.parents[3] / "design/dist/palette.json"
 UPSTREAM = "https://raw.githubusercontent.com/KDE/plasma-workspace/v{version}/applets/notifications/{path}"
 # The QML files of applets/notifications/CMakeLists.txt
 QML = ["main", "CompactRepresentation", "DraggableDelegate", "FullRepresentation", "NotificationPopup",

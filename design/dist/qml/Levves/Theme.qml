@@ -16,7 +16,7 @@ QtObject {
     readonly property color accentHover: "#f3b75c"
     readonly property color accentPressed: "#c7852a"
     readonly property color accentEdge: "#8a5a17"
-    readonly property color onAccent: "#1a1206"
+    readonly property color textOnAccent: "#1a1206"
     readonly property color critical: "#e0607a"
     readonly property color warning: "#e8cf6a"
     readonly property color success: "#8fbf8a"

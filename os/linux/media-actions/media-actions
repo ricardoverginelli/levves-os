@@ -206,6 +206,7 @@ def main():
         notify("Nothing to do with this file", paths[0].name, "dialog-information")
         return
     engine = QQmlApplicationEngine()
+    engine.addImportPath(str(Path(__file__).resolve().parents[3] / "design/dist/qml"))
     engine.rootContext().setContextProperty("menu", menu)
     engine.load(QUrl.fromLocalFile(str(HERE / "Menu.qml")))
     if not engine.rootObjects():

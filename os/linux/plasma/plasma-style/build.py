@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the "Leaves" Plasma style from ../palette.json into ~/.local/share/plasma/desktoptheme/leaves.
+"""Build the "Leaves" Plasma style from design/dist/palette.json into ~/.local/share/plasma/desktoptheme/leaves.
 
 Starts from the Breeze Dark style installed on this machine (so it tracks Plasma
 updates), swaps in the palette, and makes translucent panels and popups more see-through
@@ -18,7 +18,7 @@ HERE = Path(__file__).resolve().parent
 SYSTEM = Path("/usr/share/plasma/desktoptheme")
 OUT = Path.home() / ".local/share/plasma/desktoptheme/leaves"
 
-palette = json.loads((HERE.parent / "palette.json").read_text())
+palette = json.loads((HERE.parents[3] / "design/dist/palette.json").read_text())
 
 
 def rgb(name):

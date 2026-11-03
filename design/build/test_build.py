@@ -55,6 +55,11 @@ class Names(unittest.TestCase):
         self.assertEqual(build.camel(("color", "text-muted")), "textMuted")
         self.assertEqual(build.camel(("color", "terminal", "bright-black")), "terminalBrightBlack")
 
+    def test_qml_never_gets_a_signal_handler_name(self):
+        self.assertEqual(build.qml_name(("color", "on-accent")), "textOnAccent")
+        with self.assertRaises(build.TokenError):
+            build.qml_name(("color", "on-surface"))
+
     def test_other_tokens_keep_their_group(self):
         self.assertEqual(build.camel(("space", "4")), "space4")
         self.assertEqual(build.camel(("duration", "popup-open")), "durationPopupOpen")
@@ -80,6 +85,23 @@ class RealTokens(unittest.TestCase):
 
     def test_dist_is_up_to_date(self):
         self.assertEqual(build.main(["--check"]), 0, "run python3 design/build/build.py")
+
+
+class Hardcoded(unittest.TestCase):
+    def scan(self, text, path="os/linux/x.qml"):
+        import check_hardcoded
+        return check_hardcoded.scan([path], ["e9a23b"], read=lambda f: text)
+
+    def test_finds_hex_in_every_spelling(self):
+        for text in ['color: "#e9a23b"', "Color(0xFFE9A23B)", "ON = 'e9a23b'", "--accent: #E9A23B;"]:
+            self.assertTrue(self.scan(text), text)
+
+    def test_ignores_other_colors_and_longer_hex(self):
+        for text in ['color: "#e9a23c"', "#e9a23b80aa", "sha e9a23b1234"]:
+            self.assertFalse(self.scan(text), text)
+
+    def test_skips_the_design_folder(self):
+        self.assertFalse(self.scan('"#e9a23b"', path="design/dist/tokens.css"))
 
 
 if __name__ == "__main__":

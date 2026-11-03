@@ -10,18 +10,20 @@ file for its platform from `dist/`, and rebuild after changing a token:
 
 ```
 python3 design/build/build.py          # writes dist/
-python3 design/build/build.py --check  # what CI runs
+python3 design/build/build.py --check  # what CI runs, with check_hardcoded.py: no color copied by hand
 ```
 
 | Platform | File | Use |
 |---|---|---|
 | Web (suite, p45 editor) | `dist/tokens.css` | `var(--lv-color-accent)` |
-| QML (Plasma, desktop apps) | `dist/qml/Levves/` | `import Levves`, then `Theme.accent` |
+| QML (desktop apps) | `dist/qml/Levves/` | `engine.addImportPath(<repo>/design/dist/qml)`, `import Levves`, then `Theme.accent` |
 | Compose (TV launcher) | `dist/kotlin/Levves.kt` | `Levves.accent` |
 | Python builds | `dist/levves_tokens.py`, `dist/palette.json` | `TOKENS["color.accent"]` |
+| Android XML | `dist/android/res/` | `@color/levves_accent` |
 
 Code names: colors drop their group (`color.text-muted` is `textMuted`), everything else keeps it
-(`duration.popup-open` is `durationPopupOpen`).
+(`duration.popup-open` is `durationPopupOpen`). In QML, `on-accent` is `textOnAccent`, since QML reads
+`on…` names as signal handlers.
 
 ## Mood
 - Dark, quiet, cool surroundings. Content and the one accent carry the attention.

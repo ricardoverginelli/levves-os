@@ -13,6 +13,7 @@ Outputs (never edit them, change the tokens and rebuild):
     dist/kotlin/Levves.kt       Compose object: Levves.<name>
     dist/levves_tokens.py       TOKENS dict for Python builds
     dist/palette.json           the flat palette the Plasma and Windows builds read
+    dist/android/res/values/levves_colors.xml   Android color resources: @color/levves_<name>
 """
 import json
 import re
@@ -122,10 +123,22 @@ def css(tokens):
     return "\n".join(lines + ["}", ""])
 
 
+# QML reads a property called on<Something> as a signal handler, so those get another name there
+QML_RENAMES = {"onAccent": "textOnAccent"}
+
+
+def qml_name(path):
+    name = camel(path)
+    name = QML_RENAMES.get(name, name)
+    if re.match(r"on[A-Z]", name):
+        raise TokenError(f"{'.'.join(path)} would be '{name}' in QML, a signal handler name: add it to QML_RENAMES")
+    return name
+
+
 def qml(tokens):
     lines = [f"// {HEADER}", "pragma Singleton", "import QtQuick", "", "QtObject {"]
     for path, t in tokens.items():
-        name, v, kind = camel(path), t["value"], t["type"]
+        name, v, kind = qml_name(path), t["value"], t["type"]
         if kind == "color":
             line = f'readonly property color {name}: "{v}"'
         elif kind == "dimension":
@@ -200,6 +213,16 @@ def palette(tokens):
     return json.dumps(out, indent=4) + "\n"
 
 
+def android(tokens):
+    """Colors as Android resources, for XML themes that can't read Kotlin."""
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', f"<!-- {HEADER} -->", "<resources>"]
+    for path, t in tokens.items():
+        if t["type"] == "color":
+            name = "levves_" + "_".join(p.replace("-", "_") for p in path[1:])
+            lines.append(f'    <color name="{name}">{t["value"]}</color>')
+    return "\n".join(lines + ["</resources>", ""])
+
+
 def outputs(tokens):
     return {
         "tokens.css": css(tokens),
@@ -208,6 +231,7 @@ def outputs(tokens):
         "kotlin/Levves.kt": kotlin(tokens),
         "levves_tokens.py": python(tokens),
         "palette.json": palette(tokens),
+        "android/res/values/levves_colors.xml": android(tokens),
     }
 
 

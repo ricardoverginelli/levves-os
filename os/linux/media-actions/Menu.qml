@@ -5,6 +5,7 @@
 // have nothing but Convert, so they get the formats as the menu itself.
 // Leaves look (~/repos/levves/os/linux/plasma/DESIGN.md).
 import QtQuick
+import Levves
 import QtQuick.Window
 import org.kde.kirigami as Kirigami
 import org.kde.layershell as LayerShell
@@ -25,10 +26,10 @@ Window {
     LayerShell.Window.exclusionZone: -1
     LayerShell.Window.screenConfiguration: LayerShell.Window.ScreenFromCompositor
 
-    readonly property color surface: Qt.rgba(0x18 / 255, 0x20 / 255, 0x27 / 255, 0.96)
-    readonly property color border: "#2e383d"
-    readonly property color textMuted: "#93a09a"
-    readonly property color text: "#dde3df"
+    readonly property color surface: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, 0.96)
+    readonly property color border: Theme.border
+    readonly property color textMuted: Theme.textMuted
+    readonly property color text: Theme.text
 
     readonly property var mainRows: menu.canCut
         ? [{ id: "cut", label: "Cut", hint: "LosslessCut", icon: "mingcute-scissors-fill" },
