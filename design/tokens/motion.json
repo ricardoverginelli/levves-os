@@ -1,0 +1,17 @@
+{
+  "$description": "One curve, a few durations. Closing is about 30% faster than opening. No bounce.",
+  "easing": {
+    "$type": "cubicBezier",
+    "out-quint": { "$value": [0.22, 1, 0.36, 1], "$description": "The house curve: fast start, soft landing. Qt and KWin have it built in as OutQuint" }
+  },
+  "duration": {
+    "$type": "duration",
+    "hover": { "$value": "150ms", "$description": "Hover and press tints" },
+    "popup-open": { "$value": "240ms", "$description": "Popups, menus, the launcher, OSDs" },
+    "popup-close": { "$value": "170ms" },
+    "panel-open": { "$value": "320ms", "$description": "Large panels and overlays: Yakuake, the side panel" },
+    "panel-close": { "$value": "220ms" },
+    "hover-rest": { "$value": "150ms", "$description": "Rest before a hovered bar item opens" },
+    "hover-grace": { "$value": "400ms", "$description": "Grace before a hovered bar item closes" }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$description": "Levves colors. Neutrals are Leaves' cool blue-green grays; amber is the one accent.",
+  "color": {
+    "$type": "color",
+    "bg-deep": { "$value": "#0b1016", "$description": "Deepest layer: the desktop, dimming behind dialogs" },
+    "bg": { "$value": "#11171d", "$description": "The top bar, list backgrounds, the phone's bottom bar" },
+    "surface": { "$value": "#182027", "$description": "Windows, cards, popups, notifications" },
+    "raised": { "$value": "#222b32", "$description": "Keys, the selected row in an inactive window" },
+    "border": { "$value": "#2e383d", "$description": "1px separators inside a surface" },
+    "text-faint": { "$value": "#5f6b67", "$description": "Disabled text and decoration only: 3.3:1 on bg, too low for reading" },
+    "text-muted": { "$value": "#93a09a", "$description": "Labels, secondary text, inactive tabs" },
+    "text-soft": { "$value": "#c9d0cc", "$description": "The menu bar, secondary text on a selected row" },
+    "text": { "$value": "#dde3df", "$description": "Primary text and icons" },
+
+    "accent": { "$value": "#e9a23b", "$description": "Hiker amber: the primary key, the selection, the focused window's light. One per view" },
+    "accent-hover": { "$value": "#f3b75c", "$description": "Hover on amber, and the amber key's light edge" },
+    "accent-pressed": { "$value": "#c7852a", "$description": "Amber held down" },
+    "accent-edge": { "$value": "#8a5a17", "$description": "The amber key's bottom edge" },
+    "on-accent": { "$value": "#1a1206", "$description": "Text and icons on amber" },
+
+    "critical": { "$value": "#e0607a", "$description": "Errors, usage at 85% and above" },
+    "warning": { "$value": "#e8cf6a", "$description": "Warnings, due soon, usage at 70% and above" },
+    "success": { "$value": "#8fbf8a", "$description": "Done, paid, connected" },
+    "info": { "$value": "#82a9c4", "$description": "Neutral information" },
+
+    "title-bar": { "$value": "#1d262d", "$description": "The focused window's title bar" },
+    "title-bar-inactive": { "$value": "#192127", "$description": "Title bar of every other window" },
+    "edge": { "$value": "#05080b", "$description": "The black engraved edge. Containers only: windows, group boxes, lists, readouts, slots" },
+    "well": { "$value": "#0a0e11", "$description": "Sunken areas: readouts, lists, fields, slots" },
+    "well-pressed": { "$value": "#0e1419", "$description": "A key held down, the current tab" },
+    "key-edge": { "$value": "#2f3a40", "$description": "A key's outline" },
+    "key-depth": { "$value": "#06090b", "$description": "A key's 2px bottom edge" },
+    "field-edge": { "$value": "#263036", "$description": "Outline of fields, toggles and radios" },
+    "row-line": { "$value": "#141b20", "$description": "Between rows in a list" },
+    "dither-a": { "$value": "#141b20", "$description": "Dither base: group headers, status bars, disabled keys" },
+    "dither-b": { "$value": "#1b2328", "$description": "Dither dots over dither-a" },
+    "desktop-dither": { "$value": "#10161c", "$description": "Dither dots over bg-deep on the desktop" },
+
+    "terminal": {
+      "$description": "ANSI colors not covered above; red, green, yellow, blue and white reuse critical, success, warning, info and text",
+      "black": { "$value": "{color.raised}" },
+      "bright-black": { "$value": "{color.text-faint}" },
+      "magenta": { "$value": "#b48cbf" },
+      "cyan": { "$value": "#7fbab3" }
+    },
+
+    "decorative": {
+      "$description": "From the wallpaper, for illustration only",
+      "leaf": { "$value": "#353d3f" },
+      "stem": { "$value": "#7c394d" }
+    }
+  },
+  "opacity": {
+    "$type": "number",
+    "$description": "Alpha for the colors above, 0-1",
+    "selection": { "$value": 0.18, "$description": "Amber behind the selected row in the focused window" },
+    "hover": { "$value": 0.06, "$description": "text over a hovered row" },
+    "tag-fill": { "$value": 0.10, "$description": "A status tag's fill, in its status color" },
+    "tag-edge": { "$value": 0.45, "$description": "A status tag's outline, in its status color" },
+    "edge-light": { "$value": 0.07, "$description": "White, the top-left inner line of a container's engraved edge" },
+    "edge-shade": { "$value": 0.45, "$description": "Black, the bottom-right inner line of a container's engraved edge" },
+    "etch": { "$value": 0.05, "$description": "White, the light half of a group box's etched line" }
+  }
+}
