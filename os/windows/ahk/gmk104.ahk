@@ -1,6 +1,6 @@
-; AHK v2 port of linux/keyd/gmk104.conf for the ZUOYA GMK104 on Windows
+; AHK v2 port of os/linux/keyd/gmk104.conf for the ZUOYA GMK104 on Windows
 ; (OS layout: Portuguese (Brazil) ABNT2).
-; Install: python windows/ahk/install.py, or run this file with AutoHotkey v2.
+; Install: python os/windows/ahk/install.py, or run this file with AutoHotkey v2.
 ;
 ; Hotkeys use scan codes, so they match the physical keys like keyd does:
 ;   SC035 -> key right of '.'      (ABNT2: ';' / ':')

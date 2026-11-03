@@ -2,7 +2,7 @@
 """
 AutoHotkey v2 Setup Script
 Installs AHK v2 from its GitHub release and registers gmk104.ahk to run on startup.
-Run with: python windows/ahk/install.py
+Run with: python os/windows/ahk/install.py
 """
 
 import hashlib
@@ -53,7 +53,7 @@ def check_script():
     print_header("Checking AHK Script")
     if not AHK_SCRIPT.exists():
         print(f"  ✗ Script not found at: {AHK_SCRIPT}")
-        print(f"    Make sure gmk104.ahk is next to this script in windows/ahk/.")
+        print(f"    Make sure gmk104.ahk is next to this script in os/windows/ahk/.")
         sys.exit(1)
     print(f"  ✓ Script found: {AHK_SCRIPT.name}")
 

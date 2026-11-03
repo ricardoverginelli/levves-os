@@ -3,7 +3,7 @@
 # -Survey only lists apps, capabilities, features, services, startup entries and tasks.
 # -RemoveApps takes appx package names from a survey and removes them (installed and
 # provisioned); nothing is removed without it. Safe to re-run.
-# Install with: python windows/debloat/install.py
+# Install with: python os/windows/debloat/install.py
 param([switch]$Survey, [string[]]$RemoveApps = @())
 # -File hands a comma list over as one string
 $RemoveApps = @($RemoveApps -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
@@ -79,8 +79,8 @@ function Disable-Tasks($Path, [string[]]$Names = @('*')) {
 try {
     Enable-ComputerRestore -Drive "$env:SystemDrive\" -ErrorAction Stop
     $before = @(Get-ComputerRestorePoint -ErrorAction SilentlyContinue).Count
-    Checkpoint-Computer -Description 'Before debloat (scripts repo)' -RestorePointType MODIFY_SETTINGS -WarningAction SilentlyContinue
-    if (@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue).Count -gt $before) { 'Created restore point "Before debloat (scripts repo)"' }
+    Checkpoint-Computer -Description 'Before debloat (levves repo)' -RestorePointType MODIFY_SETTINGS -WarningAction SilentlyContinue
+    if (@(Get-ComputerRestorePoint -ErrorAction SilentlyContinue).Count -gt $before) { 'Created restore point "Before debloat (levves repo)"' }
     else { 'Skipped restore point (Windows allows one per 24h; the last one still covers this run)' }
 } catch { "FAILED to create a restore point: $_" }
 
@@ -201,7 +201,7 @@ $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 12:00
 $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
 Register-ScheduledTask -TaskName $DefenderTask -Action $action -Trigger $trigger -Principal $principal `
-    -Settings $settings -Description 'Weekly Defender signature update from Microsoft (scripts repo, windows/debloat)' -Force | Out-Null
+    -Settings $settings -Description 'Weekly Defender signature update from Microsoft (levves repo, os/windows/debloat)' -Force | Out-Null
 "Registered weekly task $DefenderTask"
 & $mpcmd -SignatureUpdate -MMPC | Out-Null
 if ($LASTEXITCODE -eq 0) { 'Updated Defender signatures' } else { "FAILED to update Defender signatures (MpCmdRun exit $LASTEXITCODE)" }

@@ -1,7 +1,7 @@
 # Turns Windows Update off: policy, services and scheduled tasks. Needs admin.
 # -Install also copies this file to Program Files and registers it as a
 # startup task (SYSTEM), so anything Windows turns back on is undone at boot.
-# Install with: python windows/updates/install.py
+# Install with: python os/windows/updates/install.py
 param([switch]$Install)
 
 $TaskName = 'disable-windows-updates'
@@ -22,7 +22,7 @@ if ($Install) {
     $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal `
-        -Settings $settings -Description 'Keeps Windows Update off (scripts repo, windows/updates)' -Force | Out-Null
+        -Settings $settings -Description 'Keeps Windows Update off (levves repo, os/windows/updates)' -Force | Out-Null
     "Registered startup task $TaskName -> $InstalledCopy"
 }
 

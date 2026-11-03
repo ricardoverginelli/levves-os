@@ -6,7 +6,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=%h/repos/scripts/linux/capture/replay-tray
+ExecStart=%h/repos/levves/os/linux/capture/replay-tray
 Restart=on-failure
 RestartSec=5
 

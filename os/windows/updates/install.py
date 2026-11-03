@@ -2,7 +2,7 @@
 """
 Windows Update Setup Script
 Turns Windows Update off and registers a startup task that keeps it off.
-Run with: python windows/updates/install.py
+Run with: python os/windows/updates/install.py
 """
 
 import os

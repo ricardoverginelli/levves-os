@@ -2,7 +2,7 @@
 """
 ShareX Setup Script
 Installs ShareX via winget and imports backup config.
-Run with: python windows/sharex/install.py
+Run with: python os/windows/sharex/install.py
 """
 
 import subprocess
@@ -44,7 +44,7 @@ def check_config():
     print_header("Checking Config File")
     if not SHAREX_CONFIG.exists():
         print(f"  ✗ Config file not found at: {SHAREX_CONFIG}")
-        print(f"    Make sure ShareX-19.0.2.sxb is next to this script in windows/sharex/.")
+        print(f"    Make sure ShareX-19.0.2.sxb is next to this script in os/windows/sharex/.")
         sys.exit(1)
     print(f"  ✓ Config file found: {SHAREX_CONFIG.name}")
 

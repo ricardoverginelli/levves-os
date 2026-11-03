@@ -15,7 +15,7 @@
 // Meta+N adds a tab and shows Yakuake the same way.
 //
 // Yakuake's own shortcut must be cleared so this one can take the key.
-// Install: bash install.sh in linux/kwin (plasma/apply.sh runs it too)
+// Install: bash install.sh in os/linux/kwin (plasma/apply.sh runs it too)
 
 function sameRect(a, b) {
     return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;

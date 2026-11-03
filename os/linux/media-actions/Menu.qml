@@ -3,7 +3,7 @@
 // pointer is when it appears and puts the menu there; a click outside or Esc
 // closes it. Convert cascades into a submenu on hover. Image-only selections
 // have nothing but Convert, so they get the formats as the menu itself.
-// Leaves look (~/repos/scripts/linux/plasma/DESIGN.md).
+// Leaves look (~/repos/levves/os/linux/plasma/DESIGN.md).
 import QtQuick
 import QtQuick.Window
 import org.kde.kirigami as Kirigami

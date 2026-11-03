@@ -121,7 +121,7 @@ using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
     Every piece of that frame must measure whole pixels (8px corners, 32px edges): lines in it are
     filled shapes, never strokes, since Qt counts a stroke's width into the piece's size. Fractional
     pieces showed as see-through squares where corners meet edges and tick marks along the edges.
-    Check with `QSvgRenderer.boundsOnElement` (see `claude/notes/plasma-svg-frames.md`).
+    Check with `QSvgRenderer.boundsOnElement` (see `agents/notes/plasma-svg-frames.md`).
 - Borders: 1px `border`. Every floating surface has one (popups, the launcher, Yakuake, the
   side panel), drawn by the Plasma style for Plasma's popups; inside a surface, only where areas
   of similar tone meet. The media popup redraws its border over the style's with the cover's

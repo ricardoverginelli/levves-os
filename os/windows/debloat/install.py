@@ -2,9 +2,9 @@
 """
 Debloat Setup Script
 Turns off telemetry, ads, suggestions and background noise (needs admin).
-Run with: python windows/debloat/install.py
-          python windows/debloat/install.py --survey            (read-only listing)
-          python windows/debloat/install.py --remove NAME ...   (also remove these appx packages)
+Run with: python os/windows/debloat/install.py
+          python os/windows/debloat/install.py --survey            (read-only listing)
+          python os/windows/debloat/install.py --remove NAME ...   (also remove these appx packages)
 """
 
 import argparse

@@ -1,13 +1,13 @@
 # scripts
 
-Personal machine setup and automation scripts. Windows setup lives in `windows/`, Linux setup in
-`linux/`; each has one folder per component. This file covers `windows/`. It's used to bootstrap a
+Personal machine setup and automation scripts. Windows setup lives in `os/windows/`, Linux setup in
+`os/linux/`; each has one folder per component. This file covers `os/windows/`. It's used to bootstrap a
 new machine or reinstall individual tools granularly.
 
 ## Repo Structure
 
 ```
-scripts/windows/
+os/windows/
   setup.py              ← Master orchestrator, runs selected components interactively
   vscode/install.py     ← Installs VS Code extensions
   sharex/
@@ -15,15 +15,15 @@ scripts/windows/
     ShareX-*.sxb        ← ShareX backup config (exported from Application Settings → Export)
   ahk/
     install.py          ← Installs AutoHotkey v2 and registers gmk104.ahk on startup
-    gmk104.ahk          ← AHK v2 keyboard remap, Windows port of linux/keyd/gmk104.conf
-  theme/install.py      ← Applies the Leaves look (from linux/plasma/) to Windows
+    gmk104.ahk          ← AHK v2 keyboard remap, Windows port of os/linux/keyd/gmk104.conf
+  theme/install.py      ← Applies the Leaves look (from os/linux/plasma/) to Windows
   updates/
     install.py          ← Turns Windows Update off and keeps it off at every boot (admin)
     disable-updates.ps1 ← The policy/service/task changes; also what the startup task runs
   debloat/
     install.py          ← Turns off telemetry, ads, suggestions and background noise (admin)
     debloat.ps1         ← The changes, a restore point first, a read-only -Survey mode
-  gmk104-image-tool/    ← Vendor tool for the GMK104's screen, plus the edited layout it loads
+  gmk104-image-tool/    ← The edited layout for the GMK104's screen; the vendor tool is a release asset (README.md)
 ```
 
 ## Prerequisites
@@ -41,18 +41,18 @@ Restart your terminal after installing so `python` is on the PATH.
 
 ### Full setup on a fresh machine
 ```bash
-python windows/setup.py
+python os/windows/setup.py
 ```
 Prompts y/n for each component, confirms selection, then runs chosen scripts in sequence.
 
 ### Installing a single component
 ```bash
-python windows/vscode/install.py
-python windows/sharex/install.py
-python windows/ahk/install.py
-python windows/theme/install.py
-python windows/updates/install.py
-python windows/debloat/install.py
+python os/windows/vscode/install.py
+python os/windows/sharex/install.py
+python os/windows/ahk/install.py
+python os/windows/theme/install.py
+python os/windows/updates/install.py
+python os/windows/debloat/install.py
 ```
 
 ## Notes per Script
@@ -65,12 +65,12 @@ python windows/debloat/install.py
 - Installs ShareX via `winget install ShareX.ShareX`
 - Imports the `.sxb` backup silently via `ShareX.exe -silent -importbackup`
 - Searches common install paths for `ShareX.exe` automatically
-- Config file path: `windows/sharex/ShareX-*.sxb`
+- Config file path: `os/windows/sharex/ShareX-*.sxb`
 
 ### ahk/install.py
 - Installs AutoHotkey v2 from the latest GitHub release (no winget needed); the installer
   isn't code-signed, so its sha256 is checked against the release digest before running
-- Registers `windows/ahk/gmk104.ahk` as the `gmk104-ahk` startup entry in:
+- Registers `os/windows/ahk/gmk104.ahk` as the `gmk104-ahk` startup entry in:
   `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
   and removes the old `keyboard-ahk` entry if present
 - Starts the script right away; `#SingleInstance Force` replaces a running copy
@@ -78,8 +78,8 @@ python windows/debloat/install.py
 - The startup entry needs no admin rights (HKCU scope); installing AHK may show a UAC prompt
 
 ### theme/install.py
-- Windows take on the Plasma "Leaves" theme: reads colors from `linux/plasma/palette.json` and
-  the wallpaper from `linux/plasma/wallpaper/leaves.png`, so `linux/plasma/DESIGN.md` stays the
+- Windows take on the Plasma "Leaves" theme: reads colors from `os/linux/plasma/palette.json` and
+  the wallpaper from `os/linux/plasma/wallpaper/leaves.png`, so `os/linux/plasma/DESIGN.md` stays the
   single source of truth; change colors there, then re-run
 - Dark apps and system, transparency on (DESIGN.md's glass); the amber accent drives Windows'
   accent palette but stays off title bars, borders, taskbar and Start (one accented thing per view)
@@ -117,7 +117,7 @@ python windows/debloat/install.py
 ### debloat/install.py
 - Runs `debloat.ps1` elevated (one UAC prompt) and prints the log summary. LTSC is already
   lean, so this is privacy, telemetry, ads and background noise, not ripping out components
-- Creates a restore point first ("Before debloat (scripts repo)"; Windows allows one per 24h)
+- Creates a restore point first ("Before debloat (levves repo)"; Windows allows one per 24h)
 - `--survey` only lists all-users/provisioned appx packages, capabilities, enabled features,
   running services, startup entries and non-Microsoft tasks, to `debloat-survey.log`. Every
   apply run logs the same listing first. Apps are removed only when named with
@@ -152,7 +152,7 @@ python windows/debloat/install.py
   `Unregister-ScheduledTask update-defender-signatures`
 
 ### ahk/gmk104.ahk
-- Port of `linux/keyd/gmk104.conf` for the ZUOYA GMK104 with the Portuguese (Brazil) ABNT2 layout
+- Port of `os/linux/keyd/gmk104.conf` for the ZUOYA GMK104 with the Portuguese (Brazil) ABNT2 layout
 - Hotkeys use scan codes (`SC035`, `SC027`, `SC02B`) to match physical keys like keyd does
 - Keep it in sync with the keyd config when either changes; the keyd F19 sysrq/f10
   bindings are deliberately not ported (they only work around KWin and the Linux VT switch)
@@ -163,8 +163,8 @@ python windows/debloat/install.py
 - Doesn't reach elevated (admin) windows unless AHK itself runs elevated
 
 ## Adding a New Script
-1. Create `windows/<name>/install.py` following the existing pattern
-2. Add an entry to the `SCRIPTS` list in `windows/setup.py`:
+1. Create `os/windows/<name>/install.py` following the existing pattern
+2. Add an entry to the `SCRIPTS` list in `os/windows/setup.py`:
 ```python
 {
     "key": "name",
@@ -173,7 +173,7 @@ python windows/debloat/install.py
     "script": "name/install.py",
 }
 ```
-3. Place any config files or assets next to it in `windows/<name>/`
+3. Place any config files or assets next to it in `os/windows/<name>/`
 
 ## What This Repo Does Not Handle
 - Huion tablet config — managed separately, not work-related

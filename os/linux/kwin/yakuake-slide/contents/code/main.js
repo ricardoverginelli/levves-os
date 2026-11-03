@@ -9,7 +9,7 @@
 // settings dock it: Width 30%, Height 100%, Position all the way left (the
 // right edge is the Leaves side panel's).
 //
-// Install: bash install.sh in linux/kwin (plasma/apply.sh runs it too)
+// Install: bash install.sh in os/linux/kwin (plasma/apply.sh runs it too)
 
 "use strict";
 

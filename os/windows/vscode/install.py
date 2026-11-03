@@ -2,7 +2,7 @@
 """
 Dev Environment Setup Script
 Installs VS Code extensions.
-Run with: python windows/vscode/install.py
+Run with: python os/windows/vscode/install.py
 """
 
 import subprocess

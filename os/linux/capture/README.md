@@ -1,7 +1,7 @@
 # capture
 
 ShareX-style screenshots, GIFs and MP4s for KDE Plasma (Wayland), with the
-hotkeys from `windows/sharex/ShareX-*.sxb`, plus a ShadowPlay-style instant replay.
+hotkeys from `os/windows/sharex/ShareX-*.sxb`, plus a ShadowPlay-style instant replay.
 
 | Hotkey | Action |
 |---|---|

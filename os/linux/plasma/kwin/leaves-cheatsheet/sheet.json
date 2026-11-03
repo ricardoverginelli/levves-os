@@ -9,7 +9,7 @@
                 ["Meta+/", "Yakuake (Claude Code)"],
                 ["Meta+N", "Yakuake: new Claude tab"],
                 ["Meta+Shift+N", "Yakuake: new shell tab"],
-                ["Meta+Alt+N", "Yakuake: new business Claude tab", "linux/yakuake-business-tab"],
+                ["Meta+Alt+N", "Yakuake: new business Claude tab", "os/linux/yakuake-business-tab"],
                 ["Meta+V", "Clipboard history"],
                 ["Meta+F12", "This cheat sheet"],
                 ["Meta+I", "System Settings"],
@@ -109,11 +109,11 @@
                 ["capture", "shot|gif|mp4  region|last  clip|upload"],
                 ["main-monitor", "toggle | off | on (the main monitor)"],
                 ["vpnon / vpnoff", "NordVPN on (optional country) / off"],
-                ["drive-mirror", "Mirror Google Drive to the HDD", "linux/drive-mirror"],
-                ["s25-control", "S25 knobs and soundboard app", "linux/midi/s25-control"],
+                ["drive-mirror", "Mirror Google Drive to the HDD", "os/linux/drive-mirror"],
+                ["s25-control", "S25 knobs and soundboard app", "apps/s25-control"],
                 ["yakuake-tab --shell", "Plain shell tab"],
                 ["plasma/apply.sh", "Re-apply the Leaves setup"],
-                ["claude/whats-new.sh", "Commits this machine hasn't applied"]
+                ["agents/whats-new.sh", "Commits this machine hasn't applied"]
             ]
         }
     ]

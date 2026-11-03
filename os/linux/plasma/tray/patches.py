@@ -70,7 +70,7 @@ ICON_OVERLAY = '''
 '''
 
 LEAVES = '''
-    // ── Leaves (linux/plasma/tray/patches.py) ────────────────────────────
+    // ── Leaves (os/linux/plasma/tray/patches.py) ────────────────────────────
     // Ids match by prefix (some apps add a counter, e.g. NordPass_status_icon_1)
     // (Media Player: the Leaves media bar covers it)
     readonly property var leavesRemoved: ["Yakuake", "NordPass", "org.kde.plasma.clipboard", "org.kde.plasma.networkmanagement",

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Leaves Theme Setup Script
-Applies the Leaves look (linux/plasma/DESIGN.md) to Windows: dark mode with glass,
+Applies the Leaves look (os/linux/plasma/DESIGN.md) to Windows: dark mode with glass,
 the amber accent, the leaves wallpaper on desktop and lock screen, a minimal taskbar,
 and the Leaves terminal colors with JetBrains Mono in console windows.
-Run with: python windows/theme/install.py
+Run with: python os/windows/theme/install.py
 """
 
 import ctypes
@@ -116,7 +116,7 @@ def load_palette():
     for path in (PALETTE_FILE, WALLPAPER_SRC):
         if not path.exists():
             print(f"  ✗ Not found: {path}")
-            print("    The theme reads its colors and wallpaper from linux/plasma/.")
+            print("    The theme reads its colors and wallpaper from os/linux/plasma/.")
             sys.exit(1)
     palette = json.loads(PALETTE_FILE.read_text())
     print(f"  ✓ Palette loaded, accent {palette['accent']}")

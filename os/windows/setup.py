@@ -2,7 +2,7 @@
 """
 Master Setup Orchestrator
 Runs selected setup scripts for a fresh machine configuration.
-Run with: python windows/setup.py
+Run with: python os/windows/setup.py
 """
 
 import subprocess
