@@ -1,0 +1,281 @@
+/*
+ * Levves for the web: D's pieces as plain CSS classes, built only from the generated tokens
+ * (design/dist/tokens.css, imported here). design/DESIGN.md explains each piece; keep the two in step.
+ *
+ *   containers  .lv-window .lv-group .lv-well          the black engraved edge
+ *   controls    .lv-key .lv-key-primary .lv-field      lighter outline; keys have a 2px bottom edge
+ *   chrome      .lv-titlebar .lv-led .lv-statusbar .lv-dither .lv-desktop
+ *   text        .lv-caps .lv-num .lv-title .lv-quiet
+ *   bits        .lv-tag(-due|-paid|-info|-critical) .lv-meter .lv-selected .lv-selected-inactive
+ *
+ * Plain classes in @layer components, so Tailwind utilities still win when a component adds one.
+ */
+@import "../dist/tokens.css";
+
+@layer components {
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  .lv-caps {
+    font-family: var(--lv-type-family-sans);
+    font-size: var(--lv-type-size-label);
+    font-weight: var(--lv-type-weight-semibold);
+    letter-spacing: calc(var(--lv-type-tracking-label) * 1em);
+    text-transform: uppercase;
+  }
+  .lv-num {
+    font-family: var(--lv-type-family-serif);
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+  .lv-title {
+    font-family: var(--lv-type-family-serif);
+    font-size: var(--lv-type-size-title);
+    font-weight: var(--lv-type-weight-semibold);
+  }
+  /* Secondary text that reads as a remark: "five bills left this month" */
+  .lv-quiet {
+    font-family: var(--lv-type-family-serif);
+    font-style: italic;
+    color: var(--lv-color-text-muted);
+  }
+
+  /* ── Textures ─────────────────────────────────────────────────────────── */
+  .lv-dither {
+    background-color: var(--lv-color-dither-a);
+    background-image: conic-gradient(
+      var(--lv-color-dither-b) 25%,
+      transparent 0 50%,
+      var(--lv-color-dither-b) 0 75%,
+      transparent 0
+    );
+    background-size: var(--lv-size-dither) var(--lv-size-dither);
+  }
+  .lv-desktop {
+    background-color: var(--lv-color-bg-deep);
+    background-image: conic-gradient(
+      var(--lv-color-desktop-dither) 25%,
+      transparent 0 50%,
+      var(--lv-color-desktop-dither) 0 75%,
+      transparent 0
+    );
+    background-size: var(--lv-size-dither) var(--lv-size-dither);
+  }
+
+  /* ── Containers: the black engraved edge ──────────────────────────────── */
+  .lv-window {
+    background: var(--lv-color-surface);
+    color: var(--lv-color-text);
+    border: var(--lv-edge-width) solid var(--lv-color-edge);
+    border-radius: var(--lv-radius-container);
+    padding: var(--lv-edge-width);
+    box-shadow:
+      inset 1px 1px 0 rgb(255 255 255 / var(--lv-opacity-edge-light)),
+      inset -1px -1px 0 rgb(0 0 0 / var(--lv-opacity-edge-shade)),
+      0 18px 48px rgb(0 0 0 / 0.55);
+  }
+  /* The same edge without the drop shadow, for windows that fill the screen (the phone) */
+  .lv-window-flat {
+    box-shadow:
+      inset 1px 1px 0 rgb(255 255 255 / var(--lv-opacity-edge-light)),
+      inset -1px -1px 0 rgb(0 0 0 / var(--lv-opacity-edge-shade));
+  }
+  .lv-group {
+    border: var(--lv-edge-width) solid var(--lv-color-edge);
+    border-radius: var(--lv-radius-container);
+    box-shadow:
+      1px 1px 0 rgb(255 255 255 / var(--lv-opacity-etch)),
+      inset 1px 1px 0 rgb(255 255 255 / var(--lv-opacity-etch));
+  }
+  .lv-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--lv-space-8);
+    min-height: var(--lv-size-group-header);
+    padding: 0 var(--lv-space-12);
+    border-bottom: var(--lv-edge-width) solid var(--lv-color-edge);
+    color: var(--lv-color-text-muted);
+  }
+  .lv-well {
+    background: var(--lv-color-well);
+    border: var(--lv-edge-width) solid var(--lv-color-edge);
+    box-shadow:
+      inset 1px 1px 0 rgb(0 0 0 / 0.6),
+      inset -1px -1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  /* ── Chrome ───────────────────────────────────────────────────────────── */
+  .lv-titlebar {
+    display: flex;
+    align-items: center;
+    gap: var(--lv-space-8);
+    min-height: var(--lv-size-title-bar);
+    padding: 0 5px 0 var(--lv-space-12);
+    background: var(--lv-color-title-bar);
+    border-bottom: var(--lv-edge-width) solid var(--lv-color-edge);
+  }
+  .lv-titlebar[data-inactive] {
+    background: var(--lv-color-title-bar-inactive);
+    color: var(--lv-color-text-muted);
+  }
+  .lv-led {
+    flex: none;
+    width: var(--lv-size-led);
+    height: var(--lv-size-led);
+    border-radius: 50%;
+    background: var(--lv-color-accent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--lv-color-accent) 55%, transparent);
+  }
+  [data-inactive] .lv-led,
+  .lv-led[data-off] {
+    background: var(--lv-color-border);
+    box-shadow: none;
+  }
+  .lv-statusbar {
+    display: flex;
+    gap: var(--lv-space-16);
+    padding: 5px var(--lv-space-12);
+    border-top: var(--lv-edge-width) solid var(--lv-color-edge);
+    color: var(--lv-color-text-muted);
+  }
+
+  /* ── Controls: lighter outline, never the black edge ──────────────────── */
+  .lv-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--lv-space-8);
+    min-height: var(--lv-size-key);
+    padding: 0 var(--lv-space-12);
+    background: var(--lv-color-raised);
+    color: var(--lv-color-text);
+    border: var(--lv-edge-width) solid var(--lv-color-key-edge);
+    border-bottom: var(--lv-edge-key-depth) solid var(--lv-color-key-depth);
+    border-radius: var(--lv-radius-key);
+    font-family: var(--lv-type-family-sans);
+    font-size: var(--lv-type-size-small);
+    font-weight: var(--lv-type-weight-semibold);
+    letter-spacing: calc(var(--lv-type-tracking-label) * 1em);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color var(--lv-duration-hover) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .lv-key:hover {
+    background-image: linear-gradient(
+      rgb(221 227 223 / var(--lv-opacity-hover)),
+      rgb(221 227 223 / var(--lv-opacity-hover))
+    );
+  }
+  .lv-key:active,
+  .lv-key[aria-pressed="true"],
+  .lv-key[aria-selected="true"],
+  .lv-key[aria-current="page"],
+  .lv-key[data-pressed] {
+    background: var(--lv-color-well-pressed);
+    border: var(--lv-edge-width) solid var(--lv-color-field-edge);
+    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5);
+  }
+  .lv-key:disabled,
+  .lv-key[aria-disabled="true"] {
+    cursor: default;
+    color: var(--lv-color-text-faint);
+    border-color: var(--lv-color-raised);
+    background-color: var(--lv-color-surface);
+    background-image: conic-gradient(
+      var(--lv-color-dither-b) 25%,
+      transparent 0 50%,
+      var(--lv-color-dither-b) 0 75%,
+      transparent 0
+    );
+    background-size: var(--lv-size-dither) var(--lv-size-dither);
+  }
+  /* The one amber thing in a view */
+  .lv-key-primary {
+    background: var(--lv-color-accent);
+    color: var(--lv-color-on-accent);
+    border-color: var(--lv-color-accent-hover);
+    border-bottom-color: var(--lv-color-accent-edge);
+  }
+  .lv-key-primary:hover {
+    background: var(--lv-color-accent-hover);
+  }
+  .lv-key-primary:active {
+    background: var(--lv-color-accent-pressed);
+    border-color: var(--lv-color-accent-edge);
+    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.3);
+  }
+  /* A key that only shows an icon (window controls, toolbar) */
+  .lv-key-icon {
+    min-height: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    color: var(--lv-color-text-muted);
+  }
+
+  .lv-field {
+    background: var(--lv-color-well);
+    color: var(--lv-color-text);
+    border: var(--lv-edge-width) solid var(--lv-color-field-edge);
+    border-radius: var(--lv-radius-container);
+    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5);
+    font-family: var(--lv-type-family-sans);
+  }
+  .lv-field::placeholder {
+    color: var(--lv-color-text-faint);
+  }
+  .lv-field:disabled {
+    color: var(--lv-color-text-faint);
+  }
+
+  /* ── Bits ─────────────────────────────────────────────────────────────── */
+  .lv-tag {
+    --lv-tag: var(--lv-color-text-muted);
+    display: inline-block;
+    padding: 0 6px;
+    color: var(--lv-tag);
+    background: color-mix(in srgb, var(--lv-tag) calc(var(--lv-opacity-tag-fill) * 100%), transparent);
+    border: var(--lv-edge-width) solid color-mix(in srgb, var(--lv-tag) calc(var(--lv-opacity-tag-edge) * 100%), transparent);
+    border-radius: var(--lv-radius-container);
+    font-family: var(--lv-type-family-sans);
+    font-size: 10.5px;
+    font-weight: var(--lv-type-weight-semibold);
+    letter-spacing: calc(var(--lv-type-tracking-tag) * 1em);
+    text-transform: uppercase;
+  }
+  .lv-tag-due { --lv-tag: var(--lv-color-warning); }
+  .lv-tag-paid { --lv-tag: var(--lv-color-success); }
+  .lv-tag-info { --lv-tag: var(--lv-color-info); }
+  .lv-tag-critical { --lv-tag: var(--lv-color-critical); }
+
+  /* A sunken, dithered track; its child is the fill, drawn in 10px segments */
+  .lv-meter {
+    height: 14px;
+    padding: 2px;
+    box-sizing: border-box;
+    background-color: var(--lv-color-well);
+    background-image: conic-gradient(
+      var(--lv-color-row-line) 25%,
+      transparent 0 50%,
+      var(--lv-color-row-line) 0 75%,
+      transparent 0
+    );
+    background-size: var(--lv-size-dither) var(--lv-size-dither);
+    border: var(--lv-edge-width) solid var(--lv-color-edge);
+    box-shadow: inset 1px 1px 0 rgb(0 0 0 / 0.6);
+  }
+  .lv-meter > * {
+    height: 100%;
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--lv-meter-fill, var(--lv-color-text-muted)) 0 10px,
+      transparent 10px 12px
+    );
+  }
+
+  /* The selected row: amber in the focused window, neutral everywhere else */
+  .lv-selected {
+    background: color-mix(in srgb, var(--lv-color-accent) calc(var(--lv-opacity-selection) * 100%), transparent);
+  }
+  .lv-selected-inactive {
+    background: var(--lv-color-raised);
+  }
+}
