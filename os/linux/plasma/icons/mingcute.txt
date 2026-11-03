@@ -15,6 +15,7 @@ headphone-fill
 heart-fill
 heart-line
 left-fill
+live-fill
 lock-fill
 mail-fill
 menu-fill
