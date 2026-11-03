@@ -33,12 +33,14 @@ function outputHasFullscreen(output) {
 }
 
 let full = null;  // unknown until the first update (top-bar.js skips a bar that's already right)
+let screens = 0;  // a monitor plugged in or out needs its bar added or removed, even with no change above
 
 function update() {
     const want = workspace.screens.length > 1 && outputHasFullscreen(mainOutput());
-    if (want === full)
+    if (want === full && workspace.screens.length == screens)
         return;
     full = want;
+    screens = workspace.screens.length;
     const target = want ? "secondary-full" : "secondary-slim";
     callDBus("org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell", "evaluateScript",
              'const LEAVES_TARGET = "' + target + '";\n' + BAR_SCRIPT);
