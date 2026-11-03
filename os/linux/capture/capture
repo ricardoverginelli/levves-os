@@ -144,8 +144,13 @@ clipboard() {
 }
 
 # Instant replay: capture-replay.service runs "replay run", which keeps a
-# 60 s buffer of the main monitor in RAM while that monitor is on
+# 60 s buffer of the main monitor in RAM while a game runs and that monitor is on
 replay_seconds=60
+
+# Steam starts every game (native, Proton or a non-Steam shortcut) under its reaper
+game_running() {
+    pgrep -f '^([^ ]*/)?reaper SteamLaunch AppId=' >/dev/null
+}
 
 # Largest connected output (survives connector renames); empty while it's off,
 # so a turned-off main monitor is waited for instead of recording another one
@@ -155,12 +160,16 @@ main_output() {
 }
 
 replay_run() {
-    local gsr='' on='' want started failed=''
+    local gsr='' on='' want started failed='' game_seen=''
     trap '[ -n "$gsr" ] && kill -INT "$gsr" 2>/dev/null; wait; rm -f "$replaypid"' EXIT
     trap 'exit 0' TERM INT
     mkdir -p "$replays"
     while :; do
-        want=$(main_output || true)
+        # Kept for a buffer length after the game closes, so its last moments can still be saved
+        game_running && game_seen=$SECONDS
+        want=''
+        [ -n "$game_seen" ] && [ $((SECONDS - game_seen)) -lt $replay_seconds ] &&
+            want=$(main_output || true)
         if [ -n "$gsr" ] && ! kill -0 "$gsr" 2>/dev/null; then
             wait "$gsr" || true
             gsr=''; rm -f "$replaypid"
@@ -192,7 +201,7 @@ replay_run() {
 
 replay_save() {
     [ -s "$replaypid" ] && kill -USR1 "$(cat "$replaypid")" 2>/dev/null ||
-        notify "Replay buffer not running" "" media-record
+        notify "Replay buffer not running" "It runs while a game is open" media-record
 }
 
 replay_toggle() {
@@ -201,7 +210,7 @@ replay_toggle() {
         notify "Replay buffer off" "Back on at next login, or Alt+Shift+F10" media-record
     else
         systemctl --user start capture-replay.service
-        notify "Replay buffer on" "Alt+F10 saves the last ${replay_seconds}s" media-record
+        notify "Replay buffer on" "While a game runs, Alt+F10 saves the last ${replay_seconds}s" media-record
     fi
 }
 

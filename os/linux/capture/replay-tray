@@ -1,0 +1,173 @@
+#!/usr/bin/python3
+"""Tray icon for the instant replay buffer (see README.md): amber while it
+records, white when it's off. Run by capture-tray.service.
+
+It also makes LosslessCut cuts replace their file: LosslessCut can't write over
+the file it has open, so it exports X-cut.mp4 (template set by install.sh), and
+once that's finished X.mp4 goes to the Trash and the cut takes its name.
+"""
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import QByteArray, QFileSystemWatcher, QSize, Qt, QTimer
+from PyQt6.QtGui import QIcon, QPainter, QPixmap
+from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+
+CAPTURE = Path(__file__).resolve().parent / "capture"
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "capture"
+ICON = Path.home() / ".local/share/icons/hicolor/scalable/actions/mingcute-live-fill.svg"
+# plasma/DESIGN.md: accent and text
+ON, OFF = "#e9a23b", "#dde3df"
+SECONDS = 60  # capture's replay_seconds
+
+
+def user_dir(kind):
+    out = subprocess.run(["xdg-user-dir", kind], capture_output=True, text=True).stdout.strip()
+    return Path(out or Path.home() / kind.title())
+
+
+VIDEOS = user_dir("VIDEOS")
+WATCHED = [VIDEOS / "Replays", VIDEOS / "Screencasts"]
+CUT = re.compile(r"^(?P<stem>.+)-cut(?P<ext>\.[^.]+)$")
+
+
+def tinted(color):
+    icon = QIcon()
+    try:
+        svg = ICON.read_text().replace("currentColor", color).replace("#fcfcfc", color)
+    except OSError:
+        return QIcon.fromTheme("media-record")
+    for px in (16, 22, 24, 32, 48, 64):
+        pm = QPixmap(QSize(px, px))
+        pm.fill(Qt.GlobalColor.transparent)
+        p = QPainter(pm)
+        QSvgRenderer(QByteArray(svg.encode())).render(p)
+        p.end()
+        icon.addPixmap(pm)
+    return icon
+
+
+def recording():
+    try:
+        os.kill(int((STATE / "replay.pid").read_text()), 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def service_on():
+    return subprocess.run(["systemctl", "--user", "is-active", "-q", "capture-replay.service"]).returncode == 0
+
+
+def open_by_anyone(path):
+    """True while any process (LosslessCut's ffmpeg) still has the file open."""
+    target = str(path)
+    for fd_dir in Path("/proc").glob("[0-9]*/fd"):
+        try:
+            if any(os.readlink(fd) == target for fd in fd_dir.iterdir()):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+class Tray:
+    def __init__(self):
+        self.icons = {True: tinted(ON), False: tinted(OFF)}
+        self.tray = QSystemTrayIcon()
+        menu = QMenu()
+        self.save_action = menu.addAction(f"Save last {SECONDS} s", lambda: self.capture("save"))
+        self.toggle_action = menu.addAction("Replay buffer on", lambda: self.capture("toggle"))
+        self.toggle_action.setCheckable(True)
+        menu.addAction("Open replay folder", lambda: self.capture("folder"))
+        self.tray.setContextMenu(menu)
+        self.tray.activated.connect(
+            lambda reason: reason == QSystemTrayIcon.ActivationReason.Trigger and self.capture("folder"))
+        self.menu = menu
+        self.shown = None
+        self.update()
+        self.tray.show()
+        self.timer = QTimer(interval=2000, timeout=self.update)
+        self.timer.start()
+
+        # LosslessCut cuts: X-cut.ext -> size seen last check, renamed once it stops changing
+        self.cuts = {}
+        self.watcher = QFileSystemWatcher()
+        self.watcher.directoryChanged.connect(self.scan)
+        self.scan()
+        self.cut_timer = QTimer(interval=1500, timeout=self.settle)
+
+    def capture(self, what):
+        subprocess.Popen([CAPTURE, "replay", what], start_new_session=True)
+        QTimer.singleShot(800, self.update)
+
+    def update(self):
+        rec, on = recording(), service_on()
+        if (rec, on) == self.shown:
+            return
+        self.shown = rec, on
+        self.tray.setIcon(self.icons[rec])
+        self.save_action.setEnabled(rec)
+        self.toggle_action.setChecked(on)
+        if rec:
+            tip = f"Instant replay: recording, Alt+F10 saves the last {SECONDS} s"
+        elif on:
+            tip = "Instant replay: off, starts when a game opens"
+        else:
+            tip = "Instant replay: off until next login or Alt+Shift+F10"
+        self.tray.setToolTip(tip)
+
+    def scan(self, _=None):
+        dirs = [d for root in WATCHED if root.is_dir() for d in [root, *root.iterdir()] if d.is_dir()]
+        missing = [str(d) for d in dirs if str(d) not in self.watcher.directories()]
+        if missing:
+            self.watcher.addPaths(missing)
+        for d in dirs:
+            for f in d.glob("*-cut.*"):
+                if CUT.match(f.name) and f not in self.cuts:
+                    self.cuts[f] = None
+        if self.cuts and not self.cut_timer.isActive():
+            self.cut_timer.start()
+
+    def settle(self):
+        for cut, last in list(self.cuts.items()):
+            m = CUT.match(cut.name)
+            try:
+                st = cut.stat()
+            except OSError:
+                del self.cuts[cut]
+                continue
+            now = (st.st_size, st.st_mtime_ns)
+            self.cuts[cut] = now
+            # Unchanged for a check and closed: ffmpeg and LosslessCut are done with it
+            if now != last or open_by_anyone(cut):
+                continue
+            del self.cuts[cut]
+            stem = m["stem"]
+            originals = [p for p in cut.parent.iterdir() if p.stem == stem and p.is_file()]
+            if len(originals) != 1:
+                continue  # none to replace, or several (X.mp4 and X.mkv): leave both
+            original = originals[0]
+            target = original.with_suffix(m["ext"])
+            if subprocess.run(["gio", "trash", str(original)]).returncode != 0:
+                continue
+            cut.rename(target)
+            print(f"replaced {original.name} with its cut", flush=True)
+        if not self.cuts:
+            self.cut_timer.stop()
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName("Instant replay")
+    app.setQuitOnLastWindowClosed(False)
+    _tray = Tray()
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

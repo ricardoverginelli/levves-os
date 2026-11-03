@@ -1,0 +1,14 @@
+# Instant replay tray icon, and LosslessCut cuts replacing their file (see
+# README.md). Linked into ~/.config/systemd/user/ by install.sh.
+[Unit]
+Description=Capture instant replay tray icon
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/repos/scripts/linux/capture/replay-tray
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

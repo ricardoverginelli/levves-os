@@ -47,8 +47,8 @@ if [ "${1:-}" = --uninstall ]; then
             --method org.kde.KGlobalAccel.unregister "capture-$id.desktop" _launch >/dev/null || true
         rm -f "$apps/capture-$id.desktop"
     done <<< "$hotkeys"
-    systemctl --user disable --now capture-replay.service 2>/dev/null || true
-    rm -f "$bin" "$tmpfiles/capture.conf" "$units/capture-replay.service"
+    systemctl --user disable --now capture-replay.service capture-tray.service 2>/dev/null || true
+    rm -f "$bin" "$tmpfiles/capture.conf" "$units/capture-replay.service" "$units/capture-tray.service"
     systemctl --user daemon-reload
     # Spectacle's defaults back: Print launches it, Shift+Print captures the desktop
     shortcut $spectacle _launch Spectacle "Launch Spectacle" "[([$((0x12000053)), 0, 0, 0],), ([$((0x01000009)), 0, 0, 0],)]"
@@ -57,12 +57,12 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info; do
+for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info gio; do
     command -v $cmd >/dev/null || { echo "Missing: $cmd" >&2; exit 1; }
 done
-python3 -c "import PyQt6.QtQml" 2>/dev/null || { echo "Missing package: sudo dnf install python3-pyqt6"; exit 1; }
+python3 -c "import PyQt6.QtQml, PyQt6.QtSvg" 2>/dev/null || { echo "Missing package: sudo dnf install python3-pyqt6"; exit 1; }
 
-chmod +x capture
+chmod +x capture replay-tray
 mkdir -p "$(dirname "$bin")" "$apps" "$tmpfiles" "$units"
 ln -sfn "$PWD/capture" "$bin"
 # Daily cleanup of old captures (see tmpfiles.conf)
@@ -105,4 +105,28 @@ ln -sfn "$PWD/capture-replay.service" "$units/capture-replay.service"
 systemctl --user daemon-reload
 systemctl --user enable capture-replay.service
 systemctl --user restart capture-replay.service
+
+# Tray icon (amber while the buffer records), which also swaps LosslessCut cuts in
+ln -sfn "$PWD/capture-tray.service" "$units/capture-tray.service"
+systemctl --user daemon-reload
+systemctl --user enable capture-tray.service
+systemctl --user restart capture-tray.service
+
+# LosslessCut (Flatpak): no .llc project files; a cut exports as X-cut.mp4 and
+# closes the file, then replay-tray trashes X.mp4 and renames the cut to it.
+# Its own "trash source" would rm the original for good (the Flatpak's trash is rm)
+llc=$HOME/.var/app/no.mifi.losslesscut/config/LosslessCut/config.json
+if [ -f "$llc" ]; then
+    if flatpak ps --columns=application 2>/dev/null | grep -qx no.mifi.losslesscut; then
+        echo "LosslessCut is open (it rewrites its settings on exit): close it and re-run" >&2
+    else
+        echo "LosslessCut: cuts replace the original"
+        # shellcheck disable=SC2016
+        jq '.autoSaveProjectFile = false | .enableOverwriteOutput = true
+            | .outSegTemplate = "${FILENAME}-cut${SEG_SUFFIX}${EXT}"
+            | .cleanupChoices += {cleanupAfterExport: true, askForCleanup: false, closeFile: true,
+                trashTmpFiles: true, trashProjectFile: true, trashSourceFile: false}' \
+            "$llc" > "$llc.new" && mv "$llc.new" "$llc"
+    fi
+fi
 echo "Done"

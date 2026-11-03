@@ -14,12 +14,16 @@ hotkeys from `windows/sharex/ShareX-*.sxb`, plus a ShadowPlay-style instant repl
 | `Ctrl+Alt+Print` | GIF of last region → copy file |
 | `Shift+Ctrl+Alt+Print` | MP4 of region → copy file |
 | `Shift+Ctrl+Alt+U` | Upload clipboard image → copy link |
-| `Alt+F10` | Save the last 60 s (instant replay) |
+| `Alt+F10` | Save the last 60 s (instant replay, while a game runs) |
 | `Alt+Shift+F10` | Instant replay buffer off / on |
 | `Ctrl+Alt+F10` | Open the replay folder |
 
 Recordings stop when any GIF/MP4 hotkey is pressed again. `Esc` cancels a
 region selection.
+
+A tray icon shows the instant replay buffer: amber while it records, white when
+it's off. Clicking it opens the replay folder; its menu saves a replay and turns
+the buffer off / on.
 
 ## Install
 
@@ -37,8 +41,9 @@ Without it, recordings and the replay buffer on those monitors fail with
 
 `install.sh` links `capture` into `~/.local/bin`, adds one hidden launcher per
 hotkey (`~/.local/share/applications/capture-*.desktop`), binds them through
-kglobalaccel, enables `capture-replay.service` (systemd user unit, linked
-into `~/.config/systemd/user/`), and takes `Print`/`Shift+Print` away from Spectacle (its `Meta`
+kglobalaccel, enables `capture-replay.service` and `capture-tray.service`
+(systemd user units, linked into `~/.config/systemd/user/`), sets up
+LosslessCut (below; close it first) and takes `Print`/`Shift+Print` away from Spectacle (its `Meta`
 shortcuts stay).
 
 ## How it works
@@ -56,7 +61,11 @@ shortcuts stay).
   card stops the encoder from starting, and you get a "GPU memory is full"
   notification.
 - **Instant replay:** `capture-replay.service` starts with the Plasma session
-  and keeps the last 60 s of the main monitor in RAM (about 375 MB): H.264 CBR
+  and, only while a game runs, keeps the last 60 s of the main monitor in RAM
+  (about 375 MB). A game is anything Steam launched (native, Proton or a
+  non-Steam shortcut: its `reaper SteamLaunch AppId=` process); the buffer
+  starts within 5 s and stays on for 60 s after the game closes, so its end
+  can still be saved. The rest of the time nothing records. H.264 CBR
   50 Mbps, 60 fps, a keyframe every second (lossless trims in LosslessCut land
   within 1 s), desktop audio and mic mixed into one AAC track, cursor
   included. The main monitor is the largest connected one, so it survives
@@ -67,6 +76,17 @@ shortcuts stay).
   the buffer until the next login, to free VRAM for a game. Failures notify
   once; the log is `~/.local/state/capture/replay.log`. `Ctrl+Alt+F10` is a VT
   switch in xkb, so keyd turns it into `Ctrl+Alt+F19` (`keyd/gmk104.conf`).
+- **Tray:** `replay-tray` (PyQt6, `capture-tray.service`) checks every 2 s
+  whether the buffer's recorder is running (`replay.pid`) and tints
+  `mingcute-live-fill` with the `DESIGN.md` accent or text color.
+- **LosslessCut cuts replace the file:** LosslessCut refuses to write over the
+  file it has open, so `install.sh` sets it to save no `.llc` project files,
+  export a cut as `X-cut.mp4` and close the file afterwards. `replay-tray`
+  watches `~/Videos/Replays` and `~/Videos/Screencasts`; once `X-cut.mp4` stops
+  changing and nothing has it open, `X.mp4` goes to the Trash and the cut takes
+  its name. Several segments (`X-cut-seg1.mp4`...) are left as they are, original
+  kept. LosslessCut's own "trash source file" is left off: in the Flatpak its
+  trash is `rm`, so the original would be gone for good.
 - **Upload:** anonymous [catbox.moe](https://catbox.moe), with raw-file links
   like `files.catbox.moe/abc123.png`. Each upload is logged in
   `~/.local/state/capture/history.tsv`.
