@@ -324,7 +324,7 @@ def default_profile(rc, fallback):
         changed = kwrite(rc, "Desktop Entry", "DefaultProfile", name)
     profile = KONSOLE / name
     if not profile.exists():
-        write(profile, f"[General]\nName={fallback}\nParent=FALLBACK/\n")
+        changes.write(profile, f"[General]\nName={fallback}\nParent=FALLBACK/\n")
     return profile, changed
 
 
