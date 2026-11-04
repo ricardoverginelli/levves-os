@@ -5,11 +5,12 @@
 # Undo: bash install.sh --uninstall
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
+. ../lib/install.sh
 
 helper=/usr/local/sbin/efi-bootnext-windows
 rule=/etc/sudoers.d/reboot-to-windows
-bin=$HOME/.local/bin/reboot-to-windows
-app=${XDG_DATA_HOME:-$HOME/.local/share}/applications/reboot-to-windows.desktop
+bin=$local_bin/reboot-to-windows
+app=$apps/reboot-to-windows.desktop
 
 if [ "${1:-}" = --uninstall ]; then
     sudo rm -f "$helper" "$rule"
@@ -30,7 +31,6 @@ visudo -cqf "$tmp"
 sudo install -o root -g root -m 440 "$tmp" "$rule"
 rm -f "$tmp"
 
-mkdir -p "$(dirname "$bin")" "$(dirname "$app")"
-ln -sfn "$PWD/reboot-to-windows" "$bin"
-ln -sfn "$PWD/reboot-to-windows.desktop" "$app"
+link reboot-to-windows "$bin"
+link reboot-to-windows.desktop "$app"
 echo "Done. 'Reboot to Windows' is in the app menu (and KRunner); 'reboot-to-windows' in a terminal."
