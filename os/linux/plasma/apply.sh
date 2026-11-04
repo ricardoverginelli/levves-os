@@ -272,6 +272,22 @@ done
 kwriteconfig6 --file kwinrc --group TabBox --key LayoutName leaves-switcher
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
+# Window decoration (kwin-decoration/levves): Levves windows, with the minimize, maximize and close
+# keys on the right and nothing on the left (the title bar's light stands there)
+decoration="$HOME/.local/share/kwin/decorations/kwin4_decoration_qml_levves"
+if ! diff -rq kwin-decoration/levves "$decoration" >/dev/null 2>&1; then
+    echo "Installing the Levves window decoration"
+    rm -rf "$decoration"
+    mkdir -p "$decoration"
+    cp -r kwin-decoration/levves/. "$decoration"
+fi
+deco="--file kwinrc --group org.kde.kdecoration2"
+kwriteconfig6 $deco --key library org.kde.kwin.aurorae
+kwriteconfig6 $deco --key theme kwin4_decoration_qml_levves
+kwriteconfig6 $deco --key ButtonsOnLeft ""
+kwriteconfig6 $deco --key ButtonsOnRight IAX
+qdbus-qt6 org.kde.KWin /KWin reconfigure
+
 # Yakuake's KWin effect and script (left-side slide, fullscreen avoidance)
 bash ../kwin/install.sh
 

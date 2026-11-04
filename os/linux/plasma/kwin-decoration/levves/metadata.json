@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "KWin/Decoration",
+    "KPlugin": {
+        "Description": "Levves windows (design/DESIGN.md): the light, a serif title and small keys",
+        "Id": "kwin4_decoration_qml_levves",
+        "License": "GPL",
+        "Name": "Levves"
+    }
+}
