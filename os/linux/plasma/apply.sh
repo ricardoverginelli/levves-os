@@ -164,10 +164,16 @@ if [ "$(cat "$stamp" 2>/dev/null)" != "$login_hash" ]; then
 fi
 
 # File search (launcher, KRunner): Fedora only indexes Documents, Pictures,
-# Videos and Music by default
-for folder in Downloads Desktop; do
+# Videos and Music by default. Baloo already skips .git, node_modules and hidden
+# folders; build and dist keep generated files out of the results
+for folder in Downloads Desktop repos; do
     balooctl6 config add includeFolders "$HOME/$folder" >/dev/null 2>&1 || true
 done
+for filter in build dist; do
+    balooctl6 config add excludeFilters "$filter" >/dev/null 2>&1 || true
+done
+# The running indexer only notices new folders when restarted
+systemctl --user try-restart kde-baloo.service
 
 for script in panels/*.js; do
     echo "Applying $script"
