@@ -26,8 +26,8 @@ Window {
     LayerShell.Window.exclusionZone: -1
     LayerShell.Window.screenConfiguration: LayerShell.Window.ScreenFromCompositor
 
-    readonly property color surface: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, 0.96)
-    readonly property color border: Theme.border
+    readonly property color surface: Theme.surface
+    readonly property color border: Theme.edge
     readonly property color textMuted: Theme.textMuted
     readonly property color text: Theme.text
 
@@ -159,7 +159,7 @@ Window {
         rows: menu.formats
         // Beside the Convert row, its first row level with it (minus the card's padding)
         x: flip ? main.x - width - 4 : main.x + main.width + 4
-        y: Math.max(8, Math.min(main.y + 36, win.height - height - 8))
+        y: Math.max(8, Math.min(main.y + 32, win.height - height - 8))
         transformOrigin: flip ? Item.TopRight : Item.TopLeft
         onRowHovered: i => {
             if (i < 0)
@@ -187,10 +187,17 @@ Window {
         visible: opacity > 0
         width: 220
         height: column.implicitHeight + 8
-        radius: 8
+        // A Levves window: opaque `surface`, the black edge, the engraved light inside it
+        radius: Theme.radiusContainer
         color: win.surface
         border.color: win.border
         border.width: 1
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            color: "transparent"
+            border.color: Qt.rgba(1, 1, 1, Theme.opacityEdgeLight)
+        }
         transformOrigin: Item.TopLeft
 
         // Not a Plasma window, so it opens itself: 0.96 scale plus a fade (popup timing)
@@ -234,14 +241,13 @@ Window {
                     required property int index
                     readonly property bool open: !!modelData.more && win.subOpen
                     width: column.width
-                    height: 36
+                    height: Theme.sizeRow
 
-                    Rectangle {
+                    Rectangle {  // square rows, as in a Levves list
                         anchors.fill: parent
-                        radius: 4
-                        color: card.current === row.index ? Qt.rgba(0xe9 / 255, 0xa2 / 255, 0x3b / 255, 0.18)
-                             : area.containsMouse || row.open ? Qt.rgba(1, 1, 1, 0.06) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        color: card.current === row.index ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.opacitySelection)
+                             : area.containsMouse || row.open ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover) : "transparent"
+                        Behavior on color { ColorAnimation { duration: Theme.durationHover } }
                     }
                     Kirigami.Icon {
                         id: icon
@@ -258,8 +264,8 @@ Window {
                         anchors.leftMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         text: row.modelData.label
-                        font.family: "Noto Sans"
-                        font.pointSize: 10
+                        font.family: Theme.typeFamilySans
+                        font.pixelSize: Theme.typeSizeBody
                         color: win.text
                     }
                     Text {
@@ -268,8 +274,8 @@ Window {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: !row.modelData.more
                         text: row.modelData.hint
-                        font.family: "Noto Sans"
-                        font.pointSize: 9
+                        font.family: Theme.typeFamilySans
+                        font.pixelSize: Theme.typeSizeSmall
                         color: win.textMuted
                     }
                     Kirigami.Icon {
