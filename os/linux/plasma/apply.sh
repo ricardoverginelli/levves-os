@@ -93,6 +93,13 @@ done
 # Icons (DESIGN.md): MingCute and our own drawings, installed by name
 # (mingcute-<name>, leaves-<name>) so any widget can use them
 [ "$(python3 -I icons/install.py)" = changed ] && restart=true
+# The icon theme: Breeze Dark with neutral folders (Breeze paints them in the accent)
+[ "$(python3 -I icons/folders.py)" = changed ] && restart=true
+if [ "$(kreadconfig6 --group Icons --key Theme)" != Levves ]; then
+    echo "Setting the Levves icon theme"
+    /usr/libexec/plasma-changeicons Levves >/dev/null 2>&1
+    restart=true
+fi
 
 # Shared QML helpers for the widgets (e.g. the message bus), then the Leaves
 # tray, which needs them; top-bar.js below picks the tray up
