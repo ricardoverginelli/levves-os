@@ -147,7 +147,7 @@ config=${XDG_CONFIG_HOME:-$HOME/.config}
 stamp="$HOME/.local/state/leaves/login-screen"
 login_hash=$({
     cat "$wallpaper" login-screen/install.sh
-    find "$style" -type f -exec cat {} +
+    find "$style" "$HOME/.local/share/icons/Levves" -type f -exec cat {} +
     for file in kdeglobals plasmarc plasma-localerc kcminputrc kxkbrc \
                 kwinoutputconfig.json fontconfig/fonts.conf; do
         cat "$config/$file" 2>/dev/null || true
@@ -155,7 +155,7 @@ login_hash=$({
 } | sha1sum)
 if [ "$(cat "$stamp" 2>/dev/null)" != "$login_hash" ]; then
     echo "Updating the login screen (asks for your password)"
-    if pkexec sh "$PWD/login-screen/install.sh" "$wallpaper" "$config" "$style"; then
+    if pkexec sh "$PWD/login-screen/install.sh" "$wallpaper" "$config" "$style" "$HOME/.local/share/icons/Levves"; then
         mkdir -p "$(dirname "$stamp")"
         echo "$login_hash" > "$stamp"
     else
