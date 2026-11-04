@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Tray icon for the instant replay buffer (see README.md): amber while it
-records, white when it's off. Run by capture-tray.service.
+records, white while it waits for a game, faint when it's turned off. Run by capture-tray.service.
 
 It also makes LosslessCut cuts replace their file: LosslessCut can't write over
 the file it has open, so it exports X-cut.mp4 (template set by install.sh), and
@@ -22,7 +22,7 @@ from levves_tokens import color  # noqa: E402
 
 CAPTURE = Path(__file__).resolve().parent / "capture"
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "capture"
-ON, OFF = color("accent"), color("text")
+RECORDING, WAITING, OFF = color("accent"), color("text"), color("text-faint")
 SECONDS = 60  # capture's replay_seconds
 
 
@@ -69,7 +69,7 @@ def open_by_anyone(path):
 
 class Tray:
     def __init__(self):
-        self.icons = {True: tinted(ON), False: tinted(OFF)}
+        self.icons = {"recording": tinted(RECORDING), "waiting": tinted(WAITING), "off": tinted(OFF)}
         self.tray = QSystemTrayIcon()
         menu = QMenu()
         self.save_action = menu.addAction(f"Save last {SECONDS} s", lambda: self.capture("save"))
@@ -102,13 +102,13 @@ class Tray:
         if (rec, on) == self.shown:
             return
         self.shown = rec, on
-        self.tray.setIcon(self.icons[rec])
+        self.tray.setIcon(self.icons["recording" if rec else "waiting" if on else "off"])
         self.save_action.setEnabled(rec)
         self.toggle_action.setChecked(on)
         if rec:
             tip = f"Instant replay: recording, Alt+F10 saves the last {SECONDS} s"
         elif on:
-            tip = "Instant replay: off, starts when a game opens"
+            tip = "Instant replay: on, starts recording when a game opens"
         else:
             tip = "Instant replay: off until next login or Alt+Shift+F10"
         self.tray.setToolTip(tip)

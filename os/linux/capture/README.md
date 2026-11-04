@@ -21,9 +21,9 @@ hotkeys from `os/windows/sharex/ShareX-*.sxb`, plus a ShadowPlay-style instant r
 Recordings stop when any GIF/MP4 hotkey is pressed again. `Esc` cancels a
 region selection.
 
-A tray icon shows the instant replay buffer: amber while it records, white when
-it's off. Clicking it opens the replay folder; its menu saves a replay and turns
-the buffer off / on.
+A tray icon shows the instant replay buffer: amber while it records, white while
+it's on and waiting for a game, faint when it's turned off. Clicking it opens
+the replay folder; its menu saves a replay and turns the buffer off / on.
 
 ## Install
 
@@ -77,8 +77,9 @@ shortcuts stay).
   once; the log is `~/.local/state/capture/replay.log`. `Ctrl+Alt+F10` is a VT
   switch in xkb, so keyd turns it into `Ctrl+Alt+F19` (`keyd/gmk104.conf`).
 - **Tray:** `replay-tray` (PySide6, `capture-tray.service`) checks every 2 s
-  whether the buffer's recorder is running (`replay.pid`) and tints
-  `mingcute-live-fill` with the `DESIGN.md` accent or text color.
+  whether the buffer's recorder is running (`replay.pid`) and the service is
+  active, and tints `mingcute-live-fill` with the `DESIGN.md` `accent`, `text`
+  or `text-faint` color.
 - **LosslessCut cuts replace the file:** LosslessCut refuses to write over the
   file it has open, so `install.sh` sets it to save no `.llc` project files,
   export a cut as `X-cut.mp4` and close the file afterwards. `replay-tray`
