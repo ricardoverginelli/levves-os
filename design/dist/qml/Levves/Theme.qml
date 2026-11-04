@@ -86,6 +86,7 @@ QtObject {
     readonly property real typeSizeBody: 14
     readonly property real typeSizeBodyTouch: 16
     readonly property real typeSizeNumber: 15
+    readonly property real typeSizeBar: 13
     readonly property real typeSizeTitle: 15
     readonly property real typeSizeHeading: 20
     readonly property real typeSizeReadout: 24

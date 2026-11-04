@@ -98,6 +98,7 @@ TOKENS = {
     "type.size.body": "14px",
     "type.size.body-touch": "16px",
     "type.size.number": "15px",
+    "type.size.bar": "13px",
     "type.size.title": "15px",
     "type.size.heading": "20px",
     "type.size.readout": "24px",

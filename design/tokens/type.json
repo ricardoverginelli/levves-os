@@ -19,6 +19,7 @@
       "body": { "$value": "14px", "$description": "Desktop body text and rows" },
       "body-touch": { "$value": "16px", "$description": "Phone body text and fields (iOS zooms into fields under 16px)" },
       "number": { "$value": "15px", "$description": "Serif numbers inline with body text" },
+      "bar": { "$value": "13px", "$description": "Serif readings next to caps labels in the top bar (perf meter)" },
       "title": { "$value": "15px", "$description": "Window titles" },
       "heading": { "$value": "20px", "$description": "A screen's heading on the phone" },
       "readout": { "$value": "24px", "$description": "A number in a readout well" },

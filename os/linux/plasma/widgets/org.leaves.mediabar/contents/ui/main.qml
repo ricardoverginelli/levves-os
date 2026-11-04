@@ -175,16 +175,19 @@ PlasmoidItem {
             RowLayout {
                 spacing: root.innerGap
                 ControlButton {
+                    flat: true  // icons only in the bar; the popup's are full keys
                     glyph: "mingcute-skip-previous-fill"
                     enabled: root.player && root.player.canGoPrevious
                     onTriggered: root.player.Previous()
                 }
                 ControlButton {
+                    flat: true  // icons only in the bar; the popup's are full keys
                     glyph: root.playing ? "mingcute-pause-fill" : "mingcute-play-fill"
                     enabled: root.player && (root.playing ? root.player.canPause : root.player.canPlay)
                     onTriggered: root.player.PlayPause()
                 }
                 ControlButton {
+                    flat: true  // icons only in the bar; the popup's are full keys
                     glyph: "mingcute-skip-forward-fill"
                     enabled: root.player && root.player.canGoNext
                     onTriggered: root.player.Next()

@@ -89,6 +89,7 @@ object Levves {
     val typeSizeBody = 14.dp
     val typeSizeBodyTouch = 16.dp
     val typeSizeNumber = 15.dp
+    val typeSizeBar = 13.dp
     val typeSizeTitle = 15.dp
     val typeSizeHeading = 20.dp
     val typeSizeReadout = 24.dp

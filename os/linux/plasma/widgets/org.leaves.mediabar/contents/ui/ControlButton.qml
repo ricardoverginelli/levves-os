@@ -1,4 +1,5 @@
-// A MingCute glyph on a key (design/DESIGN.md Pieces): the bar's and the popup's player controls
+// A MingCute glyph on a key (design/DESIGN.md Pieces): the popup's player controls, and flat
+// (an icon with a hover tint) in the bar
 import QtQuick
 import org.kde.kirigami as Kirigami
 import Levves

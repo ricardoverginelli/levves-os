@@ -63,7 +63,8 @@ PlasmoidItem {
         property string suffix
         property string widest
         visible: !isNaN(value)
-        font.pixelSize: Theme.typeSizeBody  // the bar's readings, a step under inline numbers
+        font.pixelSize: Theme.typeSizeBar
+        Layout.alignment: Qt.AlignBaseline
         text: Math.round(value) + suffix
         color: root.levelColor(value)
         // Reserve room for a two-digit value so the bar doesn't shift as
@@ -82,7 +83,7 @@ PlasmoidItem {
         Sensors.Sensor { id: usage; sensorId: usageId; updateRateLimit: 2000 }
         Sensors.Sensor { id: temp; sensorId: tempId; updateRateLimit: 2000 }
 
-        Caps { text: label }
+        Caps { text: label; Layout.alignment: Qt.AlignBaseline }
         Reading { value: usage.value ?? NaN; widest: "00" }
         Reading { value: tempId ? (temp.value ?? NaN) : NaN; suffix: "°"; widest: "00°" }
     }
@@ -117,12 +118,13 @@ PlasmoidItem {
         Sensors.Sensor { id: down; sensorId: "network/all/download"; updateRateLimit: 2000 }
         Sensors.Sensor { id: up; sensorId: "network/all/upload"; updateRateLimit: 2000 }
 
-        Caps { text: "Net" }
+        Caps { text: "Net"; Layout.alignment: Qt.AlignBaseline }
         Num {
             id: rate
             readonly property string muted: Theme.textMuted
             visible: !isNaN(down.value ?? NaN)
-            font.pixelSize: Theme.typeSizeBody
+            font.pixelSize: Theme.typeSizeBar
+            Layout.alignment: Qt.AlignBaseline
             textFormat: Text.StyledText
             text: `<font color="${muted}">↓</font>${root.formatRate(down.value)} <font color="${muted}">↑</font>${root.formatRate(up.value ?? 0)}`
             // Room for a typical reading so the bar doesn't shift; only 100-999K widens it a little
