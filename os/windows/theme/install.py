@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Leaves Theme Setup Script
-Applies the Leaves look (os/linux/plasma/DESIGN.md) to Windows: dark mode with glass,
+Applies the Levves look (design/DESIGN.md) to Windows: dark mode, opaque (no transparency),
 the amber accent, the leaves wallpaper on desktop and lock screen, a minimal taskbar,
 and the Leaves terminal colors with JetBrains Mono in console windows.
 Run with: python os/windows/theme/install.py
@@ -123,12 +123,12 @@ def load_palette():
     return palette
 
 def apply_dark_mode():
-    print_header("Dark Mode and Glass")
+    print_header("Dark Mode, Opaque")
     set_dword(PERSONALIZE_KEY, "AppsUseLightTheme", 0)
     set_dword(PERSONALIZE_KEY, "SystemUsesLightTheme", 0)
-    # Glass is the Leaves default for anything floating (DESIGN.md, Translucency)
-    set_dword(PERSONALIZE_KEY, "EnableTransparency", 1)
-    print("  ✓ Dark apps and system, transparency on.")
+    # Levves surfaces are opaque: no glass (design/DESIGN.md, Mood)
+    set_dword(PERSONALIZE_KEY, "EnableTransparency", 0)
+    print("  ✓ Dark apps and system, transparency off.")
 
 def apply_accent(palette):
     print_header("Amber Accent")

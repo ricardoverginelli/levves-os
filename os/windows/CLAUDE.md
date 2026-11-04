@@ -81,7 +81,7 @@ python os/windows/debloat/install.py
 - Windows take on the Plasma "Leaves" theme: reads colors from `design/dist/palette.json` and
   the wallpaper from `os/linux/plasma/wallpaper/leaves.png`, so the design tokens (`design/tokens/`)
   stay the single source of truth; change a token, rebuild, then re-run
-- Dark apps and system, transparency on (DESIGN.md's glass); the amber accent drives Windows'
+- Dark apps and system, transparency off (Levves is opaque); the amber accent drives Windows'
   accent palette but stays off title bars, borders, taskbar and Start (one accented thing per view)
 - Wallpaper (Fill) on the desktop and, via the WinRT LockScreen API, the lock and sign-in screen;
   Spotlight rotation and lock screen tips off. The file is copied to `%LOCALAPPDATA%\Leaves\`

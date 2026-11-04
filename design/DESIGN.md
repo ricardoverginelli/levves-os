@@ -96,8 +96,9 @@ the top bar's window strip).
 - **Slot**: a 40px sunken square holding a count in serif ("2/4"), dithered when empty.
 - **Status bar and menu bar**: a dithered strip with caps labels; the menu bar sits on `surface`.
 - **Terminal and code editor**: JetBrains Mono on `bg`, inside a window's chrome (tabs as flat
-  keys or folder tabs, a strip under them). ANSI colors are `color.terminal` plus the status colors;
-  the amber is the cursor. Built by `os/linux/plasma/yakuake/build.py` (Konsole, Yakuake) and
+  keys or folder tabs, a strip under them). ANSI colors are `color.terminal` plus the status colors
+  (red `critical`, green `success`, yellow `warning`, blue `info`, white `text`); bright variants
+  are the color 25% toward white, faint ones 35% toward `bg`. The amber is the cursor. Built by `os/linux/plasma/yakuake/build.py` (Konsole, Yakuake) and
   `os/linux/plasma/vscode/build.py`.
 - **Dither**: a 1px checkerboard of `dither-a` and `dither-b` (`desktop-dither` on the desktop),
   tiled at `size.dither`. Used on group headers, list headers, status bars, disabled keys, empty
