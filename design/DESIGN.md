@@ -181,10 +181,8 @@ style's dialog background, and fill them with group boxes and wells.
   through a notification replaced by its result (`notify-send -p` / `-r`).
 
 ## What's still on the old look
-The suite's components still read some of its older token names, mapped onto Levves in
-`packages/design-tokens/tokens.css`. Plasma's reskin goes in phases (`os/linux/plasma/TODO.md`): the
-style and its controls, the top bar, the popups, the window decoration, the fonts and the apps'
-color scheme, Yakuake/Konsole and VS Code are on Levves. The apps' widgets are still drawn by
-Breeze (in Levves colors, so selections, checkboxes and slider fills are solid amber). Our own
-desktop apps (s25-control's window, p45-studio, the replay tray, the context menus) still use the
-older Leaves look in places; they move over in the Plasma TODO's phase 7.
+- The suite's `packages/design-tokens/tokens.css` keeps a few names that are compositions with no
+  Levves token of their own (alert tints, bevel lines, the overlay); everything else reads `--lv-*`.
+- Desktop apps' widgets are still drawn by Breeze, in Levves colors, so selections, checkboxes and
+  slider fills are solid amber. A Kvantum theme drawn from D's pieces would fix that (to decide;
+  `os/linux/plasma/TODO.md`).
