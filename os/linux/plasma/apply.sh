@@ -109,15 +109,15 @@ echo "Building the Leaves tray"
 echo "Building the Leaves notifications"
 [ "$(python3 -I notifications/build.py)" = changed ] && restart=true
 
-# Yakuake (and its Konsole profile): Leaves color scheme, font and skin.
+# Yakuake and Konsole: the Levves color scheme, font and skin (yakuake/build.py).
 # Yakuake only reloads them on restart, which would end its sessions, so just say so
 if [ "$(python3 -I yakuake/build.py)" = changed ]; then
     echo "Yakuake theme updated; restart Yakuake to see it"
 fi
 
-# VS Code: Leaves color theme, installed as a local extension
+# VS Code: Levves color theme, installed as a local extension
 if command -v code >/dev/null && [ "$(python3 -I vscode/build.py)" = changed ]; then
-    echo "VS Code theme updated; pick Leaves (or Developer: Reload Window) to see it"
+    echo "VS Code theme updated; pick Levves (or Developer: Reload Window) to see it"
 fi
 
 # Wallpaper: desktop and lock screen use a copy in our data folder

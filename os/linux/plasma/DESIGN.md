@@ -53,7 +53,7 @@ for the accent there: the sunk screen's visualizer curve and the progress meter'
 | `info` | `#82a9c4` | Neutral information |
 
 ### Terminal (ANSI)
-Built into the Konsole scheme `Leaves` by `yakuake/build.py`. The semantic colors double as
+Built into the Konsole scheme `Levves` by `yakuake/build.py`. The semantic colors double as
 ANSI: red `critical`, green `success`, yellow `warning`, blue `info`, white `text`. The rest:
 | Role | Hex |
 |---|---|

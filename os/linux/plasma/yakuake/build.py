@@ -1,34 +1,51 @@
 #!/usr/bin/env python3
-"""Theme Yakuake as "Leaves" from design/dist/palette.json.
+"""Theme Yakuake and Konsole as "Levves" from design/dist (design/DESIGN.md).
 
-- Konsole color scheme ~/.local/share/konsole/Leaves.colorscheme (glass: bg at
-  glass-opacity with KWin blur), used by Yakuake's default profile along with
-  JetBrains Mono and an amber cursor.
-- Yakuake skin ~/.local/share/yakuake/skins/leaves: tab bar and title bar drawn
-  as SVGs in the palette, MingCute icons for the buttons.
+- Konsole color scheme ~/.local/share/konsole/Levves.colorscheme: opaque, the
+  terminal on `bg`, ANSI colors from the palette. Yakuake's default profile and
+  Konsole's own (Levves.profile) use it, with JetBrains Mono and an amber cursor.
+- Yakuake skin ~/.local/share/yakuake/skins/levves: the tab bar a dithered
+  strip with tabs as flat keys (the current one held down), the title bar along
+  the bottom like D's (the light, then the title), and the decoration's small
+  keys for the buttons. Drawn in whole pixels, so it stays crisp.
 
 Prints "changed" when anything was rewritten; Yakuake only picks the skin and
 profile up when it restarts.
 """
 import configparser
+import importlib.util
 import json
-import re
 import shutil
 import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ICONS = HERE.parent / "icons"
+DIST = HERE.parents[3] / "design/dist"
 CONFIG = Path.home() / ".config"
-SCHEME = Path.home() / ".local/share/konsole/Leaves.colorscheme"
-SKIN = Path.home() / ".local/share/yakuake/skins/leaves"
+KONSOLE = Path.home() / ".local/share/konsole"
+SCHEME = KONSOLE / "Levves.colorscheme"
+SKIN = Path.home() / ".local/share/yakuake/skins/levves"
+OLD = [KONSOLE / "Leaves.colorscheme", SKIN.parent / "leaves"]  # the glass look's names
 
-palette = json.loads((HERE.parents[3] / "design/dist/palette.json").read_text())
-glass = palette["glass-opacity"]
+palette = json.loads((DIST / "palette.json").read_text())
+_spec = importlib.util.spec_from_file_location("levves_tokens", DIST / "levves_tokens.py")
+_tokens = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_tokens)
+TOKENS = _tokens.TOKENS
 
-BAR = 28      # tab bar and title bar height (DESIGN.md: top bar is 28px too)
-BUTTON = 28   # square buttons; 16px icon centered
-PAD = 8       # space either side of a tab's title
+
+def px(name):
+    return int(TOKENS[name].removesuffix("px"))
+
+
+TAB_BAR = px("size.key")         # the dithered strip with the tabs
+TITLE = px("size.title-bar")     # the title bar along the bottom
+LED = px("size.led")
+DITHER = px("size.dither")
+KEY_W, KEY_H = 24, 20            # the decoration's small keys (kwin-decoration/levves Frame.qml)
+KEY_GAP = 3
+KEY_MARGIN = 5                   # last key to the window's right edge, edge included
+TAB_CORNER = 10                  # a tab's ends: 2px of strip, then its key's side
 FONT = "JetBrains Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
 
@@ -68,95 +85,156 @@ def build_scheme():
     for i, color in enumerate(ansi):
         intense = t["bright-black"] if i == 0 else mix(color, "#ffffff", 0.25)
         triple(f"Color{i}", color, intense)
-    lines.extend(["[General]", "Blur=true", "ColorRandomization=false",
-                  "Description=Leaves", f"Opacity={glass}", "Wallpaper=", ""])
+    lines.extend(["[General]", "Blur=false", "ColorRandomization=false",
+                  "Description=Levves", "Opacity=1", "Wallpaper=", ""])
     return "\n".join(lines)
 
 
 # --- Yakuake skin ---------------------------------------------------------
+# Every image is a list of whole-pixel rects (x, y, w, h, color, opacity), later
+# ones over earlier ones; whatever falls outside the image is cut off. Yakuake
+# tiles the tab and bar backgrounds, so those are DITHER wide to keep the
+# checkerboard whole.
 
-def svg(width, height, body):
+def paint(name):
+    return palette.get(name, name)
+
+
+def svg(width, height, rects, extra=""):
+    body = "".join(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{paint(c)}"'
+                   + (f' fill-opacity="{o}"' if o < 1 else "") + "/>"
+                   for x, y, w, h, c, o in rects if w > 0 and h > 0)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-            f'viewBox="0 0 {width} {height}">{body}</svg>\n')
+            f'viewBox="0 0 {width} {height}"><g shape-rendering="crispEdges">{body}</g>{extra}</svg>\n')
 
 
-def rect(x, y, w, h, color, opacity=1, rx=0):
-    return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" '
-            f'fill="{palette.get(color, color)}" fill-opacity="{opacity}"/>')
+def dither(width, height, y0):
+    """The strip's checkerboard (design/dist/qml/Levves/dither-strip.svg) over rows y0.."""
+    rects = [(0, y0, width, height - y0, "dither-a", 1)]
+    for y in range(y0, height):
+        rects += [(x, y, 1, 1, "dither-b", 1) for x in range((y + 1) % 2, width, 2)]
+    return rects
 
 
-def icon(name, color, size=16, x=None, y=None):
-    """A 24px icon (MingCute or custom) scaled to size, in a palette color."""
-    folder, file = ("custom", name[len("leaves-"):]) if name.startswith("leaves-") else ("mingcute", name)
-    source = (ICONS / folder / f"{file}.svg").read_text()
-    body = re.search(r"<svg[^>]*>(.*)</svg>", source, re.S).group(1)
-    body = body.replace("currentColor", palette[color])
-    x = (BUTTON - size) / 2 if x is None else x
-    y = (BAR - size) / 2 if y is None else y
-    return f'<g transform="translate({x} {y}) scale({size / 24})">{body}</g>'
+def outline(x, y, w, h, color):
+    """A filled box with its corner pixels cut, which reads as the 3px key radius at this size."""
+    return [(x + 1, y, w - 2, 1, color, 1), (x, y + 1, w, h - 2, color, 1), (x + 1, y + h - 1, w - 2, 1, color, 1)]
 
 
-def bar_fill(width, line="border"):
-    """Glass fill, with a 1px line on top separating the bar from the terminal."""
-    body = rect(0, 0, width, BAR, "bg", glass)
-    if line:
-        body += rect(0, 0, width, 1, line)
-    return body
+def sunk(x, y, w, h):
+    """A key held down (design/qml/Key.qml): well-pressed in a field-edge outline, a shadow along the top."""
+    return outline(x, y, w, h, "field-edge") + [(x + 1, y + 1, w - 2, h - 2, "well-pressed", 1),
+                                                (x + 1, y + 1, w - 2, 1, "#000000", 0.5),
+                                                (x + 1, y + 2, w - 2, 1, "#000000", 0.25)]
 
 
-def button(fill, name, color, hover=False):
-    body = fill(BUTTON)
-    if hover:  # neutral hover tint (DESIGN.md: text at 6%), 8px corners
-        body += rect(2, 2, BUTTON - 4, BAR - 4, "text", 0.06, rx=8)
-    return svg(BUTTON, BAR, body + icon(name, color))
+def key(x, y, state, tone=None):
+    """A small key at x, y: "up", "over" (the hover tint, or the tone's) or "down". Returns its
+    rects and the center of its face, where the glyph goes."""
+    w, h = KEY_W, KEY_H
+    if state == "down":
+        return sunk(x, y, w, h), (x + w / 2, y + 1 + (h - 1) / 2)
+    rects = outline(x, y, w, h, "key-depth") + outline(x, y, w, h - 2, "key-edge") \
+        + [(x + 1, y + 1, w - 2, h - 3, "raised", 1)]
+    if state == "over":
+        tint = (tone, TOKENS["opacity.selection"]) if tone else ("text", TOKENS["opacity.hover"])
+        rects.append((x + 1, y + 1, w - 2, h - 3) + tint)
+    return rects, (x + w / 2, y + (h - 1) / 2)
+
+
+def glyph(kind, center, ink):
+    """The decoration's classic glyphs in whole pixels (the × is antialiased, as there).
+    Returns rects and any extra SVG."""
+    cx, cy = round(center[0]), round(center[1])
+    if kind == "add":
+        return [(cx - 4, cy - 1, 8, 2, ink, 1), (cx - 1, cy - 4, 2, 8, ink, 1)], ""
+    if kind == "menu":
+        return [(cx - 4, cy - 5 + 4 * i, 8, 2, ink, 1) for i in range(3)], ""
+    if kind == "pin":  # the decoration's keep-above: a bar over a stem
+        return [(cx - 4, cy - 5, 8, 2, ink, 1), (cx - 1, cy - 1, 2, 6, ink, 1)], ""
+    d = 11 / 2 / 2 ** 0.5  # close: an X of 11px lines, 1.5px thick
+    x, y = center
+    path = f"M{x - d:.2f} {y - d:.2f}L{x + d:.2f} {y + d:.2f}M{x + d:.2f} {y - d:.2f}L{x - d:.2f} {y + d:.2f}"
+    return [], f'<path d="{path}" stroke="{paint(ink)}" stroke-width="1.5" fill="none"/>'
+
+
+def tab_bar(width):
+    """The strip: the black edge on top, between it and the terminal, then the dither."""
+    return [(0, 0, width, 1, "edge", 1)] + dither(width, TAB_BAR, 1)
+
+
+def title_bar(width):
+    """D's title bar on `title-bar`, the black edge along the bottom (Yakuake draws the top one)."""
+    return [(0, 0, width, TITLE, "title-bar", 1), (0, TITLE - 1, width, 1, "edge", 1)]
+
+
+def button(background, width, height, key_x, key_y, kind, state):
+    critical = "critical" if kind == "close" else None
+    rects, center = key(key_x, key_y, state, tone=critical)
+    ink = "critical" if critical and state == "over" else "text"
+    marks, extra = glyph(kind, center, ink)
+    return svg(width, height, background(width) + rects + marks, extra)
+
+
+KEY_Y = (TAB_BAR - KEY_H) // 2 + 1  # centered under the strip's edge line
+
+
+def selected_tab(width, left, right):
+    """A piece of the current tab: the strip with a held-down key across it; left/right say
+    whether the key's side is in this piece."""
+    x0 = 2 if left else -4
+    x1 = width - 2 if right else width + 4
+    return svg(width, TAB_BAR, tab_bar(width) + sunk(x0, KEY_Y, x1 - x0, KEY_H))
 
 
 def build_skin():
     files = {}
 
-    # Tab bar: 1px border line on top; the selected tab gets a 2px accent line
-    # and a neutral tint instead (the one accented thing in the view)
-    tab = svg(1, BAR, bar_fill(1))
-    selected = svg(1, BAR, bar_fill(1, line=None) + rect(0, 0, 1, BAR, "text", 0.06)
-                   + rect(0, 0, 1, 2, "accent"))
-    files["tabs/back.svg"] = tab
-    files["tabs/unselected.svg"] = tab
-    files["tabs/unselected_pad.svg"] = svg(PAD, BAR, bar_fill(PAD))
-    files["tabs/selected.svg"] = selected
-    files["tabs/selected_pad.svg"] = svg(PAD, BAR, bar_fill(PAD, line=None)
-                                         + rect(0, 0, PAD, BAR, "text", 0.06) + rect(0, 0, PAD, 2, "accent"))
-    files["tabs/lock.svg"] = svg(16, BAR, icon("lock-fill", "text-muted", x=0))
-    for name, image in (("add", "add-fill"), ("close", "close-fill")):
-        files[f"tabs/{name}_up.svg"] = button(bar_fill, image, "text-muted")
-        files[f"tabs/{name}_over.svg"] = button(bar_fill, image, "text", hover=True)
+    # Tab bar: + on the left, × on the right, the tabs between them as flat keys
+    strip = lambda w: svg(w, TAB_BAR, tab_bar(w))
+    files["tabs/back.svg"] = strip(DITHER)
+    files["tabs/unselected.svg"] = strip(DITHER)
+    files["tabs/unselected_corner.svg"] = strip(TAB_CORNER)
+    files["tabs/selected.svg"] = selected_tab(DITHER, False, False)
+    files["tabs/selected_left.svg"] = selected_tab(TAB_CORNER, True, False)
+    files["tabs/selected_right.svg"] = selected_tab(TAB_CORNER, False, True)
+    lock, _ = glyph("pin", (8, TAB_BAR / 2), "text-muted")
+    files["tabs/lock.svg"] = svg(16, TAB_BAR, tab_bar(16) + lock)
+    cell = KEY_W + 4  # 4px from the window's edge
+    for state in ("up", "over", "down"):
+        files[f"tabs/add_{state}.svg"] = button(tab_bar, cell, TAB_BAR, 4, KEY_Y, "add", state)
+        files[f"tabs/close_{state}.svg"] = button(tab_bar, cell, TAB_BAR, 0, KEY_Y, "close", state)
 
-    # Title bar: same glass, no top line (Yakuake draws a border line above it)
-    title = lambda w: bar_fill(w, line=None)
-    files["title/back.svg"] = svg(1, BAR, title(1))
-    for name, image in (("quit", "close-fill"), ("config", "menu-fill"), ("focus", "pin-fill")):
-        files[f"title/{name}_up.svg"] = button(title, image, "text-muted")
-        files[f"title/{name}_over.svg"] = button(title, image, "text", hover=True)
-    # Focus button's checked state (stays open on focus loss) is the accented one
-    files["title/focus_down.svg"] = button(title, "pin-fill", "accent", hover=True)
-    files["icon.svg"] = svg(32, 32, icon("leaves-leaf", "accent", size=24, x=4, y=4))
+    # Title bar: the light and the title on the left, keys on the right
+    title_y = (TITLE - 1 - KEY_H) // 2 + 1
+    files["title/back.svg"] = svg(DITHER, TITLE, title_bar(DITHER))
+    led_x, led_y = 12 + LED / 2, (TITLE - 1) / 2
+    led = (f'<circle cx="{led_x}" cy="{led_y}" r="{LED * 1.25}" fill="{palette["accent"]}" fill-opacity="0.18"/>'
+           f'<circle cx="{led_x}" cy="{led_y}" r="{LED / 2}" fill="{palette["accent"]}"/>')
+    files["title/left.svg"] = svg(24, TITLE, title_bar(24) + [(0, 0, 1, TITLE, "edge", 1)], led)
+    files["title/right.svg"] = svg(KEY_MARGIN, TITLE, title_bar(KEY_MARGIN)
+                                   + [(KEY_MARGIN - 1, 0, 1, TITLE, "edge", 1)])
+    for name, kind in (("quit", "close"), ("config", "menu"), ("focus", "pin")):
+        for state in ("up", "over", "down"):
+            files[f"title/{name}_{state}.svg"] = button(title_bar, KEY_W, TITLE, 0, title_y, kind, state)
+    files["icon.svg"] = svg(32, 32, [(2, 2, 28, 28, "edge", 1), (3, 3, 26, 26, "title-bar", 1)],
+                            f'<circle cx="16" cy="16" r="5" fill="{palette["accent"]}"/>')
 
-    r, g, b = rgb(palette["text"])
-    mr, mg, mb = rgb(palette["text-muted"])
-    br, bg_, bb = rgb(palette["border"])
-    about = "[Description]\nSkin=Leaves\nAuthor=Leaves (palette.json)\nIcon=/icon.svg\n\n"
+    text, edge = rgb(palette["text"]), rgb(palette["edge"])
+    about = "[Description]\nSkin=Levves\nAuthor=Levves (design/dist)\nIcon=/icon.svg\n\n"
     files["tabs.skin"] = about + f"""[Tabs]
-x={BUTTON}
+x={cell}
 y=0
-red={r}
-green={g}
-blue={b}
+red={text[0]}
+green={text[1]}
+blue={text[2]}
 selected_text_bold=false
 selected_background=/tabs/selected.svg
-selected_left_corner=/tabs/selected_pad.svg
-selected_right_corner=/tabs/selected_pad.svg
+selected_left_corner=/tabs/selected_left.svg
+selected_right_corner=/tabs/selected_right.svg
 unselected_background=/tabs/unselected.svg
-unselected_left_corner=/tabs/unselected_pad.svg
-unselected_right_corner=/tabs/unselected_pad.svg
+unselected_left_corner=/tabs/unselected_corner.svg
+unselected_right_corner=/tabs/unselected_corner.svg
 prevent_closing_image=/tabs/lock.svg
 prevent_closing_image_x=0
 prevent_closing_image_y=0
@@ -171,55 +249,57 @@ x=0
 y=0
 up_image=/tabs/add_up.svg
 over_image=/tabs/add_over.svg
-down_image=/tabs/add_over.svg
+down_image=/tabs/add_down.svg
 
 [MinusButton]
-x={BUTTON}
+x={cell}
 y=0
 up_image=/tabs/close_up.svg
 over_image=/tabs/close_over.svg
-down_image=/tabs/close_over.svg
+down_image=/tabs/close_down.svg
 """
+    # Keys from the right: quit, menu, pin (x is from the window's right edge to the key's left)
+    quit_x = KEY_MARGIN + KEY_W
     files["title.skin"] = about + f"""[Border]
-red={br}
-green={bg_}
-blue={bb}
+red={edge[0]}
+green={edge[1]}
+blue={edge[2]}
 width=1
 
 [Text]
-x=12
+x={12 + LED + 8}
 y=19
-red={mr}
-green={mg}
-blue={mb}
+red={text[0]}
+green={text[1]}
+blue={text[2]}
 bold=false
 text=
 
 [Background]
 back_image=/title/back.svg
-left_corner=/title/back.svg
-right_corner=/title/back.svg
+left_corner=/title/left.svg
+right_corner=/title/right.svg
 
 [FocusButton]
-x={3 * BUTTON}
+x={quit_x + 2 * (KEY_W + KEY_GAP)}
 y=0
 up_image=/title/focus_up.svg
 over_image=/title/focus_over.svg
 down_image=/title/focus_down.svg
 
 [ConfigButton]
-x={2 * BUTTON}
+x={quit_x + KEY_W + KEY_GAP}
 y=0
 up_image=/title/config_up.svg
 over_image=/title/config_over.svg
-down_image=/title/config_over.svg
+down_image=/title/config_down.svg
 
 [QuitButton]
-x={BUTTON}
+x={quit_x}
 y=0
 up_image=/title/quit_up.svg
 over_image=/title/quit_over.svg
-down_image=/title/quit_over.svg
+down_image=/title/quit_down.svg
 """
     return files
 
@@ -243,6 +323,32 @@ def kwrite(file, group, key, value):
     return True
 
 
+def default_profile(rc, fallback):
+    """The profile an app starts with, made (and picked) as `fallback` when it has none."""
+    cfg = configparser.ConfigParser(interpolation=None, strict=False)
+    cfg.read(rc)
+    name = cfg.get("Desktop Entry", "DefaultProfile", fallback="")
+    changed = False
+    if not name:
+        name = f"{fallback}.profile"
+        changed = kwrite(rc, "Desktop Entry", "DefaultProfile", name)
+    profile = KONSOLE / name
+    if not profile.exists():
+        write(profile, f"[General]\nName={fallback}\nParent=FALLBACK/\n")
+    return profile, changed
+
+
+def style_profile(profile):
+    """The Levves look on a Konsole profile, keeping its own name and command."""
+    changed = False
+    for group, key, value in (("Appearance", "ColorScheme", "Levves"), ("Appearance", "Font", FONT),
+                              ("Cursor Options", "UseCustomCursorColor", "true"),
+                              ("Cursor Options", "CustomCursorColor", ini(palette["accent"])),
+                              ("General", "TerminalMargin", "8")):
+        changed |= kwrite(profile, group, key, value)
+    return changed
+
+
 def main():
     changed = write(SCHEME, build_scheme())
 
@@ -253,34 +359,31 @@ def main():
         changed = True
     for name, text in skin.items():
         changed |= write(SKIN / name, text)
+    for old in OLD:
+        if old.is_dir():
+            shutil.rmtree(old)
+            changed = True
+        elif old.exists():
+            old.unlink()
+            changed = True
 
-    # Yakuake: our skin; no window fill of its own, so the terminal and the
-    # skin's bars carry the glass alone
+    # Yakuake: our skin, opaque; its own fill only shows in gaps, so it's the terminal's
     yakuakerc = CONFIG / "yakuakerc"
-    for key, value in (("Skin", "leaves"), ("SkinInstalledWithKns", "false"), ("Translucency", "true"),
-                       ("BackgroundColor", ini(palette["bg"])), ("BackgroundColorOpacity", "0")):
+    for key, value in (("Skin", "levves"), ("SkinInstalledWithKns", "false"), ("Translucency", "false"),
+                       ("BackgroundColor", ini(palette["bg"])), ("BackgroundColorOpacity", "100")):
         changed |= kwrite(yakuakerc, "Appearance", key, value)
 
-    # Yakuake's profile (keeps its own command and name), or a new Leaves one
-    cfg = configparser.ConfigParser(interpolation=None, strict=False)
-    cfg.read(yakuakerc)
-    name = cfg.get("Desktop Entry", "DefaultProfile", fallback="")
-    if not name:
-        name = "Leaves.profile"
-        changed |= kwrite(yakuakerc, "Desktop Entry", "DefaultProfile", name)
-    profile = SCHEME.parent / name
-    if not profile.exists():
-        write(profile, "[General]\nName=Leaves\nParent=FALLBACK/\n")
-    # Every new Yakuake tab starts Claude Code in ~/system, the machine's admin
-    # home base (its CLAUDE.md describes that machine), through yakuake-tab
-    # (os/linux/kwin), which gives Meta+Shift+N tabs a plain shell instead
+    # Yakuake's profile keeps its own name and command. Every new tab starts Claude Code in
+    # ~/system, the machine's admin home base (its CLAUDE.md describes that machine), through
+    # yakuake-tab (os/linux/kwin), which gives Meta+Shift+N tabs a plain shell instead
+    profile, picked = default_profile(yakuakerc, "Levves Yakuake")
+    changed |= picked | style_profile(profile)
     (Path.home() / "system").mkdir(exist_ok=True)
-    for group, key, value in (("Appearance", "ColorScheme", "Leaves"), ("Appearance", "Font", FONT),
-                              ("Cursor Options", "UseCustomCursorColor", "true"),
-                              ("Cursor Options", "CustomCursorColor", ini(palette["accent"])),
-                              ("General", "TerminalMargin", "8"),
-                              ("General", "Command", str(Path.home() / ".local/bin/yakuake-tab"))):
-        changed |= kwrite(profile, group, key, value)
+    changed |= kwrite(profile, "General", "Command", str(Path.home() / ".local/bin/yakuake-tab"))
+
+    # Konsole's own windows: the default shell in a Levves profile, unless another was picked
+    profile, picked = default_profile(CONFIG / "konsolerc", "Levves")
+    changed |= picked | style_profile(profile)
 
     if changed:
         print("changed")
