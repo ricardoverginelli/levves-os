@@ -115,6 +115,8 @@ until the icon set moves here.
 ## What's still on the old look
 The suite's components still read some of its older token names, mapped onto Levves in
 `packages/design-tokens/tokens.css`. Plasma's reskin goes in phases (`os/linux/plasma/TODO.md`): the
-style, the top bar and the fonts are on Levves; the popups and windows drawn in QML, Plasma's own
-controls, Yakuake and VS Code still have the glass look (`legacy.*` tokens). `os/linux/plasma/DESIGN.md`
-still describes Plasma-specific mechanics (popup frames, KWin effects, menus).
+style and its controls, the top bar, the popups, the window decoration, the fonts and the apps'
+color scheme are on Levves. The apps' widgets are still drawn by Breeze (in Levves colors, so
+selections, checkboxes and slider fills are solid amber), and Yakuake and VS Code still have the
+glass look (`legacy.*` tokens). `os/linux/plasma/DESIGN.md` still describes Plasma-specific
+mechanics (popup frames, KWin effects, menus).
