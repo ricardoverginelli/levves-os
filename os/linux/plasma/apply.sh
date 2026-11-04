@@ -260,6 +260,13 @@ for effect in kwin-effects/*/; do
     qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "$id" >/dev/null
 done
 
+# Blur and background contrast off: Levves surfaces are opaque (design/DESIGN.md Mood), so they
+# only cost frames
+for id in blur contrast; do
+    kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" false
+    qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect "$id" >/dev/null || true
+done
+
 # Window switcher layouts (Alt+Tab): copy the package, make leaves-switcher the one in use
 for layout in kwin-tabbox/*/; do
     id=$(basename "$layout")

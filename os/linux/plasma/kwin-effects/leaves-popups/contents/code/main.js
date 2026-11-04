@@ -7,7 +7,8 @@
 // their stock fade.
 //
 // A clip reveal from the panel's edge ("Unfurl") was tried and dropped: KWin
-// draws the glass blur at full size first, so an empty pane flashes.
+// drew the glass blur at full size first, so an empty pane flashed (worth another try now that
+// popups are opaque).
 //
 // Leaves windows (the launcher, the side panel) are plasmashell's undecorated
 // normal windows: panels, popups, OSDs and notifications have their own types,
@@ -119,13 +120,8 @@ function stop(window) {
 }
 
 // Slide (and fade) for opening (from away to its place) or closing (the reverse).
-// KWin's blur skips windows that are moving unless they force it, which made
-// the glass go clear during the slide and snap back after; forcing it keeps
-// the blur on the window (faded with it) the whole way, as Sliding popups does.
-// The flags stay: they only matter while a window is moving.
+// Popups are opaque (no blur to keep up during the slide)
 function play(window, opening) {
-    window.setData(Effect.WindowForceBlurRole, true);
-    window.setData(Effect.WindowForceBackgroundContrastRole, true);
     const m = motion(window);
     const home = { value1: 0, value2: 0 };
     const duration = opening ? m.open : m.close;
