@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Theme VS Code as "Leaves" from design/dist/palette.json.
+"""Theme VS Code as "Levves" from design/dist (design/DESIGN.md, direction D).
 
 Writes the color theme (workbench, syntax, terminal) into a small extension,
 packs it as a .vsix and installs it with `code --install-extension`. Pick it
-with Preferences: Color Theme → Leaves.
+with Preferences: Color Theme → Levves (picked for you when Leaves was).
 
 Prints "changed" when the installed theme was replaced; VS Code windows that
 are already open pick it up after Developer: Reload Window.
 """
+import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -16,14 +18,21 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PUBLISHER = "leaves"
-NAME = "leaves-theme"
+PUBLISHER = "levves"
+NAME = "levves-theme"
 VERSION = "1.0.0"
-THEME_FILE = "themes/leaves-color-theme.json"
+THEME_FILE = "themes/levves-color-theme.json"
+OLD = "leaves.leaves-theme"  # the glass-era theme, replaced by this one
+SETTINGS = Path.home() / ".config/Code/User/settings.json"
 INSTALLED = Path.home() / f".vscode/extensions/{PUBLISHER}.{NAME}-{VERSION}"
 
-p = json.loads((HERE.parents[3] / "design/dist/palette.json").read_text())
+DIST = HERE.parents[3] / "design/dist"
+p = json.loads((DIST / "palette.json").read_text())
 t = p["terminal"]
+_spec = importlib.util.spec_from_file_location("levves_tokens", DIST / "levves_tokens.py")
+_tokens = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_tokens)
+LEVVES = _tokens.TOKENS  # design tokens; TOKENS below is the syntax scopes
 
 
 def rgb(hex_color):
@@ -157,12 +166,17 @@ SEMANTIC = {
 # --- Workbench ------------------------------------------------------------
 
 def workbench():
-    bg, deep, surface, raised, border = p["bg"], p["bg-deep"], p["surface"], p["raised"], p["border"]
+    # D's window: chrome on `surface` with the black `edge` between parts and around popups,
+    # headers and the status bar as dithered strips (flat dither-a: themes can't tile), fields
+    # in wells, the editor and terminal on `bg`. Amber is the focused part's selection, the
+    # primary key, the cursor and the focus ring; elsewhere a selection is `raised`
+    bg, surface, raised, border = p["bg"], p["surface"], p["raised"], p["border"]
     text, muted, faint = p["text"], p["text-muted"], p["text-faint"]
     accent, on_accent = p["accent"], p["on-accent"]
-    hover = alpha("text", 0.06)        # DESIGN.md: neutral hover
-    highlight = alpha("accent", 0.18)  # DESIGN.md: keyboard highlight in lists
-    selection = alpha("info", 0.28)
+    edge, well, strip = p["edge"], p["well"], p["dither-a"]
+    hover = alpha("text", LEVVES["opacity.hover"])
+    highlight = alpha("accent", LEVVES["opacity.selection"])
+    selection = alpha("info", 0.28)  # selected text in the editor, apart from the amber cursor
 
     c = {
         # Base
@@ -171,9 +185,9 @@ def workbench():
         "disabledForeground": faint,
         "errorForeground": p["critical"],
         "icon.foreground": muted,
-        "focusBorder": alpha("text", 0.25),  # focus rings stay neutral
+        "focusBorder": accent,  # the amber ring for focus, as on Plasma's keys
         "contrastBorder": "#00000000",
-        "widget.border": border,
+        "widget.border": edge,
         "widget.shadow": alpha("bg-deep", 0.6),
         "selection.background": selection,
         "textLink.foreground": p["info"],
@@ -183,51 +197,53 @@ def workbench():
         "textBlockQuote.border": border,
         "textPreformat.foreground": SYNTAX["string"],
         "textSeparator.foreground": border,
-        "sash.hoverBorder": alpha("accent", 0.6),
+        "sash.hoverBorder": muted,
         "progressBar.background": accent,
         "toolbar.hoverBackground": hover,
         "toolbar.activeBackground": alpha("text", 0.1),
 
         # Window chrome
-        "titleBar.activeBackground": bg,
-        "titleBar.activeForeground": muted,
-        "titleBar.inactiveBackground": bg,
-        "titleBar.inactiveForeground": faint,
-        "titleBar.border": border,
-        "commandCenter.background": surface,
+        "titleBar.activeBackground": p["title-bar"],
+        "titleBar.activeForeground": text,
+        "titleBar.inactiveBackground": p["title-bar-inactive"],
+        "titleBar.inactiveForeground": muted,
+        "titleBar.border": edge,
+        "commandCenter.background": well,  # a field
         "commandCenter.foreground": muted,
-        "commandCenter.activeBackground": raised,
-        "commandCenter.border": border,
-        "commandCenter.inactiveBorder": border,
+        "commandCenter.activeBackground": p["well-pressed"],
+        "commandCenter.border": p["field-edge"],
+        "commandCenter.inactiveBorder": p["field-edge"],
         "menubar.selectionBackground": hover,
         "menu.background": surface,
         "menu.foreground": text,
         "menu.selectionBackground": highlight,
         "menu.selectionForeground": text,
         "menu.separatorBackground": border,
-        "menu.border": border,
+        "menu.border": edge,
 
         # Activity bar
-        "activityBar.background": bg,
+        # Activity bar: flat keys, the current one held down
+        "activityBar.background": surface,
         "activityBar.foreground": text,
-        "activityBar.inactiveForeground": faint,
-        "activityBar.activeBorder": accent,
-        "activityBar.activeBackground": "#00000000",
-        "activityBar.border": border,
-        "activityBarBadge.background": accent,
-        "activityBarBadge.foreground": on_accent,
+        "activityBar.inactiveForeground": muted,
+        "activityBar.activeBorder": p["field-edge"],
+        "activityBar.activeBackground": p["well-pressed"],
+        "activityBar.border": edge,
+        "activityBarBadge.background": raised,
+        "activityBarBadge.foreground": text,
         "activityBarTop.foreground": text,
-        "activityBarTop.inactiveForeground": faint,
-        "activityBarTop.activeBorder": accent,
+        "activityBarTop.inactiveForeground": muted,
+        "activityBarTop.activeBorder": p["field-edge"],
 
         # Side bar
         "sideBar.background": bg,
         "sideBar.foreground": muted,
-        "sideBar.border": border,
+        "sideBar.border": edge,
+        "sideBarTitle.background": surface,
         "sideBarTitle.foreground": muted,
-        "sideBarSectionHeader.background": bg,
+        "sideBarSectionHeader.background": strip,  # caps labels on a strip, like a group box header
         "sideBarSectionHeader.foreground": muted,
-        "sideBarSectionHeader.border": border,
+        "sideBarSectionHeader.border": p["row-line"],
         "sideBarStickyScroll.background": bg,
         "sideBarStickyScroll.shadow": alpha("bg-deep", 0.6),
 
@@ -237,7 +253,7 @@ def workbench():
         "list.activeSelectionBackground": highlight,
         "list.activeSelectionForeground": text,
         "list.activeSelectionIconForeground": text,
-        "list.inactiveSelectionBackground": alpha("text", 0.08),
+        "list.inactiveSelectionBackground": raised,
         "list.inactiveSelectionForeground": text,
         "list.focusBackground": highlight,
         "list.focusForeground": text,
@@ -246,36 +262,37 @@ def workbench():
         "list.inactiveFocusOutline": "#00000000",
         "list.highlightForeground": accent,
         "list.focusHighlightForeground": p["accent-hover"],
-        "list.dropBackground": alpha("accent", 0.12),
+        "list.dropBackground": hover,
         "list.errorForeground": p["critical"],
         "list.warningForeground": p["warning"],
         "list.invalidItemForeground": p["critical"],
         "list.deemphasizedForeground": faint,
-        "tree.indentGuidesStroke": border,
-        "tree.inactiveIndentGuidesStroke": alpha("border", 0.6),
+        "tree.indentGuidesStroke": p["row-line"],
+        "tree.inactiveIndentGuidesStroke": p["row-line"],
 
-        # Editor groups and tabs (selected tab: accent line on top, like Yakuake's)
-        "editorGroup.border": border,
-        "editorGroup.dropBackground": alpha("accent", 0.08),
-        "editorGroupHeader.tabsBackground": bg,
-        "editorGroupHeader.tabsBorder": border,
-        "editorGroupHeader.noTabsBackground": bg,
-        "editorGroupHeader.border": border,
+        # Editor groups and tabs: folder tabs on the window's `surface`, the current one in the
+        # editor's color, joining it
+        "editorGroup.border": edge,
+        "editorGroup.dropBackground": hover,
+        "editorGroupHeader.tabsBackground": surface,
+        "editorGroupHeader.tabsBorder": "#00000000",
+        "editorGroupHeader.noTabsBackground": surface,
+        "editorGroupHeader.border": edge,
         "tab.activeBackground": bg,
         "tab.activeForeground": text,
-        "tab.activeBorderTop": accent,
+        "tab.activeBorderTop": "#00000000",
         "tab.activeBorder": bg,
-        "tab.unfocusedActiveBorderTop": border,
+        "tab.unfocusedActiveBorderTop": "#00000000",
         "tab.unfocusedActiveForeground": muted,
-        "tab.inactiveBackground": deep,
-        "tab.inactiveForeground": faint,
+        "tab.inactiveBackground": surface,
+        "tab.inactiveForeground": muted,
         "tab.unfocusedInactiveForeground": faint,
-        "tab.hoverBackground": surface,
+        "tab.hoverBackground": mix(surface, text, LEVVES["opacity.hover"]),
         "tab.hoverForeground": text,
-        "tab.border": border,
+        "tab.border": edge,
         "tab.lastPinnedBorder": border,
-        "tab.activeModifiedBorder": accent,
-        "tab.inactiveModifiedBorder": alpha("accent", 0.5),
+        "tab.activeModifiedBorder": muted,
+        "tab.inactiveModifiedBorder": faint,
         "breadcrumb.foreground": faint,
         "breadcrumb.focusForeground": text,
         "breadcrumb.activeSelectionForeground": text,
@@ -352,25 +369,25 @@ def workbench():
         # Editor widgets (find, suggest, hover, peek): popups are surface
         "editorWidget.background": surface,
         "editorWidget.foreground": text,
-        "editorWidget.border": border,
-        "editorWidget.resizeBorder": alpha("accent", 0.6),
+        "editorWidget.border": edge,
+        "editorWidget.resizeBorder": muted,
         "editorSuggestWidget.background": surface,
-        "editorSuggestWidget.border": border,
+        "editorSuggestWidget.border": edge,
         "editorSuggestWidget.foreground": text,
         "editorSuggestWidget.selectedBackground": highlight,
         "editorSuggestWidget.selectedForeground": text,
         "editorSuggestWidget.highlightForeground": accent,
         "editorSuggestWidget.focusHighlightForeground": p["accent-hover"],
         "editorHoverWidget.background": surface,
-        "editorHoverWidget.border": border,
-        "editorHoverWidget.statusBarBackground": raised,
+        "editorHoverWidget.border": edge,
+        "editorHoverWidget.statusBarBackground": strip,
         "editorGhostText.foreground": faint,
-        "peekView.border": border,
-        "peekViewTitle.background": surface,
+        "peekView.border": edge,
+        "peekViewTitle.background": p["title-bar"],
         "peekViewTitleLabel.foreground": text,
         "peekViewTitleDescription.foreground": muted,
-        "peekViewEditor.background": deep,
-        "peekViewEditorGutter.background": deep,
+        "peekViewEditor.background": well,
+        "peekViewEditorGutter.background": well,
         "peekViewEditor.matchHighlightBackground": alpha("warning", 0.25),
         "peekViewResult.background": surface,
         "peekViewResult.selectionBackground": highlight,
@@ -393,9 +410,10 @@ def workbench():
         "merge.incomingContentBackground": alpha("info", 0.1),
 
         # Inputs and buttons
-        "input.background": raised,
+        # Fields in wells, buttons as keys
+        "input.background": well,
         "input.foreground": text,
-        "input.border": "#00000000",
+        "input.border": p["field-edge"],
         "input.placeholderForeground": faint,
         "inputOption.activeBackground": highlight,
         "inputOption.activeBorder": "#00000000",
@@ -407,22 +425,22 @@ def workbench():
         "inputValidation.warningBorder": p["warning"],
         "inputValidation.infoBackground": surface,
         "inputValidation.infoBorder": p["info"],
-        "dropdown.background": raised,
+        "dropdown.background": well,
         "dropdown.listBackground": surface,
-        "dropdown.border": "#00000000",
+        "dropdown.border": p["field-edge"],
         "dropdown.foreground": text,
-        "checkbox.background": raised,
-        "checkbox.border": border,
-        "checkbox.foreground": accent,
+        "checkbox.background": well,
+        "checkbox.border": p["field-edge"],
+        "checkbox.foreground": text,
         "checkbox.selectBackground": surface,
         "button.background": accent,
         "button.foreground": on_accent,
         "button.hoverBackground": p["accent-hover"],
-        "button.border": "#00000000",
+        "button.border": p["key-edge"],
         "button.separator": alpha("on-accent", 0.3),
         "button.secondaryBackground": raised,
         "button.secondaryForeground": text,
-        "button.secondaryHoverBackground": mix(raised, text, 0.08),
+        "button.secondaryHoverBackground": mix(raised, text, LEVVES["opacity.hover"]),
         "badge.background": raised,
         "badge.foreground": text,
         "scrollbar.shadow": alpha("bg-deep", 0.5),
@@ -431,8 +449,8 @@ def workbench():
         "scrollbarSlider.activeBackground": alpha("text", 0.22),
         "keybindingLabel.background": raised,
         "keybindingLabel.foreground": text,
-        "keybindingLabel.border": border,
-        "keybindingLabel.bottomBorder": border,
+        "keybindingLabel.border": p["key-edge"],
+        "keybindingLabel.bottomBorder": p["key-depth"],
 
         # Quick input (command palette)
         "quickInput.background": surface,
@@ -442,21 +460,21 @@ def workbench():
         "quickInputList.focusForeground": text,
         "quickInputList.focusIconForeground": text,
         "pickerGroup.foreground": muted,
-        "pickerGroup.border": border,
+        "pickerGroup.border": p["row-line"],
 
         # Panel and terminal
         "panel.background": bg,
-        "panel.border": border,
+        "panel.border": edge,
         "panelTitle.activeForeground": text,
-        "panelTitle.activeBorder": accent,
-        "panelTitle.inactiveForeground": faint,
-        "panelSection.border": border,
-        "panelSectionHeader.background": bg,
-        "panelInput.border": "#00000000",
+        "panelTitle.activeBorder": muted,
+        "panelTitle.inactiveForeground": muted,
+        "panelSection.border": edge,
+        "panelSectionHeader.background": strip,
+        "panelInput.border": p["field-edge"],
         "outputView.background": bg,
         "terminal.background": bg,
         "terminal.foreground": text,
-        "terminal.border": border,
+        "terminal.border": edge,
         "terminal.selectionBackground": selection,
         "terminalCursor.foreground": accent,
         "terminalCursor.background": on_accent,
@@ -467,12 +485,12 @@ def workbench():
         "terminalCommandDecoration.errorBackground": p["critical"],
         "terminalOverviewRuler.cursorForeground": accent,
 
-        # Status bar: quiet, like the top bar
-        "statusBar.background": bg,
+        # Status bar: a strip
+        "statusBar.background": strip,
         "statusBar.foreground": muted,
-        "statusBar.border": border,
-        "statusBar.focusBorder": alpha("text", 0.25),
-        "statusBar.noFolderBackground": bg,
+        "statusBar.border": edge,
+        "statusBar.focusBorder": accent,
+        "statusBar.noFolderBackground": strip,
         "statusBar.noFolderForeground": muted,
         "statusBar.debuggingBackground": p["accent-pressed"],
         "statusBar.debuggingForeground": on_accent,
@@ -480,23 +498,23 @@ def workbench():
         "statusBarItem.hoverBackground": hover,
         "statusBarItem.hoverForeground": text,
         "statusBarItem.activeBackground": alpha("text", 0.1),
-        "statusBarItem.remoteBackground": bg,
-        "statusBarItem.remoteForeground": accent,
+        "statusBarItem.remoteBackground": raised,
+        "statusBarItem.remoteForeground": text,
         "statusBarItem.prominentBackground": raised,
         "statusBarItem.prominentHoverBackground": mix(raised, text, 0.08),
         "statusBarItem.errorBackground": p["critical"],
         "statusBarItem.errorForeground": on_accent,
         "statusBarItem.warningBackground": p["warning"],
         "statusBarItem.warningForeground": on_accent,
-        "statusBarItem.focusBorder": alpha("text", 0.25),
+        "statusBarItem.focusBorder": accent,
 
         # Notifications
         "notifications.background": surface,
         "notifications.foreground": text,
         "notifications.border": border,
-        "notificationCenterHeader.background": surface,
-        "notificationCenter.border": border,
-        "notificationToast.border": border,
+        "notificationCenterHeader.background": p["title-bar"],
+        "notificationCenter.border": edge,
+        "notificationToast.border": edge,
         "notificationLink.foreground": p["info"],
         "notificationsErrorIcon.foreground": p["critical"],
         "notificationsWarningIcon.foreground": p["warning"],
@@ -522,17 +540,17 @@ def workbench():
         "welcomePage.tileBackground": surface,
         "welcomePage.tileHoverBackground": raised,
         "welcomePage.tileBorder": border,
-        "walkThrough.embeddedEditorBackground": deep,
+        "walkThrough.embeddedEditorBackground": well,
         "settings.headerForeground": text,
         "settings.modifiedItemIndicator": accent,
         "settings.focusedRowBackground": alpha("text", 0.03),
         "settings.rowHoverBackground": alpha("text", 0.03),
-        "settings.dropdownBackground": raised,
-        "settings.textInputBackground": raised,
-        "settings.numberInputBackground": raised,
-        "settings.checkboxBackground": raised,
+        "settings.dropdownBackground": well,
+        "settings.textInputBackground": well,
+        "settings.numberInputBackground": well,
+        "settings.checkboxBackground": well,
         "debugToolBar.background": surface,
-        "debugToolBar.border": border,
+        "debugToolBar.border": edge,
         "debugIcon.breakpointForeground": p["critical"],
         "editor.stackFrameHighlightBackground": alpha("warning", 0.14),
         "editor.focusedStackFrameHighlightBackground": alpha("success", 0.14),
@@ -547,7 +565,7 @@ def workbench():
         "chat.slashCommandBackground": raised,
         "chat.slashCommandForeground": accent,
         "inlineChat.background": surface,
-        "inlineChat.border": border,
+        "inlineChat.border": edge,
         "charts.foreground": text,
         "charts.lines": border,
         "charts.red": p["critical"],
@@ -570,7 +588,7 @@ def workbench():
 
 def theme():
     return {
-        "name": "Leaves",
+        "name": "Levves",
         "type": "dark",
         "semanticHighlighting": True,
         "colors": workbench(),
@@ -584,13 +602,13 @@ def theme():
 def package_json():
     return {
         "name": NAME,
-        "displayName": "Leaves",
-        "description": "Dark, cool theme from the Leaves Plasma palette",
+        "displayName": "Levves",
+        "description": "Levves, direction D: dark, cool, one amber accent",
         "publisher": PUBLISHER,
         "version": VERSION,
         "engines": {"vscode": "^1.70.0"},
         "categories": ["Themes"],
-        "contributes": {"themes": [{"label": "Leaves", "uiTheme": "vs-dark", "path": f"./{THEME_FILE}"}]},
+        "contributes": {"themes": [{"label": "Levves", "uiTheme": "vs-dark", "path": f"./{THEME_FILE}"}]},
     }
 
 
@@ -605,8 +623,8 @@ MANIFEST = f"""<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
 <Metadata>
 <Identity Language="en-US" Id="{NAME}" Version="{VERSION}" Publisher="{PUBLISHER}"/>
-<DisplayName>Leaves</DisplayName>
-<Description xml:space="preserve">Dark, cool theme from the Leaves Plasma palette</Description>
+<DisplayName>Levves</DisplayName>
+<Description xml:space="preserve">Levves, direction D: dark, cool, one amber accent</Description>
 <Categories>Themes</Categories>
 <Properties><Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.70.0"/></Properties>
 </Metadata>
@@ -643,6 +661,15 @@ def main():
                 z.writestr(f"extension/{name}", text)
         subprocess.run(["code", "--install-extension", str(vsix), "--force"],
                        check=True, capture_output=True)
+    listed = subprocess.run(["code", "--list-extensions"], capture_output=True, text=True).stdout.split()
+    if OLD in listed:
+        subprocess.run(["code", "--uninstall-extension", OLD], check=True, capture_output=True)
+    # settings.json allows comments, so only the one value is swapped, as text
+    if SETTINGS.exists():
+        text = SETTINGS.read_text()
+        swapped = re.sub(r'("workbench\.colorTheme"\s*:\s*)"Leaves"', r'\1"Levves"', text)
+        if swapped != text:
+            SETTINGS.write_text(swapped)
     print("changed")
 
 
