@@ -1,5 +1,7 @@
 // A key (design/DESIGN.md Pieces): `raised`, a lighter outline and a 2px bottom edge; pressed, held
 // (checked) or current, it sinks into `well-pressed`. `primary` is the one amber key in a view.
+// `highlighted` is the keyboard's place in a column of keys (amber at opacity.selection, the one
+// accent in the view); `tone` tints it instead, e.g. Theme.critical while a key asks to be pressed again.
 // `flat` keys (toolbars, the top bar's window strip) show only a hover tint until pressed or current.
 // The label is a caps label by default; set contentItem for an icon.
 import QtQuick
@@ -8,6 +10,7 @@ import QtQuick.Templates as T
 T.Button {
     id: key
     property bool primary: false
+    property color tone: Theme.accent
     property bool current: false  // the page or screen it stands for is the one shown
     readonly property bool sunk: down || checked || current
 
@@ -55,6 +58,11 @@ T.Button {
                 : key.sunk ? Theme.wellPressed : key.flat ? "transparent" : !key.enabled ? Theme.surface : Theme.raised
 
             Dither { anchors.fill: parent; visible: !key.enabled && !key.flat }
+            Rectangle {  // the keyboard's highlight
+                anchors.fill: parent
+                visible: key.highlighted && !key.primary
+                color: Qt.rgba(key.tone.r, key.tone.g, key.tone.b, Theme.opacitySelection)
+            }
             Rectangle {  // hover tint
                 anchors.fill: parent
                 visible: key.hovered && !key.primary && !key.sunk && key.enabled

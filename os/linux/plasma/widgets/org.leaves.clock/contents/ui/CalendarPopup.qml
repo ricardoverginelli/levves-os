@@ -8,6 +8,7 @@ import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
 import org.kde.plasma.workspace.calendar as PlasmaCalendar
 import org.kde.kirigami as Kirigami
+import Levves
 import "../../../../../leaves"
 
 Item {
@@ -18,28 +19,22 @@ Item {
     required property bool shown
     readonly property alias hovered: hover.hovered
 
-    // DESIGN.md spacing: content 12px from the frame (the style adds 4),
-    // 24 between the two sections with a 1px line in the middle
-    readonly property int pad: 12
-    readonly property int sectionGap: 24
+    // Two group boxes side by side (design/DESIGN.md Pieces), 12px from the frame (the style adds 4)
+    readonly property int pad: Theme.space12
+    readonly property int sectionGap: Theme.space12
     readonly property int cellWidth: 36
     readonly property int cellHeight: 32
-    readonly property int headerHeight: 28
-    readonly property int agendaWidth: 280
+    readonly property int toolbarHeight: Theme.sizeKey
+    readonly property int agendaWidth: 300
 
-    // Palette (DESIGN.md Colors)
-    readonly property color textColor: Kirigami.Theme.textColor
-    readonly property color mutedColor: Kirigami.Theme.disabledTextColor
-    readonly property color faintColor: "#5f6b67"
-    readonly property color accent: Kirigami.Theme.highlightColor
-    readonly property color onAccent: Kirigami.Theme.highlightedTextColor
-    readonly property color lineColor: Qt.alpha(textColor, 0.10)
+    readonly property color mutedColor: Theme.textMuted
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int hoverDuration: 150
+    readonly property int hoverDuration: Theme.durationHover
 
     // Calendar colors are held to the palette: each Google color becomes the
     // nearest-hued of info, success, warning, critical, magenta and cyan
-    readonly property var tints: ["#82a9c4", "#8fbf8a", "#e8cf6a", "#e0607a", "#b48cbf", "#7fbab3"]
+    readonly property var tints: [Theme.info, Theme.success, Theme.warning, Theme.critical,
+                                  Theme.terminalMagenta, Theme.terminalCyan]
     function tint(color) {
         if (!color)
             return mutedColor
@@ -120,10 +115,11 @@ Item {
     }
 
     readonly property int gridWidth: 7 * cellWidth
-    Layout.preferredWidth: pad + gridWidth + sectionGap + agendaWidth + pad
+    readonly property int boxPad: Theme.space12  // a group box's body to its edge
+    Layout.preferredWidth: pad + gridWidth + 2 * boxPad + 2 + sectionGap + agendaWidth + pad
     Layout.minimumWidth: Layout.preferredWidth
     Layout.maximumWidth: Layout.preferredWidth
-    Layout.preferredHeight: pad + headerHeight + 12 + 20 + 4 + 6 * cellHeight + pad
+    Layout.preferredHeight: pad + Theme.sizeGroupHeader + boxPad + toolbarHeight + 8 + 20 + 4 + 6 * cellHeight + boxPad + 2 + pad
     Layout.minimumHeight: Layout.preferredHeight
     Layout.maximumHeight: Layout.preferredHeight
 
@@ -147,19 +143,14 @@ Item {
         function onModelReset() { Qt.callLater(popup.rebuildSelected) }
     }
 
-    // A 24px square button with a MingCute icon (DESIGN.md: small control, 4px corners)
-    component IconButton: QQC2.AbstractButton {
+    // A small key with a MingCute icon (the month's arrows)
+    component IconKey: Key {
         id: button
         property string iconName
-        implicitWidth: 24
-        implicitHeight: 24
-        hoverEnabled: true
-        background: Rectangle {
-            radius: 4
-            color: button.pressed ? Qt.alpha(popup.textColor, 0.10)
-                 : button.hovered ? Qt.alpha(popup.textColor, 0.06) : "transparent"
-            Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
-        }
+        implicitWidth: Theme.sizeKey
+        leftPadding: 0
+        rightPadding: 0
+        focusPolicy: Qt.NoFocus
         contentItem: Item {
             Kirigami.Icon {
                 anchors.centerIn: parent
@@ -167,203 +158,155 @@ Item {
                 height: 16
                 source: button.iconName
                 isMask: true
-                color: button.hovered ? popup.textColor : popup.mutedColor
+                color: Theme.text
             }
         }
     }
 
     // ── Calendar ────────────────────────────────────────────────────────
-    ColumnLayout {
-        id: calendarColumn
+    GroupBox {
+        id: calendarBox
         x: popup.pad
         y: popup.pad
-        width: popup.gridWidth
-        spacing: 0
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: popup.headerHeight
-            spacing: 4
-
-            Text {
-                Layout.fillWidth: true
-                Layout.leftMargin: 4
-                font.pointSize: 11
-                font.weight: Font.Medium
-                color: popup.textColor
-                elide: Text.ElideRight
-                text: Qt.locale().standaloneMonthName(grid.month - 1) + " "
-                      + `<font color="${popup.mutedColor}">${grid.year}</font>`
-                textFormat: Text.StyledText
-            }
-            // Back to this month (and the upcoming list)
-            QQC2.AbstractButton {
-                id: todayButton
-                visible: !popup.viewingThisMonth || popup.selectedDay !== null
-                implicitHeight: 24
-                implicitWidth: todayLabel.implicitWidth + 16
-                hoverEnabled: true
-                onClicked: popup.goToToday()
-                background: Rectangle {
-                    radius: 4
-                    color: todayButton.hovered ? Qt.alpha(popup.textColor, 0.12) : Qt.alpha(popup.textColor, 0.06)
-                    Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
-                }
-                contentItem: Text {
-                    id: todayLabel
-                    text: "Today"
-                    font.pointSize: 9
-                    color: todayButton.hovered ? popup.textColor : popup.mutedColor
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-            }
-            IconButton {
-                iconName: "mingcute-left-fill"
-                onClicked: grid.previousMonth()
-            }
-            IconButton {
-                iconName: "mingcute-right-fill"
-                onClicked: grid.nextMonth()
-            }
-        }
-
-        Item { Layout.preferredHeight: 12 }
-
-        // Weekday initials, in the locale's order
-        Row {
-            Layout.preferredHeight: 20
-            Repeater {
-                model: 7
-                Text {
-                    required property int index
-                    width: popup.cellWidth
-                    height: 20
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.pointSize: 9
-                    color: popup.mutedColor
-                    text: Qt.locale().dayName((grid.firstDayOfWeek + index) % 7, Locale.NarrowFormat)
-                }
-            }
-        }
-
-        Item { Layout.preferredHeight: 4 }
-
-        Grid {
-            id: days
-            columns: 7
-
-            WheelHandler {
-                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                onWheel: event => {
-                    if (event.angleDelta.y > 0)
-                        grid.previousMonth()
-                    else if (event.angleDelta.y < 0)
-                        grid.nextMonth()
-                }
-            }
-
-            Repeater {
-                model: grid.daysModel
-
-                QQC2.AbstractButton {
-                    id: cell
-                    required property int dayNumber
-                    required property int monthNumber
-                    required property int yearNumber
-                    required property bool isCurrent
-                    required property var model
-                    readonly property date date: new Date(yearNumber, monthNumber - 1, dayNumber)
-                    readonly property bool isToday: popup.sameDay(date, popup.clock.today)
-                    readonly property bool isSelected: popup.sameDay(date, popup.selectedDay)
-                    readonly property bool hasEvents: (model.eventCount ?? 0) > 0
-
-                    width: popup.cellWidth
-                    height: popup.cellHeight
-                    hoverEnabled: true
-                    onClicked: popup.select(date)
-
-                    background: Item {
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 28
-                            height: 28
-                            radius: 4
-                            color: cell.isToday ? popup.accent
-                                 : cell.isSelected ? Qt.alpha(popup.textColor, 0.12)
-                                 : cell.hovered ? Qt.alpha(popup.textColor, 0.06) : "transparent"
-                            Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
-                        }
-                    }
-                    contentItem: Item {
-                        Text {
-                            anchors.centerIn: parent
-                            anchors.verticalCenterOffset: -1
-                            text: cell.dayNumber
-                            font.pointSize: 10
-                            font.weight: cell.isToday ? Font.DemiBold : Font.Normal
-                            color: cell.isToday ? popup.onAccent
-                                 : cell.isCurrent ? popup.textColor : popup.faintColor
-                        }
-                        // A dot under days with events
-                        Rectangle {
-                            visible: cell.hasEvents
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.verticalCenterOffset: 9
-                            width: 4
-                            height: 4
-                            radius: 2
-                            color: cell.isToday ? popup.onAccent
-                                 : cell.isCurrent ? popup.mutedColor : popup.faintColor
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // The line between the sections
-    Rectangle {
-        x: popup.pad + popup.gridWidth + popup.sectionGap / 2
-        y: popup.pad
-        width: 1
+        width: popup.gridWidth + 2 * popup.boxPad + 2
         height: popup.height - 2 * popup.pad
-        color: popup.lineColor
+        padding: popup.boxPad
+        title: Qt.locale().standaloneMonthName(grid.month - 1)
+        value: grid.year
+
+        ColumnLayout {
+            width: popup.gridWidth
+            spacing: 0
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: popup.toolbarHeight
+                spacing: 3
+
+                // Back to this month (and the upcoming list)
+                Key {
+                    visible: !popup.viewingThisMonth || popup.selectedDay !== null
+                    text: "Today"
+                    focusPolicy: Qt.NoFocus
+                    onClicked: popup.goToToday()
+                }
+                Item { Layout.fillWidth: true }
+                IconKey {
+                    iconName: "mingcute-left-fill"
+                    onClicked: grid.previousMonth()
+                }
+                IconKey {
+                    iconName: "mingcute-right-fill"
+                    onClicked: grid.nextMonth()
+                }
+            }
+
+            Item { Layout.preferredHeight: 8 }
+
+            // Weekday initials, in the locale's order
+            Row {
+                Layout.preferredHeight: 20
+                Repeater {
+                    model: 7
+                    Caps {
+                        required property int index
+                        width: popup.cellWidth
+                        height: 20
+                        horizontalAlignment: Text.AlignHCenter
+                        text: Qt.locale().dayName((grid.firstDayOfWeek + index) % 7, Locale.NarrowFormat)
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 4 }
+
+            Grid {
+                id: days
+                columns: 7
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        if (event.angleDelta.y > 0)
+                            grid.previousMonth()
+                        else if (event.angleDelta.y < 0)
+                            grid.nextMonth()
+                    }
+                }
+
+                Repeater {
+                    model: grid.daysModel
+
+                    QQC2.AbstractButton {
+                        id: cell
+                        required property int dayNumber
+                        required property int monthNumber
+                        required property int yearNumber
+                        required property bool isCurrent
+                        required property var model
+                        readonly property date date: new Date(yearNumber, monthNumber - 1, dayNumber)
+                        readonly property bool isToday: popup.sameDay(date, popup.clock.today)
+                        readonly property bool isSelected: popup.sameDay(date, popup.selectedDay)
+                        readonly property bool hasEvents: (model.eventCount ?? 0) > 0
+
+                        width: popup.cellWidth
+                        height: popup.cellHeight
+                        hoverEnabled: true
+                        onClicked: popup.select(date)
+
+                        // Today is outlined; the picked day is held down like a key
+                        background: Item {
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 30
+                                height: 28
+                                radius: Theme.radiusKey
+                                color: cell.isSelected ? Theme.wellPressed
+                                     : cell.hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+                                     : "transparent"
+                                border.width: cell.isToday || cell.isSelected ? 1 : 0
+                                border.color: cell.isToday ? Theme.text : Theme.fieldEdge
+                                Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
+                            }
+                        }
+                        contentItem: Item {
+                            Num {
+                                anchors.centerIn: parent
+                                anchors.verticalCenterOffset: -2
+                                text: cell.dayNumber
+                                font.weight: cell.isToday ? Theme.typeWeightSemibold : Theme.typeWeightRegular
+                                color: cell.isCurrent || cell.isToday ? Theme.text : Theme.textFaint
+                            }
+                            // A dot under days with events
+                            Rectangle {
+                                visible: cell.hasEvents
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: 9
+                                width: 3
+                                height: 3
+                                color: cell.isCurrent ? Theme.textMuted : Theme.textFaint
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ── Agenda ──────────────────────────────────────────────────────────
-    ColumnLayout {
-        x: popup.pad + popup.gridWidth + popup.sectionGap
+    GroupBox {
+        x: calendarBox.x + calendarBox.width + popup.sectionGap
         y: popup.pad
         width: popup.agendaWidth
         height: popup.height - 2 * popup.pad
-        spacing: 12
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: popup.headerHeight
-            spacing: 8
-            Text {
-                Layout.fillWidth: true
-                font.pointSize: 11
-                font.weight: Font.Medium
-                color: popup.textColor
-                elide: Text.ElideRight
-                text: popup.selectedDay ? Qt.formatDate(popup.selectedDay, "dddd d MMMM") : "Upcoming"
-            }
-            Text {
-                visible: !popup.selectedDay
-                font.pointSize: 9
-                color: popup.mutedColor
-                text: `Next ${popup.clock.daysAhead} days`
-            }
-        }
+        padding: 0
+        title: popup.selectedDay ? Qt.formatDate(popup.selectedDay, "dddd d MMMM") : "Upcoming"
+        value: popup.selectedDay ? "" : `${popup.clock.daysAhead} days`
 
         Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            width: popup.agendaWidth - 2
+            height: popup.height - 2 * popup.pad - Theme.sizeGroupHeader - 1
 
             ListView {
                 id: list
@@ -379,17 +322,20 @@ Item {
                 layer.enabled: !atYBeginning || !atYEnd
                 layer.effect: GE.OpacityMask { maskSource: fade }
 
+                // Each day a thin strip: a caps label on the dither between two edges
                 section.property: popup.selectedDay ? "" : "dayKey"
-                section.delegate: Text {
+                section.delegate: Item {
                     required property string section
                     width: ListView.view.width
-                    height: 24
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: 4
-                    font.pointSize: 9
-                    font.weight: Font.Medium
-                    color: popup.mutedColor
-                    text: popup.dayLabel(new Date(section))
+                    height: Theme.sizeGroupHeader
+                    Dither { anchors.fill: parent }
+                    Rectangle { width: parent.width; height: 1; color: Theme.edge; visible: parent.y > 0 }
+                    Caps {
+                        x: Theme.space12
+                        height: parent.height
+                        text: popup.dayLabel(new Date(parent.section))
+                    }
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
                 }
 
                 delegate: QQC2.AbstractButton {
@@ -408,37 +354,39 @@ Item {
                     onClicked: popup.clock.openDay(day)
 
                     background: Rectangle {
-                        radius: 6
-                        color: row.hovered ? Qt.alpha(popup.textColor, 0.06) : "transparent"
+                        color: row.hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover) : "transparent"
                         Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.rowLine }
                     }
                     contentItem: RowLayout {
-                        spacing: 12
+                        spacing: Theme.space12
                         // The calendar's color
                         Rectangle {
-                            Layout.leftMargin: 4
+                            Layout.leftMargin: Theme.space12
                             Layout.preferredWidth: 3
                             Layout.preferredHeight: 28
-                            radius: 1.5
                             color: popup.tint(row.color)
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 2
+                            Layout.rightMargin: Theme.space12
+                            spacing: 0
                             Text {
                                 Layout.fillWidth: true
                                 text: row.title
                                 elide: Text.ElideRight
-                                font.pointSize: 10
-                                color: popup.textColor
+                                font.family: Theme.typeFamilySans
+                                font.pixelSize: Theme.typeSizeBody
+                                color: Theme.text
                             }
-                            Text {
+                            // When, as a remark; an event on now reads as a plain number
+                            Quiet {
                                 Layout.fillWidth: true
                                 text: popup.whenText(row)
                                 elide: Text.ElideRight
-                                font.pointSize: 9
-                                font.weight: row.now ? Font.Medium : Font.Normal
-                                color: row.now ? popup.textColor : popup.mutedColor
+                                font.pixelSize: Theme.typeSizeSmall + 1
+                                font.italic: !row.now
+                                color: row.now ? Theme.text : Theme.textMuted
                             }
                         }
                     }
@@ -450,50 +398,25 @@ Item {
             // Nothing to show: no accounts yet, or a free stretch
             ColumnLayout {
                 anchors.centerIn: parent
-                width: parent.width
+                width: parent.width - 2 * Theme.space12
                 visible: list.count === 0
-                spacing: 12
+                spacing: Theme.space12
 
-                Kirigami.Icon {
-                    Layout.alignment: Qt.AlignHCenter
-                    implicitWidth: 24
-                    implicitHeight: 24
-                    source: "mingcute-calendar-fill"
-                    isMask: true
-                    color: popup.faintColor
-                }
-                Text {
+                Quiet {
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    font.pointSize: 10
-                    color: popup.mutedColor
                     text: popup.clock.accountsLoaded && popup.clock.accounts.length === 0
                         ? "No Google accounts yet"
                         : popup.selectedDay ? "Nothing on this day"
                         : `Nothing in the next ${popup.clock.daysAhead} days`
                 }
-                QQC2.AbstractButton {
-                    id: addButton
+                Key {
                     visible: popup.clock.accountsLoaded && popup.clock.accounts.length === 0
                     Layout.alignment: Qt.AlignHCenter
-                    implicitHeight: 28
-                    implicitWidth: addLabel.implicitWidth + 24
-                    hoverEnabled: true
+                    text: "Add an account"
+                    focusPolicy: Qt.NoFocus
                     onClicked: Plasmoid.internalAction("configure").trigger()
-                    background: Rectangle {
-                        radius: 4
-                        color: addButton.hovered ? Qt.alpha(popup.textColor, 0.12) : Qt.alpha(popup.textColor, 0.06)
-                        Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
-                    }
-                    contentItem: Text {
-                        id: addLabel
-                        text: "Add an account…"
-                        font.pointSize: 10
-                        color: popup.textColor
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
                 }
             }
         }

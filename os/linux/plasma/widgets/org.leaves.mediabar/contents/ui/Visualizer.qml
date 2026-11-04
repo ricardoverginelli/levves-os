@@ -1,6 +1,5 @@
-// A soft silhouette of the music rising from the popup's bottom edge: one
-// smooth filled curve through the spectrum in the cover's tint, faint enough
-// that the blurred cover still shows through, from edge to edge. Levels come
+// A soft silhouette of the music rising from the bottom of the popup's sunk screen: one
+// smooth filled curve through the spectrum in the cover's tint, from edge to edge. Levels come
 // from ../code/visualizer.py, started here on demand; it records only the
 // given player's own stream and exits once nothing asks it for levels.
 import QtQuick
@@ -14,6 +13,7 @@ Item {
     property string app        // the player's MPRIS identity
     property bool running      // popup open and playing
     property color tint        // the cover's color
+    property real strength: 1  // scales the fill and line; the popup's sunk screen shows it stronger
     readonly property int bands: 32
     readonly property int steps: 8  // curve samples between two bands
 
@@ -139,8 +139,6 @@ Item {
         visible: false
         Rectangle {
             anchors.fill: parent
-            bottomLeftRadius: 7
-            bottomRightRadius: 7
         }
     }
 
@@ -154,15 +152,15 @@ Item {
             fillGradient: LinearGradient {
                 y1: 0
                 y2: visualizer.height
-                GradientStop { position: 0; color: Qt.alpha(visualizer.tint, 0.03) }
-                GradientStop { position: 1; color: Qt.alpha(visualizer.tint, 0.10) }
+                GradientStop { position: 0; color: Qt.alpha(visualizer.tint, 0.03 * visualizer.strength) }
+                GradientStop { position: 1; color: Qt.alpha(visualizer.tint, 0.10 * visualizer.strength) }
             }
             PathPolyline { path: visualizer.points }
         }
         // A faint line along the top, so the curve keeps an edge
         ShapePath {
             strokeWidth: 1.5
-            strokeColor: Qt.alpha(visualizer.tint, 0.22 * visualizer.presence)
+            strokeColor: Qt.alpha(visualizer.tint, Math.min(1, 0.22 * visualizer.strength) * visualizer.presence)
             fillColor: "transparent"
             joinStyle: ShapePath.RoundJoin
             capStyle: ShapePath.RoundCap

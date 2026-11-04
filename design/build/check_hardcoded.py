@@ -29,8 +29,6 @@ SKIP_SUFFIXES = (".md", ".svg", ".png", ".jpg", ".gif", ".webp", ".ico", ".woff"
 
 DEFERRED = {
     # Loaded by plasmashell and KWin, which can't see design/dist/qml until the Plasma reskin installs it
-    "os/linux/plasma/widgets/org.leaves.clock/contents/ui/CalendarPopup.qml": "Plasma reskin",
-    "os/linux/plasma/widgets/org.leaves.mediabar/contents/ui/PlayerPopup.qml": "Plasma reskin",
     "os/linux/plasma/kwin-tabbox/leaves-switcher/contents/ui/main.qml": "Plasma reskin",
 }
 

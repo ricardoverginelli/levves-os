@@ -40,11 +40,9 @@ blue-green-gray foliage with tiny crimson stem tips.
 | `accent-pressed` | `#c7852a` | Pressed / held |
 | `on-accent` | `#1a1206` | Text and icons on top of `accent` |
 
-Exception, the media popup (`widgets/org.leaves.mediabar`): it takes its look from the cover
-art, so the cover's color (`Kirigami.ImageColors` highlight, held at 62-78% lightness and at
-most 70% saturation) stands in for the accent there: the progress fill, the visualizer (3-10%
-fill, 22% line) and a 25% trace over the popup's border. Behind it, the cover is blurred and
-darkened under the glass fill (`bg` at 75%), so text keeps its contrast on any cover.
+Exception, the media popup (`widgets/org.leaves.mediabar`): the cover's color
+(`Kirigami.ImageColors` highlight, held at 62-78% lightness and at most 70% saturation) stands in
+for the accent there: the sunk screen's visualizer curve and the progress meter's fill.
 
 ### Semantic
 | Role | Hex | Use |
@@ -122,10 +120,9 @@ The Levves type (design/DESIGN.md Type), set for all of Plasma and the apps by `
     filled shapes, never strokes, since Qt counts a stroke's width into the piece's size. Fractional
     pieces showed as see-through squares where corners meet edges and tick marks along the edges.
     Check with `QSvgRenderer.boundsOnElement` (see `agents/notes/plasma-svg-frames.md`).
-- Borders: 1px `border`. Every floating surface has one (popups, the launcher, Yakuake, the
-  side panel), drawn by the Plasma style for Plasma's popups; inside a surface, only where areas
-  of similar tone meet. The media popup redraws its border over the style's with the cover's
-  tint laid over at 25% (see Accent).
+- Edges: every floating surface is a Levves window, inside the black engraved edge (popups, the
+  launcher, the side panel), drawn by the Plasma style for Plasma's popups and by `WindowFrame`
+  for QML windows. Inside, sections are group boxes and wells (design/DESIGN.md Edges).
 - Bar popups float 4px off the bar with their whole frame (all four corners rounded and
   bordered), so they read as floating rather than glued to it. The tray sets this for its own
   popup and every panel widget's (`tray/patches.py`).

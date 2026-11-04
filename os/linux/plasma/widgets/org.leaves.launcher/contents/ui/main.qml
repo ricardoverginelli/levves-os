@@ -43,12 +43,12 @@ import "../../../../../leaves"
 PlasmoidItem {
     id: root
 
-    // DESIGN.md motion and spacing
+    // Levves motion and spacing (design/DESIGN.md)
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int hoverDuration: 150
-    readonly property int edgeMargin: 12   // same as the perf meter's
-    readonly property int pad: 12
-    readonly property int rowHeight: 36
+    readonly property int hoverDuration: Theme.durationHover
+    readonly property int edgeMargin: Theme.space12   // same as the perf meter's
+    readonly property int pad: Theme.space12
+    readonly property int rowHeight: Theme.sizeRow
     readonly property int twoLineRowHeight: 44
     readonly property int sideWidth: 200
     readonly property int taskWidth: 360
@@ -360,10 +360,10 @@ PlasmoidItem {
     // Header icons are the perf meter's (DESIGN.md Icons); cpu/gpu are % of the
     // whole CPU/GPU, ram KiB, disk read + write in bytes per second
     readonly property var taskColumns: [
-        { key: "cpu",  icon: "leaves-cpu",             label: "CPU" },
-        { key: "gpu",  icon: "mingcute-monitor-fill",  label: "GPU" },
-        { key: "ram",  icon: "leaves-ram",             label: "Memory" },
-        { key: "disk", icon: "mingcute-server-2-fill", label: "Disk read + write" },
+        { key: "cpu",  short: "CPU",  label: "CPU" },
+        { key: "gpu",  short: "GPU",  label: "GPU" },
+        { key: "ram",  short: "RAM",  label: "Memory" },
+        { key: "disk", short: "Disk", label: "Disk read + write" },
     ]
     property string sortKey: "name"   // "name" or a column key (highest first)
     onSortKeyChanged: rebuildTasks()
@@ -513,9 +513,9 @@ PlasmoidItem {
 
     // Usage colors as in the perf meter: warning from 70%, critical from 85%
     function levelColor(percent) {
-        if (percent >= 85) return Kirigami.Theme.negativeTextColor
-        if (percent >= 70) return Kirigami.Theme.neutralTextColor
-        return Kirigami.Theme.textColor
+        if (percent >= 85) return Theme.critical
+        if (percent >= 70) return Theme.warning
+        return Theme.text
     }
     function formatMemory(kib) {
         const mib = kib / 1024
@@ -541,10 +541,10 @@ PlasmoidItem {
 
     readonly property var sideActions: [
         { icon: "system-lock-screen", label: "Lock",      run: () => session.lock() },
-        { icon: "system-shutdown",    label: "Power Off", confirm: "Press again to power off", run: () => session.requestShutdown(skipPrompt) },
-        { icon: "system-reboot",      label: "Restart",   confirm: "Press again to restart",   run: () => session.requestReboot(skipPrompt) },
+        { icon: "system-shutdown",    label: "Power Off", confirm: "Press again", run: () => session.requestShutdown(skipPrompt) },
+        { icon: "system-reboot",      label: "Restart",   confirm: "Press again", run: () => session.requestReboot(skipPrompt) },
         { icon: "system-suspend",     label: "Sleep",     run: () => session.suspend() },
-        { icon: "leaves-log-out", label: "Log Out", confirm: "Press again to log out", run: () => session.requestLogout(skipPrompt) },
+        { icon: "leaves-log-out", label: "Log Out", confirm: "Press again", run: () => session.requestLogout(skipPrompt) },
         { icon: "configure",          label: "System Settings", run: () => KCMUtils.KCMLauncher.openSystemSettings("") },
         { user: true,                 label: user.fullName || user.loginName, run: () => KCMUtils.KCMLauncher.openSystemSettings("kcm_users") },
     ]
@@ -633,43 +633,48 @@ PlasmoidItem {
                 anchors.bottomMargin: root.pad
                 spacing: root.pad
 
-                // Left: task manager
-                ColumnLayout {
+                // Left: task manager, a sunk list under a dithered row of column headers
+                Well {
                     // Fixed width, like the side panel
                     Layout.preferredWidth: root.taskWidth - root.pad
                     Layout.maximumWidth: root.taskWidth - root.pad
                     Layout.fillWidth: false
                     Layout.fillHeight: true
-                    spacing: 8
 
-                    // Column headers, as tall as the search field; click one to sort by it
+                    // Column headers; click one to sort by it
                     Item {
-                        Layout.fillWidth: true
-                        implicitHeight: root.rowHeight
+                        id: taskHeader
+                        x: 1; y: 1
+                        width: parent.width - 2
+                        height: Theme.sizeGroupHeader
 
-                        Text {
+                        Dither { anchors.fill: parent }
+                        Caps {
                             x: 8
-                            anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height
                             text: "Tasks"
-                            font.pointSize: 9
-                            font.weight: Font.Medium
-                            color: Kirigami.Theme.disabledTextColor
+                            color: root.sortKey === "name" ? Theme.text : Theme.textMuted
                             TapHandler { onTapped: root.sortKey = "name" }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                         RowLayout {
                             spacing: 0
-                            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                            height: parent.height
+                            anchors { right: parent.right; rightMargin: 8 }
                             Repeater {
                                 model: root.taskColumns
                                 TaskHeader {}
                             }
                         }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
                     }
 
                     ListView {
                         id: taskList
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        x: 1
+                        y: taskHeader.y + taskHeader.height
+                        width: parent.width - 2
+                        height: parent.height - y - 1
                         clip: true
                         model: taskRows
                         currentIndex: root.taskIndex
@@ -681,59 +686,47 @@ PlasmoidItem {
                         layer.enabled: !atYBeginning || !atYEnd
                         layer.effect: GE.OpacityMask { maskSource: taskFadeMask }
 
-                        Text {
+                        Quiet {
                             anchors.centerIn: parent
                             visible: taskList.count === 0
                             text: apps.available ? "" : "Needs systemd app cgroups"
-                            color: Kirigami.Theme.disabledTextColor
-                            font.pointSize: 10
                         }
                     }
-                }
-
-                Rectangle {
-                    Layout.fillHeight: true
-                    implicitWidth: 1
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.10)
                 }
 
                 // Middle: search + list
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 8
+                    spacing: Theme.space8
 
-                    Rectangle {
+                    Field {
                         Layout.fillWidth: true
                         implicitHeight: root.rowHeight
-                        radius: 6  // DESIGN.md: rows and inputs at 36px
-                        Kirigami.Theme.inherit: false
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        color: Kirigami.Theme.backgroundColor
-                        // Neutral focus ring: the accent is kept for the highlighted row
-                        border.width: 1
-                        border.color: root.area === "search" ? Qt.alpha(Kirigami.Theme.textColor, 0.16) : "transparent"
+                        // Neutral focus: the accent is kept for the highlighted row
+                        border.color: root.area === "search" ? Theme.textFaint : Theme.fieldEdge
                         Behavior on border.color {
                             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
 
                         Kirigami.Icon {
                             id: searchIcon
-                            x: 12
+                            x: 10
                             anchors.verticalCenter: parent.verticalCenter
                             width: 16; height: 16
                             source: "search"
                             isMask: true
-                            color: Kirigami.Theme.disabledTextColor
+                            color: Theme.textMuted
                         }
 
                         TextInput {
                             id: search
                             anchors { left: searchIcon.right; right: parent.right; leftMargin: 8; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                            color: Kirigami.Theme.textColor
-                            selectionColor: Kirigami.Theme.highlightColor
-                            selectedTextColor: Kirigami.Theme.highlightedTextColor
-                            font.pointSize: 10
+                            color: Theme.text
+                            selectionColor: Theme.accent
+                            selectedTextColor: Theme.textOnAccent
+                            font.family: Theme.typeFamilySans
+                            font.pixelSize: Theme.typeSizeBody
                             clip: true
                             onTextChanged: root.area = "search"
 
@@ -742,7 +735,7 @@ PlasmoidItem {
                                 visible: !search.text
                                 verticalAlignment: Text.AlignVCenter
                                 text: "Search apps and files"
-                                color: Kirigami.Theme.disabledTextColor
+                                color: Theme.textFaint
                                 font: search.font
                             }
 
@@ -750,59 +743,49 @@ PlasmoidItem {
                         }
                     }
 
-                    ListView {
-                        id: list
+                    Well {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        clip: true
-                        model: root.entries
-                        currentIndex: 0
-                        boundsBehavior: Flickable.StopAtBounds
-                        highlightMoveDuration: 0
-                        keyNavigationEnabled: false
-                        delegate: EntryRow {}
 
-                        // Scroll hint: rows fade out at an edge with more content past it
-                        layer.enabled: !atYBeginning || !atYEnd
-                        layer.effect: GE.OpacityMask { maskSource: fadeMask }
+                        ListView {
+                            id: list
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            clip: true
+                            model: root.entries
+                            currentIndex: 0
+                            boundsBehavior: Flickable.StopAtBounds
+                            highlightMoveDuration: 0
+                            keyNavigationEnabled: false
+                            delegate: EntryRow {}
 
-                        Text {
-                            anchors.centerIn: parent
-                            visible: list.count === 0
-                            text: root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
-                            color: Kirigami.Theme.disabledTextColor
-                            font.pointSize: 10
+                            // Scroll hint: rows fade out at an edge with more content past it
+                            layer.enabled: !atYBeginning || !atYEnd
+                            layer.effect: GE.OpacityMask { maskSource: fadeMask }
+
+                            Quiet {
+                                anchors.centerIn: parent
+                                visible: list.count === 0
+                                text: root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
+                            }
                         }
                     }
                 }
 
-                // Vertical divider between the list and the side panel
-                Rectangle {
-                    Layout.fillHeight: true
-                    implicitWidth: 1
-                    color: Qt.alpha(Kirigami.Theme.textColor, 0.10)
-                }
-
-                // Right: power & session, settings, user
+                // Right: power & session as keys, then settings and the user
                 ColumnLayout {
                     // Fixed width; without the max it inherits fillWidth from its rows
                     Layout.preferredWidth: root.sideWidth - root.pad
                     Layout.maximumWidth: root.sideWidth - root.pad
                     Layout.fillWidth: false
                     Layout.fillHeight: true
-                    spacing: 2
+                    spacing: Theme.space4
 
                     Repeater {
                         model: root.dividerAfter + 1
                         SideRow { required property int index; actionIndex: index }
                     }
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 6
-                        Layout.bottomMargin: 6
-                        implicitHeight: 1
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.10)
-                    }
+                    Item { implicitHeight: Theme.space8 }
                     SideRow { actionIndex: root.dividerAfter + 1 }
                     Item { Layout.fillHeight: true }
                     SideRow { actionIndex: root.sideActions.length - 1 }
@@ -925,18 +908,29 @@ PlasmoidItem {
 
     // ── Rows ──────────────────────────────────────────────────────────────
 
-    // The keyboard highlight is the one accented thing; hover stays a neutral tint
+    // A row in a sunk list: the keyboard highlight is the one accented thing (amber at
+    // opacity.selection), hover a neutral tint; a row-line under each
     component RowBackground: Rectangle {
         property bool selected
         property bool hovered
-        property color tint: Kirigami.Theme.highlightColor
-        radius: 6  // DESIGN.md: rows
-        color: selected ? Qt.alpha(tint, 0.18)
-             : hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
+        property color tint: Theme.accent
+        color: selected ? Qt.rgba(tint.r, tint.g, tint.b, Theme.opacitySelection)
+             : hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
              : "transparent"
         Behavior on color {
             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
         }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.rowLine }
+    }
+
+    // A group's name over its rows ("Apps", "Background"): a caps label on the dither
+    component GroupHeader: Item {
+        property alias text: groupLabel.text
+        height: Theme.sizeGroupHeader
+        Dither { anchors.fill: parent }
+        Caps { id: groupLabel; x: 8; height: parent.height }
+        Rectangle { width: parent.width; height: 1; color: Theme.edge; visible: parent.y > 0 }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
     }
 
     component EntryRow: Item {
@@ -946,29 +940,23 @@ PlasmoidItem {
         readonly property bool pinned: root.isPinned(modelData)
         readonly property bool hasDivider: modelData.above === "divider"
         readonly property bool hasHeader: modelData.above !== "" && !hasDivider
-        // Space above the row: divider 4 + 1 + 4; header text plus a gap from the previous group
-        readonly property int aboveHeight: hasDivider ? 9 : hasHeader ? (index === 0 ? 20 : 28) : 0
+        // Space above the row: a 2px divider (pinned / recent) or a group header strip
+        readonly property int aboveHeight: hasDivider ? 2 : hasHeader ? Theme.sizeGroupHeader : 0
 
         width: ListView.view.width
         height: aboveHeight + rowBackground.height
 
         Rectangle {
             visible: entryRow.hasDivider
-            x: 8
-            y: 4
-            width: parent.width - 16
-            height: 1
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.10)
+            width: parent.width
+            height: 2
+            color: Theme.edge
         }
 
-        Text {
+        GroupHeader {
             visible: entryRow.hasHeader
-            x: 8
-            anchors { bottom: rowBackground.top; bottomMargin: 4 }
+            width: parent.width
             text: entryRow.modelData.above
-            font.pointSize: 9
-            font.weight: Font.Medium
-            color: Kirigami.Theme.disabledTextColor
         }
 
         RowBackground {
@@ -995,16 +983,18 @@ PlasmoidItem {
                 Text {
                     width: parent.width
                     elide: Text.ElideRight
-                    font.pointSize: 10
-                    color: Kirigami.Theme.textColor
+                    font.family: Theme.typeFamilySans
+                    font.pixelSize: Theme.typeSizeBody
+                    color: Theme.text
                     text: entryRow.modelData.name
                 }
                 Text {
                     visible: text !== ""
                     width: parent.width
                     elide: Text.ElideMiddle  // paths: keep the start and the file's folder
-                    font.pointSize: 9
-                    color: Kirigami.Theme.disabledTextColor
+                    font.family: Theme.typeFamilySans
+                    font.pixelSize: Theme.typeSizeSmall
+                    color: Theme.textMuted
                     text: entryRow.modelData.subtitle
                 }
             }
@@ -1017,7 +1007,7 @@ PlasmoidItem {
                 source: "pin"
                 isMask: true
                 visible: entryRow.modelData.favoriteId !== ""
-                color: Kirigami.Theme.textColor
+                color: Theme.text
                 opacity: entryRow.pinned || pinMouse.containsMouse ? 0.7 : mouse.containsMouse ? 0.25 : 0
                 Behavior on opacity {
                     NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
@@ -1045,20 +1035,19 @@ PlasmoidItem {
         }
     }
 
-    // Column header icon; the sorted column is drawn in the text color
+    // A column header, a caps label; the sorted column is drawn in the text color
     component TaskHeader: Item {
         id: header
         required property var modelData
         readonly property bool active: root.sortKey === modelData.key
         Layout.preferredWidth: root.taskCellWidth
-        height: 16
+        Layout.fillHeight: true
 
-        Kirigami.Icon {
+        Caps {
             anchors.right: parent.right
-            width: 16; height: 16
-            source: header.modelData.icon
-            isMask: true
-            color: header.active || headerHover.hovered ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+            height: parent.height
+            text: header.modelData.short
+            color: header.active || headerHover.hovered ? Theme.text : Theme.textMuted
             Behavior on color {
                 ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
             }
@@ -1072,13 +1061,13 @@ PlasmoidItem {
     }
 
     // A right-aligned reading; idle ones (nothing happening) are muted
-    component TaskCell: Text {
+    component TaskCell: Num {
         property real level
         property bool idle
         Layout.preferredWidth: root.taskCellWidth
         horizontalAlignment: Text.AlignRight
-        font.pointSize: 9
-        color: idle ? Kirigami.Theme.disabledTextColor : root.levelColor(level)
+        font.pixelSize: Theme.typeSizeBar
+        color: idle ? Theme.textFaint : root.levelColor(level)
     }
 
     component TaskRow: Item {
@@ -1096,19 +1085,15 @@ PlasmoidItem {
         required property string above
         readonly property bool ending: root.endingKey === key
         readonly property bool hovered: taskMouse.containsMouse || endMouse.containsMouse
-        readonly property int aboveHeight: above !== "" ? (index === 0 ? 20 : 28) : 0
+        readonly property int aboveHeight: above !== "" ? Theme.sizeGroupHeader : 0
 
         width: ListView.view.width
         height: aboveHeight + root.taskRowHeight
 
-        Text {
+        GroupHeader {
             visible: taskRow.above !== ""
-            x: 8
-            anchors { bottom: taskBackground.top; bottomMargin: 4 }
+            width: parent.width
             text: taskRow.above
-            font.pointSize: 9
-            font.weight: Font.Medium
-            color: Kirigami.Theme.disabledTextColor
         }
 
         RowBackground {
@@ -1118,7 +1103,7 @@ PlasmoidItem {
             height: root.taskRowHeight
             hovered: taskRow.hovered
             selected: (root.area === "tasks" && root.taskIndex === taskRow.index) || taskRow.ending
-            tint: taskRow.ending ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+            tint: taskRow.ending ? Theme.critical : Theme.accent
 
             Kirigami.Icon {
                 id: taskIcon
@@ -1136,9 +1121,10 @@ PlasmoidItem {
                     verticalCenter: parent.verticalCenter
                 }
                 elide: Text.ElideRight
-                font.pointSize: 10
-                color: taskRow.ending ? Kirigami.Theme.negativeTextColor
-                     : taskRow.windowRow >= 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                font.family: Theme.typeFamilySans
+                font.pixelSize: Theme.typeSizeBody
+                color: taskRow.ending ? Theme.critical
+                     : taskRow.windowRow >= 0 ? Theme.text : Theme.textMuted
                 text: taskRow.ending ? "Again to force quit" : taskRow.name
             }
 
@@ -1149,7 +1135,7 @@ PlasmoidItem {
                 width: 16; height: 16
                 source: "mingcute-close-fill"
                 isMask: true
-                color: endMouse.containsMouse ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+                color: endMouse.containsMouse ? Theme.critical : Theme.text
                 opacity: endMouse.containsMouse ? 1 : taskRow.hovered ? 0.5 : 0
                 Behavior on opacity {
                     NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
@@ -1183,50 +1169,60 @@ PlasmoidItem {
         }
     }
 
-    component SideRow: RowBackground {
+    // Power and session as keys; the keyboard's place is highlighted, and a key that asks to be
+    // pressed again turns critical
+    component SideRow: Key {
         id: sideRow
         property int actionIndex
-        readonly property var action: root.sideActions[actionIndex]
+        readonly property var sideAction: root.sideActions[actionIndex]  // Button's own action is FINAL
         readonly property bool confirming: root.confirmIndex === actionIndex
 
         Layout.fillWidth: true
-        implicitHeight: action.user ? 40 : 32
-        hovered: sideMouse.containsMouse
-        selected: (root.area === "side" && root.sideIndex === actionIndex) || confirming
-        tint: confirming ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+        implicitHeight: sideAction.user ? 40 : Theme.sizeKey
+        flat: !!sideAction.user
+        focusPolicy: Qt.NoFocus
+        leftPadding: 8
+        highlighted: (root.area === "side" && root.sideIndex === actionIndex) || confirming
+        tone: confirming ? Theme.critical : Theme.accent
+        onClicked: root.runSide(sideRow.actionIndex)
 
-        KirigamiComponents.Avatar {
-            id: avatar
-            visible: !!sideRow.action.user
-            x: 8
-            anchors.verticalCenter: parent.verticalCenter
-            width: 24; height: 24
-            name: sideRow.action.label
-            source: user.faceIconUrl
-            cache: false
-        }
-        Kirigami.Icon {
-            id: sideIcon
-            visible: !sideRow.action.user
-            x: 8
-            anchors.verticalCenter: parent.verticalCenter
-            width: 16; height: 16
-            source: sideRow.action.icon ?? ""
-            isMask: true
-            color: sideRow.confirming ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
-        }
-        Text {
-            anchors { left: (sideRow.action.user ? avatar : sideIcon).right; leftMargin: 12; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-            elide: Text.ElideRight
-            font.pointSize: 10
-            color: sideRow.confirming ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
-            text: sideRow.confirming ? sideRow.action.confirm : sideRow.action.label
-        }
-        MouseArea {
-            id: sideMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: root.runSide(sideRow.actionIndex)
+        contentItem: RowLayout {
+            spacing: Theme.space8
+
+            KirigamiComponents.Avatar {
+                visible: !!sideRow.sideAction.user
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                name: sideRow.sideAction.label
+                source: user.faceIconUrl
+                cache: false
+            }
+            Kirigami.Icon {
+                visible: !sideRow.sideAction.user
+                Layout.preferredWidth: 16
+                Layout.preferredHeight: 16
+                source: sideRow.sideAction.icon ?? ""
+                isMask: true
+                color: sideRow.confirming ? Theme.critical : Theme.text
+            }
+            // Session actions are caps like any key; the user's name stays as written
+            Caps {
+                visible: !sideRow.sideAction.user
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                size: Theme.typeSizeSmall
+                color: sideRow.confirming ? Theme.critical : Theme.text
+                text: sideRow.confirming ? sideRow.sideAction.confirm : sideRow.sideAction.label
+            }
+            Text {
+                visible: !!sideRow.sideAction.user
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                font.family: Theme.typeFamilySans
+                font.pixelSize: Theme.typeSizeBody
+                color: Theme.text
+                text: sideRow.sideAction.label
+            }
         }
     }
 }
