@@ -2,6 +2,7 @@
 // (checked) or current, it sinks into `well-pressed`. `primary` is the one amber key in a view.
 // `highlighted` is the keyboard's place in a column of keys (amber at opacity.selection, the one
 // accent in the view); `tone` tints it instead, e.g. Theme.critical while a key asks to be pressed again.
+// A primary key takes `tone` too, for the one place amber gives way (the cover's color in a player).
 // `flat` keys (toolbars, the top bar's window strip) show only a hover tint until pressed or current.
 // The label is a caps label by default; set contentItem for an icon.
 import QtQuick
@@ -13,6 +14,7 @@ T.Button {
     property color tone: Theme.accent
     property bool current: false  // the page or screen it stands for is the one shown
     readonly property bool sunk: down || checked || current
+    readonly property bool toned: !Qt.colorEqual(tone, Theme.accent)
 
     implicitWidth: Math.max(implicitBackgroundWidth, implicitContentWidth + leftPadding + rightPadding)
     implicitHeight: Theme.sizeKey
@@ -37,7 +39,7 @@ T.Button {
             anchors.fill: parent
             radius: Theme.radiusKey
             visible: !key.sunk && key.enabled && !key.flat
-            color: key.primary ? Theme.accentEdge : Theme.keyDepth
+            color: !key.primary ? Theme.keyDepth : key.toned ? Qt.darker(key.tone, 1.7) : Theme.accentEdge
         }
         Rectangle {  // the outline
             visible: !key.flat || key.sunk
@@ -45,7 +47,7 @@ T.Button {
             anchors.bottomMargin: key.sunk || !key.enabled ? 0 : Theme.edgeKeyDepth
             radius: Theme.radiusKey
             color: key.sunk ? Theme.fieldEdge : !key.enabled ? Theme.raised
-                : key.primary ? Theme.accentHover : Theme.keyEdge
+                : key.primary ? (key.toned ? Qt.lighter(key.tone, 1.08) : Theme.accentHover) : Theme.keyEdge
         }
         Rectangle {  // the face
             id: face
@@ -54,7 +56,8 @@ T.Button {
             anchors.bottomMargin: key.sunk || !key.enabled || key.flat ? Theme.edgeWidth : Theme.edgeKeyDepth
             radius: Theme.radiusKey - 1
             clip: true
-            color: key.primary ? (key.down ? Theme.accentPressed : key.hovered ? Theme.accentHover : Theme.accent)
+            color: key.primary && key.toned ? (key.down ? Qt.darker(key.tone, 1.15) : key.hovered ? Qt.lighter(key.tone, 1.08) : key.tone)
+                : key.primary ? (key.down ? Theme.accentPressed : key.hovered ? Theme.accentHover : Theme.accent)
                 : key.sunk ? Theme.wellPressed : key.flat ? "transparent" : !key.enabled ? Theme.surface : Theme.raised
 
             Dither { anchors.fill: parent; visible: !key.enabled && !key.flat }
