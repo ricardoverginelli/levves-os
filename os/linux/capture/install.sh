@@ -5,11 +5,10 @@
 # Safe to re-run. Undo: bash install.sh --uninstall
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
+. ../lib/install.sh
 
-bin=$HOME/.local/bin/capture
-apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
-tmpfiles=${XDG_CONFIG_HOME:-$HOME/.config}/user-tmpfiles.d
-units=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
+bin=$local_bin/capture
+tmpfiles=$config/user-tmpfiles.d
 
 # Qt key codes: Print 0x01000009, F10 0x01000039, F19 0x01000042,
 # U 0x55; Shift 0x02000000, Ctrl 0x04000000, Alt 0x08000000. KWin drops Shift
@@ -32,24 +31,18 @@ replay-toggle|Toggle instant replay buffer|replay toggle|$((0x0B000039))
 replay-folder|Open instant replay folder|replay folder|$((0x0D000042))"
 
 shortcut() {  # component, action, component name, action name, keys as a(ai)
-    gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
-        --method org.kde.KGlobalAccel.doRegister "['$1', '$2', '$3', '$4']" >/dev/null
-    gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
-        --method org.kde.KGlobalAccel.setForeignShortcutKeys "['$1', '$2', '$3', '$4']" "$5" >/dev/null
+    kga doRegister "['$1', '$2', '$3', '$4']"
+    kga setForeignShortcutKeys "['$1', '$2', '$3', '$4']" "$5"
 }
 none='@a(ai) []'
 spectacle=org.kde.spectacle.desktop
 
 if [ "${1:-}" = --uninstall ]; then
     while IFS='|' read -r id name args keys; do
-        shortcut "capture-$id.desktop" _launch "$name" "Launch" "$none"
-        gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
-            --method org.kde.KGlobalAccel.unregister "capture-$id.desktop" _launch >/dev/null || true
-        rm -f "$apps/capture-$id.desktop"
+        remove_launcher_shortcut "capture-$id"
     done <<< "$hotkeys"
-    systemctl --user disable --now capture-replay.service capture-tray.service 2>/dev/null || true
-    rm -f "$bin" "$tmpfiles/capture.conf" "$units/capture-replay.service" "$units/capture-tray.service"
-    systemctl --user daemon-reload
+    unlink_units capture-replay.service capture-tray.service
+    rm -f "$bin" "$tmpfiles/capture.conf"
     # Spectacle's defaults back: Print launches it, Shift+Print captures the desktop
     shortcut $spectacle _launch Spectacle "Launch Spectacle" "[([$((0x12000053)), 0, 0, 0],), ([$((0x01000009)), 0, 0, 0],)]"
     shortcut $spectacle FullScreenScreenShot Spectacle "Capture Entire Desktop" "[([$((0x03000009)), 0, 0, 0],)]"
@@ -57,58 +50,32 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info gio; do
-    command -v $cmd >/dev/null || { echo "Missing: $cmd" >&2; exit 1; }
-done
-python3 -c "import PySide6.QtQml, PySide6.QtSvg" 2>/dev/null || { echo "Missing package: sudo dnf install python3-pyside6"; exit 1; }
+need slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info gio
+need_python PySide6.QtQml,PySide6.QtSvg python3-pyside6
 
 chmod +x capture replay-tray
-mkdir -p "$(dirname "$bin")" "$apps" "$tmpfiles" "$units"
-ln -sfn "$PWD/capture" "$bin"
+link capture "$bin"
 # Daily cleanup of old captures (see tmpfiles.conf)
-ln -sfn "$PWD/tmpfiles.conf" "$tmpfiles/capture.conf"
+link tmpfiles.conf "$tmpfiles/capture.conf"
 
 # Spectacle keeps its Meta shortcuts; Print and Shift+Print move to capture
 shortcut $spectacle _launch Spectacle "Launch Spectacle" "[([$((0x12000053)), 0, 0, 0],)]"
 shortcut $spectacle FullScreenScreenShot Spectacle "Capture Entire Desktop" "$none"
 
+# (launcher_shortcut leaves out the startup notification, whose busy cursor would end up in screenshots)
 while IFS='|' read -r id name args keys; do
     echo "Hotkey: $name"
-    # Absolute path: the Plasma session's PATH may not include ~/.local/bin.
-    # No startup notification: its busy cursor would end up in screenshots
-    cat > "$apps/capture-$id.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=$name
-Exec=$bin $args
-Icon=spectacle
-NoDisplay=true
-StartupNotify=false
-X-KDE-GlobalAccel-CommandShortcut=true
-EOF
-done <<< "$hotkeys"
-# kglobalaccel drops shortcuts of launchers missing from the sycoca cache
-kbuildsycoca6 2>/dev/null || true
-
-while IFS='|' read -r id name args keys; do
     keys="[$(printf '([%s, 0, 0, 0],)\n' ${keys//,/ } | paste -sd,)]"
-    shortcut "capture-$id.desktop" _launch "$name" "Launch" "$keys"
-    # Foreign keys alone leave the shortcut inactive until the next login;
-    # flags SetPresent (2) | NoAutoloading (4) activate it now
-    gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
-        --method org.kde.KGlobalAccel.setShortcutKeys \
-        "['capture-$id.desktop', '_launch', '$name', 'Launch']" "$keys" 6 >/dev/null
+    launcher_shortcut "capture-$id" "$name" "$bin $args" spectacle "$keys"
 done <<< "$hotkeys"
 
 # Instant replay buffer, started with every Plasma session (restart to pick up changes)
-ln -sfn "$PWD/capture-replay.service" "$units/capture-replay.service"
-systemctl --user daemon-reload
+link_units capture-replay.service
 systemctl --user enable capture-replay.service
 systemctl --user restart capture-replay.service
 
 # Tray icon (amber while the buffer records), which also swaps LosslessCut cuts in
-ln -sfn "$PWD/capture-tray.service" "$units/capture-tray.service"
-systemctl --user daemon-reload
+link_units capture-tray.service
 systemctl --user enable capture-tray.service
 systemctl --user restart capture-tray.service
 

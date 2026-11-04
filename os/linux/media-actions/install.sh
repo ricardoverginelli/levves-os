@@ -3,11 +3,11 @@
 # Safe to re-run. Undo: bash install.sh --uninstall
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
+. ../lib/install.sh
 
-bin=$HOME/.local/bin/media-actions
-apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
+bin=$local_bin/media-actions
 desktop=media-actions.desktop
-mimeapps=${XDG_CONFIG_HOME:-$HOME/.config}/mimeapps.list
+mimeapps=$config/mimeapps.list
 
 videos="video/mp4 video/x-matroska video/webm video/quicktime video/x-msvideo video/mpeg
 video/x-flv video/mp2t video/ogg video/3gpp video/x-ms-wmv video/x-m4v"
@@ -34,14 +34,12 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-for cmd in ffmpeg ffprobe magick notify-send kreadconfig6 kwriteconfig6; do
-    command -v "$cmd" >/dev/null || { echo "Missing: $cmd" >&2; exit 1; }
-done
-python3 -c "import PySide6" 2>/dev/null || { echo "Missing: python3-pyside6" >&2; exit 1; }
+need ffmpeg ffprobe magick notify-send kreadconfig6 kwriteconfig6
+need_python PySide6 python3-pyside6
 [ -d /usr/lib64/qt6/qml/org/kde/layershell ] || { echo "Missing: layer-shell-qt" >&2; exit 1; }
 
-mkdir -p "$(dirname "$bin")" "$apps"
-ln -sf "$PWD/media-actions" "$bin"
+mkdir -p "$apps"
+link media-actions "$bin"
 cat > "$apps/$desktop" <<EOF
 [Desktop Entry]
 Type=Application

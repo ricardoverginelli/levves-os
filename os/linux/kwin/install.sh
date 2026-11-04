@@ -7,17 +7,12 @@
 # Yakuake reads its window settings on start: restart it after installing.
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
+. ../lib/install.sh
 
-data=${XDG_DATA_HOME:-$HOME/.local/share}/kwin
+kwin=$data/kwin
 yakuake_shortcut="['yakuake', 'toggle-window-state', 'Yakuake', 'Open/Retract Yakuake']"
-bin=$HOME/.local/bin/yakuake-tab
-apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
-shell_tab="['yakuake-shell-tab.desktop', '_launch', 'New Yakuake shell tab', 'Launch']"
+bin=$local_bin/yakuake-tab
 
-kga() {
-    gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
-        --method org.kde.KGlobalAccel."$@" >/dev/null
-}
 plugin() {  # id, enabled
     kwriteconfig6 --file kwinrc --group Plugins --key "${1}Enabled" "$2"
 }
@@ -28,9 +23,8 @@ if [ "${1:-}" = --uninstall ]; then
     plugin slidingpopups true
     qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-avoid-fullscreen >/dev/null || true
     qdbus-qt6 org.kde.KWin /KWin reconfigure
-    rm -rf "$data/effects/yakuake-slide" "$data/scripts/yakuake-avoid-fullscreen"
-    kga unregister yakuake-shell-tab.desktop _launch || true
-    rm -f "$apps/yakuake-shell-tab.desktop"
+    rm -rf "$kwin/effects/yakuake-slide" "$kwin/scripts/yakuake-avoid-fullscreen"
+    remove_launcher_shortcut yakuake-shell-tab
     # $bin stays: Yakuake's profile runs it (plasma/yakuake/build.py)
     # Yakuake's own F12 back, docked at the top again
     kga setForeignShortcutKeys "$yakuake_shortcut" "[([$((0x0100003B)), 0, 0, 0],)]"
@@ -43,16 +37,16 @@ fi
 
 # Effect: Sliding popups off, or Yakuake keeps asking it for a top slide
 echo "Installing KWin effect yakuake-slide"
-rm -rf "$data/effects/yakuake-slide"
-mkdir -p "$data/effects"
-cp -r yakuake-slide "$data/effects/"
+rm -rf "$kwin/effects/yakuake-slide"
+mkdir -p "$kwin/effects"
+cp -r yakuake-slide "$kwin/effects/"
 plugin slidingpopups false
 plugin yakuake-slide true
 
 echo "Installing KWin script yakuake-avoid-fullscreen"
-rm -rf "$data/scripts/yakuake-avoid-fullscreen"
-mkdir -p "$data/scripts"
-cp -r yakuake-avoid-fullscreen "$data/scripts/"
+rm -rf "$kwin/scripts/yakuake-avoid-fullscreen"
+mkdir -p "$kwin/scripts"
+cp -r yakuake-avoid-fullscreen "$kwin/scripts/"
 plugin yakuake-avoid-fullscreen true
 qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-avoid-fullscreen >/dev/null || true
 
@@ -64,23 +58,10 @@ qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect yakuake-slide >/
 # The script registers Meta+/; Yakuake's own shortcut must not take the key
 kga setForeignShortcutKeys "$yakuake_shortcut" '@a(ai) []'
 
-# New tabs run yakuake-tab; Meta+Shift+N opens one with a plain shell.
-# Absolute path: the Plasma session's PATH may not include ~/.local/bin
-mkdir -p "$(dirname "$bin")" "$apps"
-ln -sfn "$PWD/yakuake-tab" "$bin"
-cat > "$apps/yakuake-shell-tab.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=New Yakuake shell tab
-Exec=$bin --shell
-Icon=utilities-terminal
-NoDisplay=true
-X-KDE-GlobalAccel-CommandShortcut=true
-EOF
-# kglobalaccel drops shortcuts of launchers missing from the sycoca cache
-kbuildsycoca6 >/dev/null 2>&1
-kga doRegister "$shell_tab"
-kga setShortcutKeys "$shell_tab" "[([$((0x1200004E)), 0, 0, 0],)]" 6
+# New tabs run yakuake-tab; Meta+Shift+N opens one with a plain shell
+link yakuake-tab "$bin"
+launcher_shortcut yakuake-shell-tab "New Yakuake shell tab" "$bin --shell" utilities-terminal \
+    "[([$((0x1200004E)), 0, 0, 0],)]"
 
 # Docked left, full height, 30% wide (the effect slides it in from the left);
 # the right edge is the Leaves side panel's

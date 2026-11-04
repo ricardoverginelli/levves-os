@@ -4,9 +4,9 @@
 # (default: brave-browser.desktop)
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
+. ../lib/install.sh
 
-bin=$HOME/.local/bin/browser-router
-apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
+bin=$local_bin/browser-router
 id=browser-router.desktop
 
 if [ "${1:-}" = --uninstall ]; then
@@ -20,8 +20,8 @@ if [ "${1:-}" = --uninstall ]; then
 fi
 
 chmod +x browser-router
-mkdir -p "$(dirname "$bin")" "$apps"
-ln -sfn "$PWD/browser-router" "$bin"
+mkdir -p "$apps"
+link browser-router "$bin"
 # Absolute path: the Plasma session's PATH may not include ~/.local/bin
 cat > "$apps/$id" <<DESKTOP
 [Desktop Entry]
