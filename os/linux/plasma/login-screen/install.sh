@@ -2,11 +2,12 @@
 # Login screen (Plasma Login Manager): the Leaves wallpaper plus the user's Plasma
 # settings, i.e. what System Settings > Login Screen does on Apply and on
 # "Apply Plasma Settings". Runs as root: apply.sh calls it through pkexec.
-# Usage: install.sh <wallpaper> <user's ~/.config> <Leaves Plasma style folder>
+# Usage: install.sh <wallpaper> <user's ~/.config> <Leaves Plasma style folder> <Levves icon theme folder>
 set -e
 image=$1
 config=$2
 style=$3
+icons=$4
 home=/var/lib/plasmalogin
 as_greeter="-o plasmalogin -g plasmalogin"
 
@@ -37,6 +38,14 @@ rm -rf "$themes/leaves"
 cp -r "$style" "$themes/leaves"
 chown -R plasmalogin:plasmalogin "$themes/leaves"
 chmod -R u=rwX,go=rX "$themes/leaves"
+# The Levves icon theme (kdeglobals names it) the same way: without it the
+# greeter finds no theme and its Sleep/Restart/Shut Down keys draw blank
+icon_themes="$home/.local/share/icons"
+install -d $as_greeter -m 755 "$icon_themes"
+rm -rf "$icon_themes/Levves"
+cp -r "$icons" "$icon_themes/Levves"
+chown -R plasmalogin:plasmalogin "$icon_themes/Levves"
+chmod -R u=rwX,go=rX "$icon_themes/Levves"
 
 # Cached theme colors would outlive the new settings
 rm -rf "$home/.cache"
