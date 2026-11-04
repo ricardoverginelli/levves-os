@@ -95,6 +95,10 @@ the top bar's window strip).
 - **Meter**: a sunken track with the dither texture and a fill of 10px segments with 2px gaps.
 - **Slot**: a 40px sunken square holding a count in serif ("2/4"), dithered when empty.
 - **Status bar and menu bar**: a dithered strip with caps labels; the menu bar sits on `surface`.
+- **Terminal and code editor**: JetBrains Mono on `bg`, inside a window's chrome (tabs as flat
+  keys or folder tabs, a strip under them). ANSI colors are `color.terminal` plus the status colors;
+  the amber is the cursor. Built by `os/linux/plasma/yakuake/build.py` (Konsole, Yakuake) and
+  `os/linux/plasma/vscode/build.py`.
 - **Dither**: a 1px checkerboard of `dither-a` and `dither-b` (`desktop-dither` on the desktop),
   tiled at `size.dither`. Used on group headers, list headers, status bars, disabled keys, empty
   slots and meter tracks.
@@ -116,7 +120,7 @@ until the icon set moves here.
 The suite's components still read some of its older token names, mapped onto Levves in
 `packages/design-tokens/tokens.css`. Plasma's reskin goes in phases (`os/linux/plasma/TODO.md`): the
 style and its controls, the top bar, the popups, the window decoration, the fonts and the apps'
-color scheme are on Levves. The apps' widgets are still drawn by Breeze (in Levves colors, so
-selections, checkboxes and slider fills are solid amber), and Yakuake and VS Code still have the
-glass look (`legacy.*` tokens). `os/linux/plasma/DESIGN.md` still describes Plasma-specific
+color scheme, Yakuake/Konsole and VS Code are on Levves. The apps' widgets are still drawn by
+Breeze (in Levves colors, so selections, checkboxes and slider fills are solid amber), and a few
+pieces still read the `legacy.*` tokens until the reskin's cleanup. `os/linux/plasma/DESIGN.md` still describes Plasma-specific
 mechanics (popup frames, KWin effects, menus).
