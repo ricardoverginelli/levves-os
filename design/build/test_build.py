@@ -75,13 +75,16 @@ class RealTokens(unittest.TestCase):
         names = [build.camel(p) for p in self.tokens]
         self.assertEqual(len(names), len(set(names)))
 
-    def test_palette_keeps_every_key_the_old_palette_had(self):
-        palette = json.loads(build.palette(self.tokens))
-        old = {"bg-deep", "bg", "surface", "raised", "border", "text-faint", "text-muted", "text", "accent",
-               "accent-hover", "accent-pressed", "on-accent", "critical", "warning", "success", "info",
-               "terminal"}
-        self.assertLessEqual(old, set(palette))
-        self.assertEqual(set(palette["terminal"]), {"black", "bright-black", "magenta", "cyan"})
+    def test_python_color_helper(self):
+        namespace = {}
+        exec(build.python(self.tokens), namespace)
+        self.assertEqual(namespace["color"]("accent"), namespace["TOKENS"]["color.accent"])
+        self.assertEqual(namespace["color"]("terminal.cyan"), namespace["TOKENS"]["color.terminal.cyan"])
+
+    def test_theme_has_the_tints(self):
+        theme = build.qml(self.tokens)
+        for name, _, _ in build.TINTS:
+            self.assertRegex(theme, rf'readonly property color {name}: "#[0-9a-f]{{8}}"')
 
     def test_qml_module_lists_every_piece(self):
         with tempfile.TemporaryDirectory() as folder:

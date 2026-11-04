@@ -19,7 +19,7 @@ python3 design/build/build.py --check  # what CI runs, with check_hardcoded.py: 
 | QML (desktop apps, Plasma) | `dist/qml/Levves/` | `engine.addImportPath(<repo>/design/dist/qml)` (Plasma: `QML_IMPORT_PATH`, set by `os/linux/plasma/apply.sh`), `import Levves`, then `Theme.accent` and the pieces below |
 | Web pieces | `web/levves.css` | `.lv-window`, `.lv-key`, ... |
 | Compose (TV launcher) | `dist/kotlin/Levves.kt` | `Levves.accent` |
-| Python builds | `dist/levves_tokens.py`, `dist/palette.json` | `TOKENS["color.accent"]` |
+| Python (builds, desktop apps) | `dist/levves_tokens.py`, `dist/levves_qt.py` | `design/dist` on `sys.path`, then `color("accent")`; `levves_qt.tinted()` and `IconProvider` for MingCute icons in a token color |
 | Android XML | `dist/android/res/` | `@color/levves_accent` |
 
 Code names: colors drop their group (`color.text-muted` is `textMuted`), everything else keeps it

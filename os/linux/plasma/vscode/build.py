@@ -8,8 +8,8 @@ with Preferences: Color Theme → Levves (picked for you when Leaves was).
 Prints "changed" when the installed theme was replaced; VS Code windows that
 are already open pick it up after Developer: Reload Window.
 """
-import importlib.util
 import json
+import sys
 import re
 import shutil
 import subprocess
@@ -27,12 +27,8 @@ SETTINGS = Path.home() / ".config/Code/User/settings.json"
 INSTALLED = Path.home() / f".vscode/extensions/{PUBLISHER}.{NAME}-{VERSION}"
 
 DIST = HERE.parents[3] / "design/dist"
-p = json.loads((DIST / "palette.json").read_text())
-t = p["terminal"]
-_spec = importlib.util.spec_from_file_location("levves_tokens", DIST / "levves_tokens.py")
-_tokens = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_tokens)
-LEVVES = _tokens.TOKENS  # design tokens; TOKENS below is the syntax scopes
+sys.path.insert(0, str(DIST))
+from levves_tokens import TOKENS as LEVVES, color as palette  # noqa: E402  (TOKENS below is the syntax scopes)
 
 
 def rgb(hex_color):
@@ -47,7 +43,7 @@ def mix(a, b, t):
 
 def alpha(color, opacity):
     """Palette color (or hex) as #rrggbbaa."""
-    return p.get(color, color) + f"{round(opacity * 255):02x}"
+    return (color if color.startswith("#") else palette(color)) + f"{round(opacity * 255):02x}"
 
 
 # --- Syntax ---------------------------------------------------------------
@@ -55,17 +51,17 @@ def alpha(color, opacity):
 # here that's the cursor, focus and selection). Semantic and ANSI colors carry it.
 
 SYNTAX = {
-    "comment": mix(p["text-faint"], p["text-muted"], 0.3),
-    "keyword": t["magenta"],
-    "function": p["info"],
-    "type": t["cyan"],
-    "string": p["success"],
-    "constant": p["warning"],
-    "tag": mix(p["critical"], p["text"], 0.2),
-    "attribute": mix(p["warning"], p["text"], 0.35),
-    "property": mix(p["text"], p["info"], 0.3),
-    "punctuation": p["text-muted"],
-    "variable": p["text"],
+    "comment": mix(palette("text-faint"), palette("text-muted"), 0.3),
+    "keyword": palette("terminal.magenta"),
+    "function": palette("info"),
+    "type": palette("terminal.cyan"),
+    "string": palette("success"),
+    "constant": palette("warning"),
+    "tag": mix(palette("critical"), palette("text"), 0.2),
+    "attribute": mix(palette("warning"), palette("text"), 0.35),
+    "property": mix(palette("text"), palette("info"), 0.3),
+    "punctuation": palette("text-muted"),
+    "variable": palette("text"),
 }
 
 TOKENS = [
@@ -110,17 +106,17 @@ TOKENS = [
 
 MARKUP = [
     ("Headings", ["markup.heading", "markup.heading entity.name",
-                  "punctuation.definition.heading"], p["accent"], "bold"),
-    ("Bold", ["markup.bold"], p["text"], "bold"),
-    ("Italic", ["markup.italic"], p["text"], "italic"),
-    ("Links", ["markup.underline.link", "string.other.link"], p["info"], None),
-    ("Quotes", ["markup.quote"], p["text-muted"], "italic"),
+                  "punctuation.definition.heading"], palette("accent"), "bold"),
+    ("Bold", ["markup.bold"], palette("text"), "bold"),
+    ("Italic", ["markup.italic"], palette("text"), "italic"),
+    ("Links", ["markup.underline.link", "string.other.link"], palette("info"), None),
+    ("Quotes", ["markup.quote"], palette("text-muted"), "italic"),
     ("Lists", ["punctuation.definition.list", "beginning.punctuation.definition.list"],
-     t["magenta"], None),
-    ("Inserted", ["markup.inserted"], p["success"], None),
-    ("Deleted", ["markup.deleted"], p["critical"], None),
-    ("Changed", ["markup.changed"], p["info"], None),
-    ("Invalid", ["invalid", "invalid.illegal"], p["critical"], None),
+     palette("terminal.magenta"), None),
+    ("Inserted", ["markup.inserted"], palette("success"), None),
+    ("Deleted", ["markup.deleted"], palette("critical"), None),
+    ("Changed", ["markup.changed"], palette("info"), None),
+    ("Invalid", ["invalid", "invalid.illegal"], palette("critical"), None),
 ]
 
 
@@ -170,10 +166,10 @@ def workbench():
     # headers and the status bar as dithered strips (flat dither-a: themes can't tile), fields
     # in wells, the editor and terminal on `bg`. Amber is the focused part's selection, the
     # primary key, the cursor and the focus ring; elsewhere a selection is `raised`
-    bg, surface, raised, border = p["bg"], p["surface"], p["raised"], p["border"]
-    text, muted, faint = p["text"], p["text-muted"], p["text-faint"]
-    accent, on_accent = p["accent"], p["on-accent"]
-    edge, well, strip = p["edge"], p["well"], p["dither-a"]
+    bg, surface, raised, border = palette("bg"), palette("surface"), palette("raised"), palette("border")
+    text, muted, faint = palette("text"), palette("text-muted"), palette("text-faint")
+    accent, on_accent = palette("accent"), palette("on-accent")
+    edge, well, strip = palette("edge"), palette("well"), palette("dither-a")
     hover = alpha("text", LEVVES["opacity.hover"])
     highlight = alpha("accent", LEVVES["opacity.selection"])
     selection = alpha("info", 0.28)  # selected text in the editor, apart from the amber cursor
@@ -183,15 +179,15 @@ def workbench():
         "foreground": text,
         "descriptionForeground": muted,
         "disabledForeground": faint,
-        "errorForeground": p["critical"],
+        "errorForeground": palette("critical"),
         "icon.foreground": muted,
         "focusBorder": accent,  # the amber ring for focus, as on Plasma's keys
         "contrastBorder": "#00000000",
         "widget.border": edge,
         "widget.shadow": alpha("bg-deep", 0.6),
         "selection.background": selection,
-        "textLink.foreground": p["info"],
-        "textLink.activeForeground": mix(p["info"], "#ffffff", 0.25),
+        "textLink.foreground": palette("info"),
+        "textLink.activeForeground": mix(palette("info"), "#ffffff", 0.25),
         "textCodeBlock.background": surface,
         "textBlockQuote.background": surface,
         "textBlockQuote.border": border,
@@ -203,16 +199,16 @@ def workbench():
         "toolbar.activeBackground": alpha("text", 0.1),
 
         # Window chrome
-        "titleBar.activeBackground": p["title-bar"],
+        "titleBar.activeBackground": palette("title-bar"),
         "titleBar.activeForeground": text,
-        "titleBar.inactiveBackground": p["title-bar-inactive"],
+        "titleBar.inactiveBackground": palette("title-bar-inactive"),
         "titleBar.inactiveForeground": muted,
         "titleBar.border": edge,
         "commandCenter.background": well,  # a field
         "commandCenter.foreground": muted,
-        "commandCenter.activeBackground": p["well-pressed"],
-        "commandCenter.border": p["field-edge"],
-        "commandCenter.inactiveBorder": p["field-edge"],
+        "commandCenter.activeBackground": palette("well-pressed"),
+        "commandCenter.border": palette("field-edge"),
+        "commandCenter.inactiveBorder": palette("field-edge"),
         "menubar.selectionBackground": hover,
         "menu.background": surface,
         "menu.foreground": text,
@@ -226,14 +222,14 @@ def workbench():
         "activityBar.background": surface,
         "activityBar.foreground": text,
         "activityBar.inactiveForeground": muted,
-        "activityBar.activeBorder": p["field-edge"],
-        "activityBar.activeBackground": p["well-pressed"],
+        "activityBar.activeBorder": palette("field-edge"),
+        "activityBar.activeBackground": palette("well-pressed"),
         "activityBar.border": edge,
         "activityBarBadge.background": raised,
         "activityBarBadge.foreground": text,
         "activityBarTop.foreground": text,
         "activityBarTop.inactiveForeground": muted,
-        "activityBarTop.activeBorder": p["field-edge"],
+        "activityBarTop.activeBorder": palette("field-edge"),
 
         # Side bar
         "sideBar.background": bg,
@@ -243,7 +239,7 @@ def workbench():
         "sideBarTitle.foreground": muted,
         "sideBarSectionHeader.background": strip,  # caps labels on a strip, like a group box header
         "sideBarSectionHeader.foreground": muted,
-        "sideBarSectionHeader.border": p["row-line"],
+        "sideBarSectionHeader.border": palette("row-line"),
         "sideBarStickyScroll.background": bg,
         "sideBarStickyScroll.shadow": alpha("bg-deep", 0.6),
 
@@ -261,14 +257,14 @@ def workbench():
         "list.focusAndSelectionOutline": "#00000000",
         "list.inactiveFocusOutline": "#00000000",
         "list.highlightForeground": accent,
-        "list.focusHighlightForeground": p["accent-hover"],
+        "list.focusHighlightForeground": palette("accent-hover"),
         "list.dropBackground": hover,
-        "list.errorForeground": p["critical"],
-        "list.warningForeground": p["warning"],
-        "list.invalidItemForeground": p["critical"],
+        "list.errorForeground": palette("critical"),
+        "list.warningForeground": palette("warning"),
+        "list.invalidItemForeground": palette("critical"),
         "list.deemphasizedForeground": faint,
-        "tree.indentGuidesStroke": p["row-line"],
-        "tree.inactiveIndentGuidesStroke": p["row-line"],
+        "tree.indentGuidesStroke": palette("row-line"),
+        "tree.inactiveIndentGuidesStroke": palette("row-line"),
 
         # Editor groups and tabs: folder tabs on the window's `surface`, the current one in the
         # editor's color, joining it
@@ -314,13 +310,13 @@ def workbench():
         "editor.wordHighlightBackground": alpha("text", 0.08),
         "editor.wordHighlightStrongBackground": alpha("text", 0.12),
         "editor.findMatchBackground": alpha("warning", 0.35),
-        "editor.findMatchBorder": p["warning"],
+        "editor.findMatchBorder": palette("warning"),
         "editor.findMatchHighlightBackground": alpha("warning", 0.16),
         "editor.findRangeHighlightBackground": alpha("text", 0.04),
         "editor.rangeHighlightBackground": alpha("text", 0.05),
         "editor.hoverHighlightBackground": alpha("info", 0.12),
         "editor.linkedEditingBackground": alpha("info", 0.12),
-        "editorLink.activeForeground": p["info"],
+        "editorLink.activeForeground": palette("info"),
         "editorWhitespace.foreground": alpha("text-faint", 0.5),
         "editorIndentGuide.background1": alpha("border", 0.8),
         "editorIndentGuide.activeBackground1": faint,
@@ -330,15 +326,15 @@ def workbench():
         "editorInlayHint.background": alpha("raised", 0.7),
         "editorBracketMatch.background": alpha("text", 0.1),
         "editorBracketMatch.border": alpha("text", 0.3),
-        "editorBracketHighlight.foreground1": p["warning"],
-        "editorBracketHighlight.foreground2": t["magenta"],
-        "editorBracketHighlight.foreground3": p["info"],
-        "editorBracketHighlight.foreground4": t["cyan"],
-        "editorBracketHighlight.foreground5": p["success"],
-        "editorBracketHighlight.foreground6": mix(p["critical"], p["text"], 0.2),
-        "editorBracketHighlight.unexpectedBracket.foreground": p["critical"],
+        "editorBracketHighlight.foreground1": palette("warning"),
+        "editorBracketHighlight.foreground2": palette("terminal.magenta"),
+        "editorBracketHighlight.foreground3": palette("info"),
+        "editorBracketHighlight.foreground4": palette("terminal.cyan"),
+        "editorBracketHighlight.foreground5": palette("success"),
+        "editorBracketHighlight.foreground6": mix(palette("critical"), palette("text"), 0.2),
+        "editorBracketHighlight.unexpectedBracket.foreground": palette("critical"),
         "editorBracketPairGuide.activeBackground1": alpha("warning", 0.5),
-        "editorBracketPairGuide.activeBackground2": alpha(t["magenta"], 0.5),
+        "editorBracketPairGuide.activeBackground2": alpha(palette("terminal.magenta"), 0.5),
         "editorBracketPairGuide.activeBackground3": alpha("info", 0.5),
         "editorUnnecessaryCode.opacity": "#00000088",
         "editorStickyScroll.background": bg,
@@ -347,23 +343,23 @@ def workbench():
         "editorOverviewRuler.border": "#00000000",
         "editorOverviewRuler.findMatchForeground": alpha("warning", 0.6),
         "editorOverviewRuler.selectionHighlightForeground": alpha("info", 0.5),
-        "editorOverviewRuler.errorForeground": p["critical"],
-        "editorOverviewRuler.warningForeground": p["warning"],
-        "editorOverviewRuler.infoForeground": p["info"],
+        "editorOverviewRuler.errorForeground": palette("critical"),
+        "editorOverviewRuler.warningForeground": palette("warning"),
+        "editorOverviewRuler.infoForeground": palette("info"),
         "editorOverviewRuler.addedForeground": alpha("success", 0.6),
         "editorOverviewRuler.modifiedForeground": alpha("info", 0.6),
         "editorOverviewRuler.deletedForeground": alpha("critical", 0.6),
-        "editorError.foreground": p["critical"],
-        "editorWarning.foreground": p["warning"],
-        "editorInfo.foreground": p["info"],
+        "editorError.foreground": palette("critical"),
+        "editorWarning.foreground": palette("warning"),
+        "editorInfo.foreground": palette("info"),
         "editorHint.foreground": muted,
-        "problemsErrorIcon.foreground": p["critical"],
-        "problemsWarningIcon.foreground": p["warning"],
-        "problemsInfoIcon.foreground": p["info"],
+        "problemsErrorIcon.foreground": palette("critical"),
+        "problemsWarningIcon.foreground": palette("warning"),
+        "problemsInfoIcon.foreground": palette("info"),
         "editorGutter.background": bg,
-        "editorGutter.addedBackground": p["success"],
-        "editorGutter.modifiedBackground": p["info"],
-        "editorGutter.deletedBackground": p["critical"],
+        "editorGutter.addedBackground": palette("success"),
+        "editorGutter.modifiedBackground": palette("info"),
+        "editorGutter.deletedBackground": palette("critical"),
         "editorGutter.foldingControlForeground": faint,
 
         # Editor widgets (find, suggest, hover, peek): popups are surface
@@ -377,13 +373,13 @@ def workbench():
         "editorSuggestWidget.selectedBackground": highlight,
         "editorSuggestWidget.selectedForeground": text,
         "editorSuggestWidget.highlightForeground": accent,
-        "editorSuggestWidget.focusHighlightForeground": p["accent-hover"],
+        "editorSuggestWidget.focusHighlightForeground": palette("accent-hover"),
         "editorHoverWidget.background": surface,
         "editorHoverWidget.border": edge,
         "editorHoverWidget.statusBarBackground": strip,
         "editorGhostText.foreground": faint,
         "peekView.border": edge,
-        "peekViewTitle.background": p["title-bar"],
+        "peekViewTitle.background": palette("title-bar"),
         "peekViewTitleLabel.foreground": text,
         "peekViewTitleDescription.foreground": muted,
         "peekViewEditor.background": well,
@@ -413,30 +409,30 @@ def workbench():
         # Fields in wells, buttons as keys
         "input.background": well,
         "input.foreground": text,
-        "input.border": p["field-edge"],
+        "input.border": palette("field-edge"),
         "input.placeholderForeground": faint,
         "inputOption.activeBackground": highlight,
         "inputOption.activeBorder": "#00000000",
         "inputOption.activeForeground": text,
         "inputOption.hoverBackground": hover,
         "inputValidation.errorBackground": surface,
-        "inputValidation.errorBorder": p["critical"],
+        "inputValidation.errorBorder": palette("critical"),
         "inputValidation.warningBackground": surface,
-        "inputValidation.warningBorder": p["warning"],
+        "inputValidation.warningBorder": palette("warning"),
         "inputValidation.infoBackground": surface,
-        "inputValidation.infoBorder": p["info"],
+        "inputValidation.infoBorder": palette("info"),
         "dropdown.background": well,
         "dropdown.listBackground": surface,
-        "dropdown.border": p["field-edge"],
+        "dropdown.border": palette("field-edge"),
         "dropdown.foreground": text,
         "checkbox.background": well,
-        "checkbox.border": p["field-edge"],
+        "checkbox.border": palette("field-edge"),
         "checkbox.foreground": text,
         "checkbox.selectBackground": surface,
         "button.background": accent,
         "button.foreground": on_accent,
-        "button.hoverBackground": p["accent-hover"],
-        "button.border": p["key-edge"],
+        "button.hoverBackground": palette("accent-hover"),
+        "button.border": palette("key-edge"),
         "button.separator": alpha("on-accent", 0.3),
         "button.secondaryBackground": raised,
         "button.secondaryForeground": text,
@@ -449,8 +445,8 @@ def workbench():
         "scrollbarSlider.activeBackground": alpha("text", 0.22),
         "keybindingLabel.background": raised,
         "keybindingLabel.foreground": text,
-        "keybindingLabel.border": p["key-edge"],
-        "keybindingLabel.bottomBorder": p["key-depth"],
+        "keybindingLabel.border": palette("key-edge"),
+        "keybindingLabel.bottomBorder": palette("key-depth"),
 
         # Quick input (command palette)
         "quickInput.background": surface,
@@ -460,7 +456,7 @@ def workbench():
         "quickInputList.focusForeground": text,
         "quickInputList.focusIconForeground": text,
         "pickerGroup.foreground": muted,
-        "pickerGroup.border": p["row-line"],
+        "pickerGroup.border": palette("row-line"),
 
         # Panel and terminal
         "panel.background": bg,
@@ -470,7 +466,7 @@ def workbench():
         "panelTitle.inactiveForeground": muted,
         "panelSection.border": edge,
         "panelSectionHeader.background": strip,
-        "panelInput.border": p["field-edge"],
+        "panelInput.border": palette("field-edge"),
         "outputView.background": bg,
         "terminal.background": bg,
         "terminal.foreground": text,
@@ -481,8 +477,8 @@ def workbench():
         "terminal.findMatchBackground": alpha("warning", 0.35),
         "terminal.findMatchHighlightBackground": alpha("warning", 0.16),
         "terminalCommandDecoration.defaultBackground": faint,
-        "terminalCommandDecoration.successBackground": p["success"],
-        "terminalCommandDecoration.errorBackground": p["critical"],
+        "terminalCommandDecoration.successBackground": palette("success"),
+        "terminalCommandDecoration.errorBackground": palette("critical"),
         "terminalOverviewRuler.cursorForeground": accent,
 
         # Status bar: a strip
@@ -492,9 +488,9 @@ def workbench():
         "statusBar.focusBorder": accent,
         "statusBar.noFolderBackground": strip,
         "statusBar.noFolderForeground": muted,
-        "statusBar.debuggingBackground": p["accent-pressed"],
+        "statusBar.debuggingBackground": palette("accent-pressed"),
         "statusBar.debuggingForeground": on_accent,
-        "statusBar.debuggingBorder": p["accent-pressed"],
+        "statusBar.debuggingBorder": palette("accent-pressed"),
         "statusBarItem.hoverBackground": hover,
         "statusBarItem.hoverForeground": text,
         "statusBarItem.activeBackground": alpha("text", 0.1),
@@ -502,9 +498,9 @@ def workbench():
         "statusBarItem.remoteForeground": text,
         "statusBarItem.prominentBackground": raised,
         "statusBarItem.prominentHoverBackground": mix(raised, text, 0.08),
-        "statusBarItem.errorBackground": p["critical"],
+        "statusBarItem.errorBackground": palette("critical"),
         "statusBarItem.errorForeground": on_accent,
-        "statusBarItem.warningBackground": p["warning"],
+        "statusBarItem.warningBackground": palette("warning"),
         "statusBarItem.warningForeground": on_accent,
         "statusBarItem.focusBorder": accent,
 
@@ -512,28 +508,28 @@ def workbench():
         "notifications.background": surface,
         "notifications.foreground": text,
         "notifications.border": border,
-        "notificationCenterHeader.background": p["title-bar"],
+        "notificationCenterHeader.background": palette("title-bar"),
         "notificationCenter.border": edge,
         "notificationToast.border": edge,
-        "notificationLink.foreground": p["info"],
-        "notificationsErrorIcon.foreground": p["critical"],
-        "notificationsWarningIcon.foreground": p["warning"],
-        "notificationsInfoIcon.foreground": p["info"],
+        "notificationLink.foreground": palette("info"),
+        "notificationsErrorIcon.foreground": palette("critical"),
+        "notificationsWarningIcon.foreground": palette("warning"),
+        "notificationsInfoIcon.foreground": palette("info"),
 
         # Git and SCM decorations
-        "gitDecoration.addedResourceForeground": p["success"],
-        "gitDecoration.untrackedResourceForeground": p["success"],
-        "gitDecoration.modifiedResourceForeground": p["info"],
-        "gitDecoration.deletedResourceForeground": p["critical"],
-        "gitDecoration.renamedResourceForeground": t["cyan"],
-        "gitDecoration.conflictingResourceForeground": p["warning"],
+        "gitDecoration.addedResourceForeground": palette("success"),
+        "gitDecoration.untrackedResourceForeground": palette("success"),
+        "gitDecoration.modifiedResourceForeground": palette("info"),
+        "gitDecoration.deletedResourceForeground": palette("critical"),
+        "gitDecoration.renamedResourceForeground": palette("terminal.cyan"),
+        "gitDecoration.conflictingResourceForeground": palette("warning"),
         "gitDecoration.ignoredResourceForeground": faint,
-        "gitDecoration.submoduleResourceForeground": t["magenta"],
-        "gitDecoration.stageModifiedResourceForeground": p["info"],
-        "gitDecoration.stageDeletedResourceForeground": p["critical"],
-        "scmGraph.historyItemRefColor": p["info"],
-        "scmGraph.historyItemRemoteRefColor": t["magenta"],
-        "scmGraph.historyItemBaseRefColor": p["warning"],
+        "gitDecoration.submoduleResourceForeground": palette("terminal.magenta"),
+        "gitDecoration.stageModifiedResourceForeground": palette("info"),
+        "gitDecoration.stageDeletedResourceForeground": palette("critical"),
+        "scmGraph.historyItemRefColor": palette("info"),
+        "scmGraph.historyItemRemoteRefColor": palette("terminal.magenta"),
+        "scmGraph.historyItemBaseRefColor": palette("warning"),
         "scmGraph.historyItemHoverDefaultLabelForeground": text,
 
         # Misc
@@ -551,7 +547,7 @@ def workbench():
         "settings.checkboxBackground": well,
         "debugToolBar.background": surface,
         "debugToolBar.border": edge,
-        "debugIcon.breakpointForeground": p["critical"],
+        "debugIcon.breakpointForeground": palette("critical"),
         "editor.stackFrameHighlightBackground": alpha("warning", 0.14),
         "editor.focusedStackFrameHighlightBackground": alpha("success", 0.14),
         "minimap.background": bg,
@@ -568,21 +564,21 @@ def workbench():
         "inlineChat.border": edge,
         "charts.foreground": text,
         "charts.lines": border,
-        "charts.red": p["critical"],
-        "charts.yellow": p["warning"],
+        "charts.red": palette("critical"),
+        "charts.yellow": palette("warning"),
         "charts.orange": accent,
-        "charts.green": p["success"],
-        "charts.blue": p["info"],
-        "charts.purple": t["magenta"],
+        "charts.green": palette("success"),
+        "charts.blue": palette("info"),
+        "charts.purple": palette("terminal.magenta"),
     }
 
     # Terminal ANSI, as in the Konsole scheme (yakuake/build.py): bright is 25% toward white
-    ansi = {"Black": t["black"], "Red": p["critical"], "Green": p["success"],
-            "Yellow": p["warning"], "Blue": p["info"], "Magenta": t["magenta"],
-            "Cyan": t["cyan"], "White": p["text"]}
+    ansi = {"Black": palette("terminal.black"), "Red": palette("critical"), "Green": palette("success"),
+            "Yellow": palette("warning"), "Blue": palette("info"), "Magenta": palette("terminal.magenta"),
+            "Cyan": palette("terminal.cyan"), "White": palette("text")}
     for name, color in ansi.items():
         c[f"terminal.ansi{name}"] = color
-        c[f"terminal.ansiBright{name}"] = t["bright-black"] if name == "Black" else mix(color, "#ffffff", 0.25)
+        c[f"terminal.ansiBright{name}"] = palette("terminal.bright-black") if name == "Black" else mix(color, "#ffffff", 0.25)
     return c
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # Install the ShareX-style capture hotkeys (see README.md). User-level, no sudo;
 # the packages are: sudo dnf copr enable brycensranch/gpu-screen-recorder-git &&
-#   sudo dnf install gpu-screen-recorder slurp ffmpeg python3-pyqt6
+#   sudo dnf install gpu-screen-recorder slurp ffmpeg python3-pyside6
 # Safe to re-run. Undo: bash install.sh --uninstall
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
@@ -60,7 +60,7 @@ fi
 for cmd in slurp spectacle gpu-screen-recorder ffmpeg magick wl-copy curl jq kscreen-doctor wayland-info gio; do
     command -v $cmd >/dev/null || { echo "Missing: $cmd" >&2; exit 1; }
 done
-python3 -c "import PyQt6.QtQml, PyQt6.QtSvg" 2>/dev/null || { echo "Missing package: sudo dnf install python3-pyqt6"; exit 1; }
+python3 -c "import PySide6.QtQml, PySide6.QtSvg" 2>/dev/null || { echo "Missing package: sudo dnf install python3-pyside6"; exit 1; }
 
 chmod +x capture replay-tray
 mkdir -p "$(dirname "$bin")" "$apps" "$tmpfiles" "$units"

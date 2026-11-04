@@ -7,19 +7,19 @@ inherits Breeze Dark and replaces only its places and mimetype icons that use th
 fixed to `text-muted`. Prints "changed" when anything was written.
 """
 import configparser
-import importlib.util
 import re
 import shutil
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 BREEZE = Path("/usr/share/icons/breeze-dark")
 OUT = Path.home() / ".local/share/icons/Levves"
 
-_spec = importlib.util.spec_from_file_location("levves_tokens", HERE.parents[3] / "design/dist/levves_tokens.py")
-_tokens = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_tokens)
-FOLDER = _tokens.TOKENS["color.text-muted"]
+sys.path.insert(0, str(HERE.parents[3] / "design/dist"))
+from levves_tokens import color  # noqa: E402  (the Levves design system)
+
+FOLDER = color("text-muted")
 SETS = ("places/", "mimetypes/")  # folders, and the file views' inode-directory
 
 

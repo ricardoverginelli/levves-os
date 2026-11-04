@@ -13,8 +13,7 @@ Prints "changed" when anything was rewritten; Yakuake only picks the skin and
 profile up when it restarts.
 """
 import configparser
-import importlib.util
-import json
+import sys
 import shutil
 import subprocess
 from pathlib import Path
@@ -27,11 +26,8 @@ SCHEME = KONSOLE / "Levves.colorscheme"
 SKIN = Path.home() / ".local/share/yakuake/skins/levves"
 OLD = [KONSOLE / "Leaves.colorscheme", SKIN.parent / "leaves"]  # the glass look's names
 
-palette = json.loads((DIST / "palette.json").read_text())
-_spec = importlib.util.spec_from_file_location("levves_tokens", DIST / "levves_tokens.py")
-_tokens = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_tokens)
-TOKENS = _tokens.TOKENS
+sys.path.insert(0, str(DIST))
+from levves_tokens import TOKENS, color as palette  # noqa: E402  (the Levves design system)
 
 
 def px(name):
@@ -66,10 +62,9 @@ def ini(color):
 # --- Konsole color scheme -------------------------------------------------
 
 def build_scheme():
-    t = palette["terminal"]
     # Normal ANSI colors; intense is a step toward white, faint a step toward bg
-    ansi = [t["black"], palette["critical"], palette["success"], palette["warning"],
-            palette["info"], t["magenta"], t["cyan"], palette["text"]]
+    ansi = [palette("terminal.black"), palette("critical"), palette("success"), palette("warning"),
+            palette("info"), palette("terminal.magenta"), palette("terminal.cyan"), palette("text")]
     lines = []
 
     def entry(section, color):
@@ -78,12 +73,12 @@ def build_scheme():
     def triple(section, color, intense):
         entry(section, color)
         entry(section + "Intense", intense)
-        entry(section + "Faint", mix(color, palette["bg"], 0.35))
+        entry(section + "Faint", mix(color, palette("bg"), 0.35))
 
-    triple("Background", palette["bg"], palette["bg"])
-    triple("Foreground", palette["text"], "#ffffff")
+    triple("Background", palette("bg"), palette("bg"))
+    triple("Foreground", palette("text"), "#ffffff")
     for i, color in enumerate(ansi):
-        intense = t["bright-black"] if i == 0 else mix(color, "#ffffff", 0.25)
+        intense = palette("terminal.bright-black") if i == 0 else mix(color, "#ffffff", 0.25)
         triple(f"Color{i}", color, intense)
     lines.extend(["[General]", "Blur=false", "ColorRandomization=false",
                   "Description=Levves", "Opacity=1", "Wallpaper=", ""])
@@ -97,7 +92,8 @@ def build_scheme():
 # checkerboard whole.
 
 def paint(name):
-    return palette.get(name, name)
+    """A color token by name, or a color given as is ("#ffffff")."""
+    return name if name.startswith("#") else palette(name)
 
 
 def svg(width, height, rects, extra=""):
@@ -209,8 +205,8 @@ def build_skin():
     title_y = (TITLE - 1 - KEY_H) // 2 + 1
     files["title/back.svg"] = svg(DITHER, TITLE, title_bar(DITHER))
     led_x, led_y = 12 + LED / 2, (TITLE - 1) / 2
-    led = (f'<circle cx="{led_x}" cy="{led_y}" r="{LED * 1.25}" fill="{palette["accent"]}" fill-opacity="0.18"/>'
-           f'<circle cx="{led_x}" cy="{led_y}" r="{LED / 2}" fill="{palette["accent"]}"/>')
+    led = (f'<circle cx="{led_x}" cy="{led_y}" r="{LED * 1.25}" fill="{palette("accent")}" fill-opacity="0.18"/>'
+           f'<circle cx="{led_x}" cy="{led_y}" r="{LED / 2}" fill="{palette("accent")}"/>')
     files["title/left.svg"] = svg(24, TITLE, title_bar(24) + [(0, 0, 1, TITLE, "edge", 1)], led)
     files["title/right.svg"] = svg(KEY_MARGIN, TITLE, title_bar(KEY_MARGIN)
                                    + [(KEY_MARGIN - 1, 0, 1, TITLE, "edge", 1)])
@@ -218,9 +214,9 @@ def build_skin():
         for state in ("up", "over", "down"):
             files[f"title/{name}_{state}.svg"] = button(title_bar, KEY_W, TITLE, 0, title_y, kind, state)
     files["icon.svg"] = svg(32, 32, [(2, 2, 28, 28, "edge", 1), (3, 3, 26, 26, "title-bar", 1)],
-                            f'<circle cx="16" cy="16" r="5" fill="{palette["accent"]}"/>')
+                            f'<circle cx="16" cy="16" r="5" fill="{palette("accent")}"/>')
 
-    text, edge = rgb(palette["text"]), rgb(palette["edge"])
+    text, edge = rgb(palette("text")), rgb(palette("edge"))
     about = "[Description]\nSkin=Levves\nAuthor=Levves (design/dist)\nIcon=/icon.svg\n\n"
     files["tabs.skin"] = about + f"""[Tabs]
 x={cell}
@@ -343,7 +339,7 @@ def style_profile(profile):
     changed = False
     for group, key, value in (("Appearance", "ColorScheme", "Levves"), ("Appearance", "Font", FONT),
                               ("Cursor Options", "UseCustomCursorColor", "true"),
-                              ("Cursor Options", "CustomCursorColor", ini(palette["accent"])),
+                              ("Cursor Options", "CustomCursorColor", ini(palette("accent"))),
                               ("General", "TerminalMargin", "8")):
         changed |= kwrite(profile, group, key, value)
     return changed
@@ -370,7 +366,7 @@ def main():
     # Yakuake: our skin, opaque; its own fill only shows in gaps, so it's the terminal's
     yakuakerc = CONFIG / "yakuakerc"
     for key, value in (("Skin", "levves"), ("SkinInstalledWithKns", "false"), ("Translucency", "false"),
-                       ("BackgroundColor", ini(palette["bg"])), ("BackgroundColorOpacity", "100")):
+                       ("BackgroundColor", ini(palette("bg"))), ("BackgroundColorOpacity", "100")):
         changed |= kwrite(yakuakerc, "Appearance", key, value)
 
     # Yakuake's profile keeps its own name and command. Every new tab starts Claude Code in

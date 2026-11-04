@@ -5,7 +5,7 @@
 #        capture clipboard upload       (upload the image on the clipboard)
 #        capture replay save|toggle|folder|run   (instant replay, run = the service)
 # Any gif/mp4 call while a recording runs stops it instead (same hotkey toggles).
-# Needs: slurp, spectacle, wayland-info, python3-pyqt6, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
+# Needs: slurp, spectacle, wayland-info, python3-pyside6, gpu-screen-recorder, ffmpeg, magick, wl-clipboard, curl
 set -euo pipefail
 
 kind=${1:-}; source=${2:-}; action=${3:-}

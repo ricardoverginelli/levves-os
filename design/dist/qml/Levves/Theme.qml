@@ -91,4 +91,11 @@ QtObject {
     readonly property real typeSizeReadoutLarge: 28
     readonly property real typeTrackingLabel: 0.12
     readonly property real typeTrackingTag: 0.1
+
+    // The mixes every piece uses (design/DESIGN.md Color, Edges), so none is mixed by hand
+    readonly property color hoverTint: "#0fdde3df"
+    readonly property color selectionTint: "#2ee9a23b"
+    readonly property color edgeLight: "#12ffffff"
+    readonly property color edgeShade: "#73000000"
+    readonly property color etchLight: "#0dffffff"
 }

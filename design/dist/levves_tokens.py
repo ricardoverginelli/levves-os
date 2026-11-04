@@ -104,3 +104,8 @@ TOKENS = {
     "type.tracking.label": 0.12,
     "type.tracking.tag": 0.1
 }
+
+
+def color(name):
+    """A color by its name without the group: color("text-muted"), color("terminal.cyan")."""
+    return TOKENS["color." + name]

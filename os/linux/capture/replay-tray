@@ -6,23 +6,23 @@ It also makes LosslessCut cuts replace their file: LosslessCut can't write over
 the file it has open, so it exports X-cut.mp4 (template set by install.sh), and
 once that's finished X.mp4 goes to the Trash and the cut takes its name.
 """
-import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QByteArray, QFileSystemWatcher, QSize, Qt, QTimer
-from PyQt6.QtGui import QIcon, QPainter, QPixmap
-from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PySide6.QtCore import QFileSystemWatcher, QSize, QTimer
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "design/dist"))
+from levves_qt import tinted as tinted_pixmap  # noqa: E402  (the Levves design system)
+from levves_tokens import color  # noqa: E402
 
 CAPTURE = Path(__file__).resolve().parent / "capture"
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "capture"
-ICON = Path.home() / ".local/share/icons/hicolor/scalable/actions/mingcute-live-fill.svg"
-PALETTE = json.loads((Path(__file__).resolve().parents[3] / "design/dist/palette.json").read_text())  # the Levves tokens
-ON, OFF = PALETTE["accent"], PALETTE["text"]
+ON, OFF = color("accent"), color("text")
 SECONDS = 60  # capture's replay_seconds
 
 
@@ -36,19 +36,10 @@ WATCHED = [VIDEOS / "Replays", VIDEOS / "Screencasts"]
 CUT = re.compile(r"^(?P<stem>.+)-cut(?P<ext>\.[^.]+)$")
 
 
-def tinted(color):
+def tinted(ink):
     icon = QIcon()
-    try:
-        svg = ICON.read_text().replace("currentColor", color).replace("#fcfcfc", color)
-    except OSError:
-        return QIcon.fromTheme("media-record")
     for px in (16, 22, 24, 32, 48, 64):
-        pm = QPixmap(QSize(px, px))
-        pm.fill(Qt.GlobalColor.transparent)
-        p = QPainter(pm)
-        QSvgRenderer(QByteArray(svg.encode())).render(p)
-        p.end()
-        icon.addPixmap(pm)
+        icon.addPixmap(tinted_pixmap("mingcute-live-fill", ink, QSize(px, px)))
     return icon
 
 

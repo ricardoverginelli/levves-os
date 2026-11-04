@@ -2,8 +2,7 @@
 
 Each patch replaces an exact snippet; if the snippet is gone (Plasma changed
 it), PatchError stops the build so the stock applet stays in use.
-Theme.* is the Levves module (build.py adds `import Levves` where a patch uses it); Leaves.Palette
-is palette.json (global/Palette.qml, written by build.py).
+Theme.* is the Levves module (build.py adds `import Levves` where a patch uses it).
 
 - spacing: content 12px from the popup's edges (the style's 4px plus 8), gaps
   on the 4px grid, popups 8px from the bar and from each other

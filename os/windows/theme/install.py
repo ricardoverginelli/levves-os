@@ -9,7 +9,6 @@ Run with: python os/windows/theme/install.py
 
 import ctypes
 import hashlib
-import json
 import os
 import shutil
 import subprocess
@@ -24,7 +23,7 @@ from pathlib import Path
 
 # The Plasma theme is the source of truth; colors and wallpaper come from it
 PLASMA_DIR = Path(__file__).resolve().parents[2] / "linux" / "plasma"
-PALETTE_FILE = Path(__file__).resolve().parents[3] / "design" / "dist" / "palette.json"
+TOKENS_DIR = Path(__file__).resolve().parents[3] / "design" / "dist"  # levves_tokens.py, the Levves colors
 WALLPAPER_SRC = PLASMA_DIR / "wallpaper" / "leaves.png"
 # Windows keeps pointing at the wallpaper file, so use a copy outside the repo
 WALLPAPER = Path(os.environ["LOCALAPPDATA"]) / "Leaves" / "leaves.png"
@@ -113,13 +112,14 @@ def broadcast_setting_change(area):
 
 def load_palette():
     print_header("Loading Leaves Palette")
-    for path in (PALETTE_FILE, WALLPAPER_SRC):
+    for path in (TOKENS_DIR / "levves_tokens.py", WALLPAPER_SRC):
         if not path.exists():
             print(f"  ✗ Not found: {path}")
             print("    The theme reads its colors and wallpaper from os/linux/plasma/.")
             sys.exit(1)
-    palette = json.loads(PALETTE_FILE.read_text())
-    print(f"  ✓ Palette loaded, accent {palette['accent']}")
+    sys.path.insert(0, str(TOKENS_DIR))
+    from levves_tokens import color as palette  # palette("accent"), palette("terminal.cyan")
+    print(f"  ✓ Palette loaded, accent {palette('accent')}")
     return palette
 
 def apply_dark_mode():
@@ -132,7 +132,7 @@ def apply_dark_mode():
 
 def apply_accent(palette):
     print_header("Amber Accent")
-    accent = rgb(palette["accent"])
+    accent = rgb(palette("accent"))
     white, black = (255, 255, 255), (0, 0, 0)
 
     # Windows derives its accent shades from this 8-slot palette (light3..dark3, unused).
@@ -140,9 +140,9 @@ def apply_accent(palette):
     shades = [
         mix(accent, white, 0.55),
         mix(accent, white, 0.35),
-        rgb(palette["accent-hover"]),
+        rgb(palette("accent-hover")),
         accent,
-        rgb(palette["accent-pressed"]),
+        rgb(palette("accent-pressed")),
         mix(accent, black, 0.40),
         mix(accent, black, 0.60),
         mix(accent, black, 0.60),
@@ -162,7 +162,7 @@ def apply_accent(palette):
     # One accented thing per view: no accent on title bars, borders, taskbar or Start
     set_dword(DWM_KEY, "ColorPrevalence", 0)
     set_dword(PERSONALIZE_KEY, "ColorPrevalence", 0)
-    print(f"  ✓ Accent {palette['accent']}, kept off title bars and the taskbar.")
+    print(f"  ✓ Accent {palette('accent')}, kept off title bars and the taskbar.")
 
 def apply_taskbar():
     print_header("Taskbar")
@@ -261,23 +261,22 @@ def install_font():
 
 def apply_console(palette):
     print_header("Console Colors")
-    t = palette["terminal"]
     white = (255, 255, 255)
 
     # The Yakuake scheme's ANSI colors (yakuake/build.py), in console table order:
     # black, blue, green, cyan, red, magenta, yellow, white. Slot 0 is also the
     # console's background, so black is bg here rather than raised
-    normal = [palette["bg"], palette["info"], palette["success"], t["cyan"],
-              palette["critical"], t["magenta"], palette["warning"], palette["text"]]
+    normal = [palette("bg"), palette("info"), palette("success"), palette("terminal.cyan"),
+              palette("critical"), palette("terminal.magenta"), palette("warning"), palette("text")]
     table = [rgb(c) for c in normal]
     # Bright variants are 25% toward white; bright black is text-faint
-    table += [rgb(t["bright-black"])] + [mix(c, white, 0.25) for c in table[1:]]
+    table += [rgb(palette("terminal.bright-black"))] + [mix(c, white, 0.25) for c in table[1:]]
 
     for i, color in enumerate(table):
         set_dword(CONSOLE_KEY, f"ColorTable{i:02d}", abgr(color, alpha=0))
     set_dword(CONSOLE_KEY, "ScreenColors", 0x07)   # text on bg
     set_dword(CONSOLE_KEY, "PopupColors", 0x70)    # bg on text (high nibble is the background)
-    set_dword(CONSOLE_KEY, "CursorColor", abgr(rgb(palette["accent"]), alpha=0))
+    set_dword(CONSOLE_KEY, "CursorColor", abgr(rgb(palette("accent")), alpha=0))
     set_value(CONSOLE_KEY, "FaceName", winreg.REG_SZ, "JetBrains Mono")
     set_dword(CONSOLE_KEY, "FontFamily", 0x36)     # TrueType, fixed pitch, modern
     set_dword(CONSOLE_KEY, "FontSize", 16 << 16)   # 16px tall, width from the font

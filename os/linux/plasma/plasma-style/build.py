@@ -9,8 +9,8 @@ Everything not overridden falls back to the stock "default" style.
 """
 import configparser
 import gzip
-import importlib.util
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -19,14 +19,9 @@ SYSTEM = Path("/usr/share/plasma/desktoptheme")
 OUT = Path.home() / ".local/share/plasma/desktoptheme/leaves"
 SCHEMES = Path.home() / ".local/share/color-schemes"
 
-_spec = importlib.util.spec_from_file_location("levves_tokens", HERE.parents[3] / "design/dist/levves_tokens.py")
-_tokens = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_tokens)
-TOKENS = _tokens.TOKENS
+sys.path.insert(0, str(HERE.parents[3] / "design/dist"))
+from levves_tokens import TOKENS, color  # noqa: E402  (the Levves design system)
 
-
-def color(name):
-    return TOKENS[f"color.{name}"]
 
 
 def rgb(name):

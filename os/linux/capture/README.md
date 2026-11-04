@@ -29,7 +29,7 @@ the buffer off / on.
 
 ```bash
 sudo dnf copr enable brycensranch/gpu-screen-recorder-git
-sudo dnf install gpu-screen-recorder slurp python3-pyqt6
+sudo dnf install gpu-screen-recorder slurp python3-pyside6
 bash install.sh              # bash install.sh --uninstall to undo
 ```
 
@@ -52,7 +52,7 @@ shortcuts stay).
   `~/.local/state/capture/last-region` for the "last region" hotkeys.
 - **Screenshot:** Spectacle captures the whole desktop in the background as
   soon as the hotkey is pressed, and `magick` crops it. While the region is
-  picked, `freeze` (a layer-shell overlay in `freeze.qml`, run with PyQt6) shows
+  picked, `freeze` (a layer-shell overlay in `freeze.qml`, run with PySide6) shows
   that picture on every screen, so tooltips and open menus stay visible and
   end up in the shot. Assumes 100% display scaling.
 - **Recording:** `gpu-screen-recorder` records the region with NVENC (H.264,
@@ -76,7 +76,7 @@ shortcuts stay).
   the buffer until the next login, to free VRAM for a game. Failures notify
   once; the log is `~/.local/state/capture/replay.log`. `Ctrl+Alt+F10` is a VT
   switch in xkb, so keyd turns it into `Ctrl+Alt+F19` (`keyd/gmk104.conf`).
-- **Tray:** `replay-tray` (PyQt6, `capture-tray.service`) checks every 2 s
+- **Tray:** `replay-tray` (PySide6, `capture-tray.service`) checks every 2 s
   whether the buffer's recorder is running (`replay.pid`) and tints
   `mingcute-live-fill` with the `DESIGN.md` accent or text color.
 - **LosslessCut cuts replace the file:** LosslessCut refuses to write over the
