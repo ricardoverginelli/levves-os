@@ -25,13 +25,15 @@
 // Keys on a monitor with a layout (without one, the old ones):
 //   Meta+Left/Right        move the window one column along, swapping with the
 //                          window there; a window behind goes into the edge column
-//                          (no layout: KWin's half tiling)
+//                          (no layout: KWin's half tiling; on Yakuake: split
+//                          the terminal side by side)
 //   Meta+Shift+Right/Left  span: grow the window over the next column (the other
 //                          way at the monitor's edge) / give back the last one it
 //                          grew into; the window it covers goes behind
 //                          (no layout: the snap assist picker, kwin/leaves-snap-assist)
 //   Meta+Up/Down           KWin's move to the monitor above/below; with a layout
 //                          there, the window takes a column like a picked one
+//                          (on Yakuake, Meta+Down closes the focused terminal)
 // A maximized window goes back into its column first, and the move or span
 // applies from there (no layout: KWin's half tiling un-maximizes on its own).
 // Everywhere: Meta+Shift+Down un-maximizes a maximized window, and minimizes
@@ -559,8 +561,41 @@ function restoreOrMinimize() {
         w.minimized = true;
 }
 
+// Yakuake: Meta+Left/Right split its terminal side by side instead (tiling the
+// drop-down breaks it)
+function splitYakuake() {
+    callDBus("org.kde.yakuake", "/yakuake/sessions", "org.kde.yakuake", "activeTerminalId",
+             id => callDBus("org.kde.yakuake", "/yakuake/sessions", "org.kde.yakuake",
+                            "splitTerminalLeftRight", id));
+}
+
+function closeYakuakeTerminal() {
+    callDBus("org.kde.yakuake", "/yakuake/sessions", "org.kde.yakuake", "activeTerminalId",
+             id => callDBus("org.kde.yakuake", "/yakuake/sessions", "org.kde.yakuake",
+                            "removeTerminal", id));
+}
+
+function yakuakeFocused() {
+    const w = workspace.activeWindow;
+    return w && w.resourceClass == "org.kde.yakuake";
+}
+
+// Meta+Down: KWin's move one screen down (its key is ours, apply.sh), but
+// Yakuake closes its terminal instead
+function down() {
+    if (yakuakeFocused())
+        closeYakuakeTerminal();
+    else
+        callDBus("org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component", "invokeShortcut",
+                 "Window One Screen Down");
+}
+
 // Meta+Left/Right: the window's columns trade places with the next run along
 function moveWindow(side) {
+    if (yakuakeFocused()) {
+        splitYakuake();
+        return;
+    }
     const c = focusedInLayout();
     if (!c) {
         if (side == "left")
@@ -867,6 +902,8 @@ registerShortcut("Leaves Move Left", "Leaves: move the window a column left (no 
                  "Meta+Left", () => moveWindow("left"));
 registerShortcut("Leaves Move Right", "Leaves: move the window a column right (no layout: tile right)",
                  "Meta+Right", () => moveWindow("right"));
+registerShortcut("Leaves Down", "Leaves: move the window a monitor down (Yakuake: close the terminal)",
+                 "Meta+Down", down);
 registerShortcut("Leaves Span Right", "Leaves: span the window over the next column (no layout: snap assist)",
                  "Meta+Shift+Right", () => spanWindow("right"));
 registerShortcut("Leaves Span Left", "Leaves: give back the last column spanned (no layout: snap assist)",

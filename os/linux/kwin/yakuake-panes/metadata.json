@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Id": "yakuake-panes",
+        "Name": "Yakuake panes",
+        "Description": "Shift+Left/Right in Yakuake move between split terminals, then on to the previous/next tab",
+        "Authors": [{ "Name": "Ricardo Verginelli" }],
+        "License": "MIT",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "declarativescript",
+    "KPackageStructure": "KWin/Script"
+}

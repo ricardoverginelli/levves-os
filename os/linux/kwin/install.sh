@@ -2,7 +2,8 @@
 # Install the Yakuake KWin pieces: the slide-from-the-left effect (docked on
 # the left, full height) and the script that keeps it off fullscreen monitors
 # and owns its shortcuts (Meta+/, Meta+N new tab), plus yakuake-tab, which new
-# tabs run (Claude Code, or a plain shell for Meta+Shift+N). User-level, no sudo. Safe to re-run.
+# tabs run (Claude Code, or a plain shell for Meta+Shift+N), and yakuake-panes
+# (Shift+Left/Right through split terminals, then tabs). User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall
 # Yakuake reads its window settings on start: restart it after installing.
 set -e
@@ -20,10 +21,16 @@ plugin() {  # id, enabled
 if [ "${1:-}" = --uninstall ]; then
     plugin yakuake-slide false
     plugin yakuake-avoid-fullscreen false
+    plugin yakuake-panes false
     plugin slidingpopups true
     qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-avoid-fullscreen >/dev/null || true
+    qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-panes >/dev/null || true
     qdbus-qt6 org.kde.KWin /KWin reconfigure
-    rm -rf "$kwin/effects/yakuake-slide" "$kwin/scripts/yakuake-avoid-fullscreen"
+    rm -rf "$kwin/effects/yakuake-slide" "$kwin/scripts/yakuake-avoid-fullscreen" "$kwin/scripts/yakuake-panes"
+    # Yakuake's own tab and terminal keys back
+    for action in previous-session next-session previous-terminal next-terminal; do
+        kwriteconfig6 --file yakuakerc --group Shortcuts --key $action --delete
+    done
     remove_launcher_shortcut yakuake-shell-tab
     # $bin stays: Yakuake's profile runs it (plasma/yakuake/build.py)
     # Yakuake's own F12 back, docked at the top again
@@ -50,6 +57,12 @@ cp -r yakuake-avoid-fullscreen "$kwin/scripts/"
 plugin yakuake-avoid-fullscreen true
 qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-avoid-fullscreen >/dev/null || true
 
+echo "Installing KWin script yakuake-panes"
+rm -rf "$kwin/scripts/yakuake-panes"
+cp -r yakuake-panes "$kwin/scripts/"
+plugin yakuake-panes true
+qdbus-qt6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript yakuake-panes >/dev/null || true
+
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 # Reload the effect so a re-run picks up changed code (reconfigure doesn't)
 qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect yakuake-slide >/dev/null || true
@@ -68,4 +81,10 @@ launcher_shortcut yakuake-shell-tab "New Yakuake shell tab" "$bin --shell" utili
 kwriteconfig6 --file yakuakerc --group Window --key Width 30
 kwriteconfig6 --file yakuakerc --group Window --key Height 100
 kwriteconfig6 --file yakuakerc --group Window --key Position 0
-echo "Done; restart Yakuake to dock it on the left"
+# Shift+Left/Right step through a tab's split terminals (yakuake-panes takes
+# the key at the first/last one to switch tabs), so the tab keys give them up
+kwriteconfig6 --file yakuakerc --group Shortcuts --key previous-terminal "Shift+Left; Ctrl+Shift+Tab"
+kwriteconfig6 --file yakuakerc --group Shortcuts --key next-terminal "Shift+Right; Ctrl+Tab"
+kwriteconfig6 --file yakuakerc --group Shortcuts --key previous-session none
+kwriteconfig6 --file yakuakerc --group Shortcuts --key next-session none
+echo "Done; restart Yakuake to dock it on the left and pick up its keys"
