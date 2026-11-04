@@ -17,7 +17,7 @@ Item {
         x: 1; y: 1; width: parent.width; height: parent.height
         radius: Theme.radiusContainer
         color: "transparent"
-        border.color: Qt.rgba(1, 1, 1, Theme.opacityEtch)
+        border.color: Theme.etchLight
     }
     Rectangle {
         anchors.fill: parent

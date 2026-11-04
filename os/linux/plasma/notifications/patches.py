@@ -114,7 +114,7 @@ ACTION_BUTTON = '''            PlasmaComponents3.ToolButton {
                         radius: Theme.radiusKey - 1
                         color: leavesActionButton.leavesPrimary ? (leavesActionButton.down ? Theme.accentPressed : leavesActionButton.hovered ? Theme.accentHover : Theme.accent)
                             : parent.sunk ? Theme.wellPressed
-                            : leavesActionButton.hovered ? Qt.tint(Theme.raised, Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover))
+                            : leavesActionButton.hovered ? Qt.tint(Theme.raised, Theme.hoverTint)
                             : Theme.raised
                     }
                 }
@@ -151,7 +151,7 @@ MENU_BUTTON = '''            PlasmaComponents3.Button {
                         radius: Theme.radiusKey - 1
                         color: false ? (menuButton.down ? Theme.accentPressed : menuButton.hovered ? Theme.accentHover : Theme.accent)
                             : parent.sunk ? Theme.wellPressed
-                            : menuButton.hovered ? Qt.tint(Theme.raised, Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover))
+                            : menuButton.hovered ? Qt.tint(Theme.raised, Theme.hoverTint)
                             : Theme.raised
                     }
                 }
@@ -382,7 +382,7 @@ def apply(files):
                         width: parent.width; height: parent.height
                         radius: Theme.radiusContainer
                         color: "transparent"
-                        border.color: Qt.rgba(1, 1, 1, Theme.opacityEtch)
+                        border.color: Theme.etchLight
                     }
                     Rectangle {
                         anchors.fill: parent

@@ -915,7 +915,7 @@ PlasmoidItem {
         property bool hovered
         property color tint: Theme.accent
         color: selected ? Qt.rgba(tint.r, tint.g, tint.b, Theme.opacitySelection)
-             : hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+             : hovered ? Theme.hoverTint
              : "transparent"
         Behavior on color {
             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }

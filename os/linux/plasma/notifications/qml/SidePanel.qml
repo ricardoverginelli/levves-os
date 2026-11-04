@@ -86,18 +86,8 @@ PlasmaCore.Window {
         // Keeps the panel open while the bell opened it on hover (tray/patches.py)
         HoverHandler { onHoveredChanged: panel.applet.leavesPanelHovered = hovered }
 
-        // An edge-to-edge window draws its edge on the inner side only: the black edge, then
-        // the engraved light line (design/DESIGN.md Edges)
-        Rectangle {
-            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-            width: Theme.edgeWidth
-            color: Theme.edge
-        }
-        Rectangle {
-            anchors { left: parent.left; leftMargin: Theme.edgeWidth; top: parent.top; bottom: parent.bottom }
-            width: 1
-            color: Qt.rgba(1, 1, 1, Theme.opacityEdgeLight)
-        }
+        // Docked on the right: the edge on its inner side only, over the style's background
+        WindowFrame { anchors.fill: parent; docked: "left"; color: "transparent" }
 
         Ui.FullRepresentation {
             anchors.fill: parent

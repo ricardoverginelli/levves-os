@@ -262,7 +262,7 @@ Item {
                                 height: 28
                                 radius: Theme.radiusKey
                                 color: cell.isSelected ? Theme.wellPressed
-                                     : cell.hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+                                     : cell.hovered ? Theme.hoverTint
                                      : "transparent"
                                 border.width: cell.isToday || cell.isSelected ? 1 : 0
                                 border.color: cell.isToday ? Theme.text : Theme.fieldEdge
@@ -354,7 +354,7 @@ Item {
                     onClicked: popup.clock.openDay(day)
 
                     background: Rectangle {
-                        color: row.hovered ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover) : "transparent"
+                        color: row.hovered ? Theme.hoverTint : "transparent"
                         Behavior on color { ColorAnimation { duration: popup.hoverDuration; easing.type: popup.houseCurve } }
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.rowLine }
                     }

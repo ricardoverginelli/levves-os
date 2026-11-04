@@ -30,19 +30,13 @@ Item {
         }
     }
 
-    Item {
+    WindowFrame {  // the black engraved edge, drawn over the title bar's top and left
         id: win
+        bare: frame.maximized
         x: frame.maximized ? 0 : frame.deco.padding.left
         y: frame.maximized ? 0 : frame.deco.padding.top
         width: frame.width - (frame.maximized ? 0 : frame.deco.padding.left + frame.deco.padding.right)
         height: frame.height - (frame.maximized ? 0 : frame.deco.padding.top + frame.deco.padding.bottom)
-
-        Rectangle {  // the edge
-            anchors.fill: parent
-            visible: !frame.maximized
-            radius: Theme.radiusContainer
-            color: Theme.edge
-        }
 
         TitleBar {
             id: bar
@@ -69,15 +63,7 @@ Item {
             }
             Component.onCompleted: decoration.installTitleItem(bar)
         }
-
-        // The engraving: light along the top and left, shade along the right and bottom
-        Rectangle { visible: !frame.maximized; x: 1; y: 1; width: parent.width - 2; height: 1; color: frame.light }
-        Rectangle { visible: !frame.maximized; x: 1; y: 1; width: 1; height: parent.height - 2; color: frame.light }
-        Rectangle { visible: !frame.maximized; x: parent.width - 2; y: 1; width: 1; height: parent.height - 2; color: frame.shade }
-        Rectangle { visible: !frame.maximized; x: 1; y: parent.height - 2; width: parent.width - 2; height: 1; color: frame.shade }
     }
-    readonly property color light: Qt.rgba(1, 1, 1, Theme.opacityEdgeLight)
-    readonly property color shade: Qt.rgba(0, 0, 0, Theme.opacityEdgeShade)
 
     Component { id: minimizeKey; WindowKey { kind: DecorationOptions.DecorationButtonMinimize } }
     Component { id: maximizeKey; WindowKey { kind: DecorationOptions.DecorationButtonMaximizeRestore } }

@@ -67,7 +67,7 @@ T.Button {
             Rectangle {  // hover tint
                 anchors.fill: parent
                 visible: key.hovered && !key.primary && !key.sunk && key.enabled
-                color: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+                color: Theme.hoverTint
             }
             Rectangle {  // the inner shadow of a sunk key
                 width: parent.width; height: 3

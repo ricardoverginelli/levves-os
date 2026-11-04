@@ -68,7 +68,7 @@ T.Slider {
             Rectangle {  // hover tint
                 anchors.fill: parent
                 visible: slider.hovered && !slider.pressed
-                color: Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+                color: Theme.hoverTint
             }
             Rectangle {  // the grip
                 anchors.centerIn: parent

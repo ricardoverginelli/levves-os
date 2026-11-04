@@ -240,8 +240,8 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 2
-                        color: cell.selected ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.opacitySelection)
-                             : mouse.containsMouse ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+                        color: cell.selected ? Theme.selectionTint
+                             : mouse.containsMouse ? Theme.hoverTint
                              : "transparent"
                         Behavior on color {
                             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }

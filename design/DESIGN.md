@@ -22,6 +22,9 @@ python3 design/build/build.py --check  # what CI runs, with check_hardcoded.py: 
 | Python (builds, desktop apps) | `dist/levves_tokens.py`, `dist/levves_qt.py` | `design/dist` on `sys.path`, then `color("accent")`; `levves_qt.tinted()` and `IconProvider` for MingCute icons in a token color |
 | Android XML | `dist/android/res/` | `@color/levves_accent` |
 
+The mixes every piece needs are tokens too, in QML: `Theme.hoverTint` (`text` at `opacity.hover`),
+`selectionTint`, `edgeLight`, `edgeShade` and `etchLight`; never mix them by hand.
+
 Code names: colors drop their group (`color.text-muted` is `textMuted`), everything else keeps it
 (`duration.popup-open` is `durationPopupOpen`). In QML, `on-accent` is `textOnAccent`, since QML reads
 `on…` names as signal handlers.
@@ -81,7 +84,8 @@ and QML types in `qml/` (`WindowFrame`, `TitleBar`, `Key`, `Field`, `Well`, `Gro
 into the `Levves` module. A `flat` key shows only a hover tint until pressed or current (toolbars,
 the top bar's window strip).
 
-- **Window**: `surface`, black engraved edge. A 30px title bar (`title-bar`, `title-bar-inactive`
+- **Window**: `surface`, black engraved edge (`WindowFrame`; `docked` draws the edge on the one side
+  facing the screen for a window flush against a monitor edge, `bare` none for a maximized one). A 30px title bar (`title-bar`, `title-bar-inactive`
   when unfocused) with a 6px light at the left (amber when focused, `border` otherwise), the serif
   title, and small keys for minimize, maximize and close.
 - **Group box**: an etched box with a 24px dithered header strip holding a caps label, and

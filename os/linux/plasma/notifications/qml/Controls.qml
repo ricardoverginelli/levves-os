@@ -54,7 +54,7 @@ ColumnLayout {
         Layout.bottomMargin: 12
         implicitHeight: 2
         Rectangle { width: parent.width; height: 1; color: Theme.edge }
-        Rectangle { y: 1; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, Theme.opacityEtch) }
+        Rectangle { y: 1; width: parent.width; height: 1; color: Theme.etchLight }
     }
 
     component SectionTitle: Caps {

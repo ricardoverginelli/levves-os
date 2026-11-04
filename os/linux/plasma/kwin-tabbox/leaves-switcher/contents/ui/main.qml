@@ -157,7 +157,7 @@ KWin.TabBoxSwitcher {
                             width: 1
                             height: parent.height - 16
                             color: Theme.edge
-                            Rectangle { x: 1; width: 1; height: parent.height; color: Qt.rgba(1, 1, 1, Theme.opacityEtch) }
+                            Rectangle { x: 1; width: 1; height: parent.height; color: Theme.etchLight }
                         }
 
                         Item {
@@ -169,8 +169,8 @@ KWin.TabBoxSwitcher {
                             Rectangle {
                                 anchors.fill: parent
                                 anchors.margins: 2
-                                color: cell.selected ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.opacitySelection)
-                                     : mouse.containsMouse ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
+                                color: cell.selected ? Theme.selectionTint
+                                     : mouse.containsMouse ? Theme.hoverTint
                                      : "transparent"
                                 Behavior on color {
                                     ColorAnimation { duration: tabBox.hoverDuration; easing.type: tabBox.houseCurve }

@@ -26,11 +26,6 @@ Window {
     LayerShell.Window.exclusionZone: -1
     LayerShell.Window.screenConfiguration: LayerShell.Window.ScreenFromCompositor
 
-    readonly property color surface: Theme.surface
-    readonly property color border: Theme.edge
-    readonly property color textMuted: Theme.textMuted
-    readonly property color text: Theme.text
-
     readonly property var mainRows: menu.canCut
         ? [{ id: "cut", label: "Cut", hint: "LosslessCut", icon: "mingcute-scissors-fill" },
            { id: "convert", label: "Convert", hint: "", icon: "mingcute-transfer-horizontal-fill", more: true }]
@@ -171,7 +166,7 @@ Window {
         onActivated: id => win.close(id)
     }
 
-    component MenuCard: Rectangle {
+    component MenuCard: WindowFrame {
         id: card
         property var rows: []
         property int current: -1  // keyboard highlight, -1 until an arrow key is used
@@ -187,17 +182,6 @@ Window {
         visible: opacity > 0
         width: 220
         height: column.implicitHeight + 8
-        // A Levves window: opaque `surface`, the black edge, the engraved light inside it
-        radius: Theme.radiusContainer
-        color: win.surface
-        border.color: win.border
-        border.width: 1
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 1
-            color: "transparent"
-            border.color: Qt.rgba(1, 1, 1, Theme.opacityEdgeLight)
-        }
         transformOrigin: Item.TopLeft
 
         // Not a Plasma window, so it opens itself: 0.96 scale plus a fade (popup timing)
@@ -245,8 +229,8 @@ Window {
 
                     Rectangle {  // square rows, as in a Levves list
                         anchors.fill: parent
-                        color: card.current === row.index ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.opacitySelection)
-                             : area.containsMouse || row.open ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover) : "transparent"
+                        color: card.current === row.index ? Theme.selectionTint
+                             : area.containsMouse || row.open ? Theme.hoverTint : "transparent"
                         Behavior on color { ColorAnimation { duration: Theme.durationHover } }
                     }
                     Kirigami.Icon {
@@ -257,7 +241,7 @@ Window {
                         height: 16
                         source: row.modelData.icon
                         isMask: true
-                        color: win.textMuted
+                        color: Theme.textMuted
                     }
                     Text {
                         anchors.left: icon.right
@@ -266,7 +250,7 @@ Window {
                         text: row.modelData.label
                         font.family: Theme.typeFamilySans
                         font.pixelSize: Theme.typeSizeBody
-                        color: win.text
+                        color: Theme.text
                     }
                     Text {
                         anchors.right: parent.right
@@ -276,7 +260,7 @@ Window {
                         text: row.modelData.hint
                         font.family: Theme.typeFamilySans
                         font.pixelSize: Theme.typeSizeSmall
-                        color: win.textMuted
+                        color: Theme.textMuted
                     }
                     Kirigami.Icon {
                         visible: !!row.modelData.more
@@ -287,7 +271,7 @@ Window {
                         height: 16
                         source: sub.flip ? "mingcute-left-fill" : "mingcute-right-fill"
                         isMask: true
-                        color: win.textMuted
+                        color: Theme.textMuted
                     }
                     MouseArea {
                         id: area
