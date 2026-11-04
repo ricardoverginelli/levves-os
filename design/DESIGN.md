@@ -113,14 +113,77 @@ One curve, `easing.out-quint` (Qt and KWin have it built in as OutQuint). Durati
 30% faster than opening. No bounce or overshoot.
 
 ## Icons
-MingCute, Fill style, drawn as masks in a text color. Details in `os/linux/plasma/DESIGN.md`
-until the icon set moves here.
+- Library: **MingCute** (https://www.mingcute.com/, Apache-2.0), **Fill** style by default; the
+  Line style only for a deliberate secondary state of the same icon.
+- Monochrome: drawn as masks in a text color (`Kirigami.Icon { isMask: true }`), never in their own
+  colors. App icons stay as the apps ship them, except where one clashes in a small spot
+  (notification headers swap Spectacle's for MingCute's `screenshot`, `leavesAppIcons` in
+  `os/linux/plasma/notifications/patches.py`).
+- Sizes: 16px in the bar, rows and keys; 24px where an icon stands in for an app.
+- Adding one: its name in `os/linux/plasma/icons/mingcute.txt`, run `icons/fetch.py`, commit the
+  SVG; `apply.sh` installs it as `mingcute-<name>`. When MingCute has nothing that reads at 16px,
+  draw one in its style (24px grid, filled, `currentColor`) in `icons/custom/`; it installs as
+  `leaves-<name>` (so far `cpu`, `ram`, `leaf`, `log-out`).
+
+## Desktop (Plasma)
+Everything under `os/linux/plasma/`, applied by its `apply.sh`; phases in its `TODO.md`.
+
+**Where each part is drawn**
+- The Plasma style (`plasma-style/build.py`): popups and tooltips as windows on `surface` inside
+  the black engraved edge, the top bar on `bg` with an edge along its bottom, and Plasma's own
+  controls as keys, wells and slots. Frame pieces must measure whole pixels: lines are filled
+  rects, never strokes (`agents/notes/plasma-svg-frames.md`).
+- Apps: the color scheme `Levves` (same palette), Source Sans 3 10.5pt for the UI and Source
+  Serif 4 11pt semibold for window titles, and the window decoration `kwin-decoration/levves`
+  (D's title bar on the Levves pieces). Their widgets are still Breeze's, in Levves colors.
+- Bar popups float 4px off the bar with their whole frame (`tray/patches.py`). The top bar is
+  28px. A window that spans a whole monitor edge (the side panel, Yakuake) is square and draws
+  its edge on the inner side only.
+- Exception to "one amber thing": the media popup takes the cover's color
+  (`Kirigami.ImageColors`, held at 62-78% lightness, at most 70% saturation) for its visualizer
+  and progress meter.
+
+**Motion mechanics** (values in Motion above)
+- Plasma's popups and the launcher drop 8px out of their panel with a fade, reversed on close
+  (`kwin-effects/leaves-popups`). Panels docked to a monitor edge (Yakuake, the side panel) slide
+  all the way in from it on the panel timing, without a fade (`yakuake-slide`, `leaves-popups`).
+- Windows moved or resized by KWin glide there on the panel timing (`leaves-geometry`); mouse
+  drags never animate.
+- What no KWin effect reaches (KWin scripts like snap assist and the cheat sheet, the S25 OSD)
+  opens with a 0.96 scale plus a fade in QML, and closes the same way, faster.
+- An open bar item gets a 1px accent line along its bottom that grows from the left
+  (`shared/ActiveLine.qml`).
+
+**Building a bar widget**
+- Show the popup as the applet's `fullRepresentation`: Plasma wraps it in the style's window.
+  Don't draw a background or frame, don't set the popup's `margin`, and inset anything drawn edge
+  to edge 1px inside the edge.
+- Don't animate the popup window (`leaves-popups` does) or draw an open-state line (the tray
+  swaps in `ActiveLine`). Open on hover with `shared/HoverOpener.qml` (150ms rest, 400ms grace)
+  and no tooltip. Widgets talk over `shared/bus.js`, never by reaching into each other.
+
+**Windows of our own** (a launcher-style `PlasmaCore.Window` or layer-shell window): show and hide
+them with `visible` and let `leaves-popups` animate them. Draw them with `WindowFrame`, or the
+style's dialog background, and fill them with group boxes and wells.
+
+**Context menus** (reference: `os/linux/media-actions/Menu.qml`)
+- At the pointer, below-right, flipped to stay 8px inside the screen; on Wayland a transparent
+  layer-shell overlay over the monitor takes the pointer position when it maps (the middle of
+  the screen if none arrives within 200ms).
+- A 220px Levves window with 4px of padding; rows 32px with a 16px icon in `text-muted`, the
+  label in `text`, an optional hint right-aligned in `text-muted`. Hover is `text` at
+  `opacity.hover`, the keyboard highlight `accent` at `opacity.selection` (nothing highlighted
+  until an arrow key is used).
+- Submenus cascade on hover (hover-open rest, 400ms grace), 4px beside the parent, flipped when
+  they don't fit. Hide what doesn't apply rather than disabling it; skip a level with one item.
+- Keys: Up/Down (Tab), Enter/Space/Right, Left/Backspace back up, Esc closes. Long work reports
+  through a notification replaced by its result (`notify-send -p` / `-r`).
 
 ## What's still on the old look
 The suite's components still read some of its older token names, mapped onto Levves in
 `packages/design-tokens/tokens.css`. Plasma's reskin goes in phases (`os/linux/plasma/TODO.md`): the
 style and its controls, the top bar, the popups, the window decoration, the fonts and the apps'
 color scheme, Yakuake/Konsole and VS Code are on Levves. The apps' widgets are still drawn by
-Breeze (in Levves colors, so selections, checkboxes and slider fills are solid amber), and a few
-pieces still read the `legacy.*` tokens until the reskin's cleanup. `os/linux/plasma/DESIGN.md` still describes Plasma-specific
-mechanics (popup frames, KWin effects, menus).
+Breeze (in Levves colors, so selections, checkboxes and slider fills are solid amber). Our own
+desktop apps (s25-control's window, p45-studio, the replay tray, the context menus) still use the
+older Leaves look in places; they move over in the Plasma TODO's phase 7.
