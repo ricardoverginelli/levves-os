@@ -17,6 +17,8 @@ BREEZE = Path("/usr/share/icons/breeze-dark")
 OUT = Path.home() / ".local/share/icons/Levves"
 
 sys.path.insert(0, str(HERE.parents[3] / "design/dist"))
+sys.path.insert(0, str(HERE.parent / "shared"))
+import changes  # noqa: E402
 from levves_tokens import color  # noqa: E402  (the Levves design system)
 
 FOLDER = color("text-muted")
@@ -59,17 +61,14 @@ def build(dest):
         theme.write(f, space_around_delimiters=False)
 
 
-def tree(path):
-    return {p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()} if path.exists() else {}
-
-
 staging = OUT.with_name("Levves.new")
 shutil.rmtree(staging, ignore_errors=True)
 staging.mkdir(parents=True)
 build(staging)
-if tree(staging) != tree(OUT):
+changed = changes.tree(staging) != changes.tree(OUT)
+if changed:
     shutil.rmtree(OUT, ignore_errors=True)
     staging.rename(OUT)
-    print("changed")
 else:
     shutil.rmtree(staging)
+changes.report(changed)

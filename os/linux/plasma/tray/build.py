@@ -12,7 +12,6 @@ removed and top-bar.js falls back to the stock tray; update patches.py for the
 new version. Prints "changed" when the installed package changed.
 """
 import json
-import shutil
 import subprocess
 import sys
 import urllib.request
@@ -21,6 +20,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True  # no __pycache__ in the repo
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "shared"))
+import changes  # noqa: E402
 import patches  # noqa: E402
 
 ID = "org.leaves.systemtray"
@@ -50,13 +51,8 @@ def fetch(version):
     return src
 
 
-def snapshot(path):
-    return {p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()} if path.exists() else {}
-
-
 def main():
     version = plasma_version()
-    before = snapshot(DEST)
     try:
         src = fetch(version)
         files = {f"contents/ui/{q}.qml": (src / f"qml/{q}.qml").read_text() for q in QML if q != "config"}
@@ -80,15 +76,9 @@ def main():
         metadata["X-Plasma-RootPath"] = "../applets/org.kde.plasma.systemtray"
         files["metadata.json"] = json.dumps(metadata, indent=1, ensure_ascii=False)
     except (patches.PatchError, OSError) as e:
-        shutil.rmtree(DEST, ignore_errors=True)
+        files = None
         print(f"Leaves tray NOT installed for Plasma {version} ({e}); the bar uses the stock tray", file=sys.stderr)
-    else:
-        shutil.rmtree(DEST, ignore_errors=True)
-        for rel, text in files.items():
-            (DEST / rel).parent.mkdir(parents=True, exist_ok=True)
-            (DEST / rel).write_text(text)
-    if snapshot(DEST) != before:
-        print("changed")
+    changes.report(changes.replace_tree(DEST, files))
 
 
 main()

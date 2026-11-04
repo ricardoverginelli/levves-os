@@ -8,9 +8,13 @@ KDE's icon loader can't tint them and they render black. Prints "changed" when
 anything was written (Plasma caches icons, so it needs a restart).
 """
 import re
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "shared"))
+import changes  # noqa: E402
+
 DEST = Path.home() / ".local/share/icons/hicolor/scalable/actions"
 STYLE = '<style type="text/css" id="current-color-scheme">.ColorScheme-Text { color: #fcfcfc; }</style>'
 
@@ -30,11 +34,7 @@ changed = False
 DEST.mkdir(parents=True, exist_ok=True)
 for folder, prefix in (("mingcute", "mingcute"), ("custom", "leaves")):
     for src in sorted((HERE / folder).glob("*.svg")):
-        dest = DEST / f"{prefix}-{src.name}"
-        text = kde_svg(src.read_text())
-        if not dest.exists() or dest.read_text() != text:
-            dest.write_text(text)
-            changed = True
+        changed |= changes.write(DEST / f"{prefix}-{src.name}", kde_svg(src.read_text()))
 if changed:
     (Path.home() / ".cache/icon-cache.kcache").unlink(missing_ok=True)
-    print("changed")
+changes.report(changed)

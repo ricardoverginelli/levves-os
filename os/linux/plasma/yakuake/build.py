@@ -27,6 +27,8 @@ SKIN = Path.home() / ".local/share/yakuake/skins/levves"
 OLD = [KONSOLE / "Leaves.colorscheme", SKIN.parent / "leaves"]  # the glass look's names
 
 sys.path.insert(0, str(DIST))
+sys.path.insert(0, str(HERE.parent / "shared"))
+import changes  # noqa: E402
 from levves_tokens import TOKENS, color as palette  # noqa: E402  (the Levves design system)
 
 
@@ -302,14 +304,6 @@ down_image=/title/quit_down.svg
 
 # --- Install --------------------------------------------------------------
 
-def write(path, text):
-    if path.exists() and path.read_text() == text:
-        return False
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
-    return True
-
-
 def kwrite(file, group, key, value):
     current = subprocess.run(["kreadconfig6", "--file", str(file), "--group", group, "--key", key],
                              capture_output=True, text=True).stdout.strip()
@@ -346,15 +340,8 @@ def style_profile(profile):
 
 
 def main():
-    changed = write(SCHEME, build_scheme())
-
-    skin = build_skin()
-    stale = {p.relative_to(SKIN).as_posix() for p in SKIN.rglob("*") if p.is_file()} - set(skin) if SKIN.exists() else set()
-    for name in stale:
-        (SKIN / name).unlink()
-        changed = True
-    for name, text in skin.items():
-        changed |= write(SKIN / name, text)
+    changed = changes.write(SCHEME, build_scheme())
+    changed |= changes.replace_tree(SKIN, build_skin())
     for old in OLD:
         if old.is_dir():
             shutil.rmtree(old)
@@ -381,8 +368,7 @@ def main():
     profile, picked = default_profile(CONFIG / "konsolerc", "Levves")
     changed |= picked | style_profile(profile)
 
-    if changed:
-        print("changed")
+    changes.report(changed)
 
 
 if __name__ == "__main__":
