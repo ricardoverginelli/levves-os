@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build the "Leaves" Plasma style from the Levves tokens into ~/.local/share/plasma/desktoptheme/leaves.
+"""Build the "Leaves" Plasma style from the Levves tokens into ~/.local/share/plasma/desktoptheme/leaves,
+and the apps' color scheme "Levves" (~/.local/share/color-schemes/Levves.colors) from the same palette.
 
 Starts from the Breeze Dark style installed on this machine (so it tracks Plasma updates), swaps
 in the Levves colors and redraws the frames of panels, popups and tooltips as D draws containers
@@ -16,6 +17,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SYSTEM = Path("/usr/share/plasma/desktoptheme")
 OUT = Path.home() / ".local/share/plasma/desktoptheme/leaves"
+SCHEMES = Path.home() / ".local/share/color-schemes"
 
 _spec = importlib.util.spec_from_file_location("levves_tokens", HERE.parents[3] / "design/dist/levves_tokens.py")
 _tokens = importlib.util.module_from_spec(_spec)
@@ -57,10 +59,11 @@ FOREGROUNDS = {
 }
 
 
-def build_colors():
+def scheme(base):
+    """A Breeze Dark color scheme with the Levves palette: the Plasma style's `colors` or the apps'."""
     colors = configparser.ConfigParser(interpolation=None, strict=False)
     colors.optionxform = str  # keep key case
-    colors.read(SYSTEM / "breeze-dark/colors")
+    colors.read(base)
     for color_set, (normal, alternate) in BACKGROUNDS.items():
         section = f"Colors:{color_set}"
         if not colors.has_section(section):
@@ -71,7 +74,28 @@ def build_colors():
             colors[section][key] = rgb(role)
         if color_set == "Selection":
             colors[section]["ForegroundNormal"] = rgb("on-accent")
+            colors[section]["ForegroundActive"] = rgb("on-accent")
+    return colors
+
+
+def build_colors():
     with open(OUT / "colors", "w") as f:
+        scheme(SYSTEM / "breeze-dark/colors").write(f, space_around_delimiters=False)
+
+    # The apps' scheme: the same sets on Breeze Dark's app scheme (keeping its effects for disabled
+    # text), the decoration's title bar colors, and inactive windows' selection in the window's own
+    # colors (the amber one is the focused window's)
+    colors = scheme(Path("/usr/share/color-schemes/BreezeDark.colors"))
+    colors["General"] = {"ColorScheme": "Levves", "Name": "Levves", "shadeSortColumn": "false"}
+    colors["WM"] = {
+        "activeBackground": rgb("title-bar"), "activeForeground": rgb("text"), "activeBlend": rgb("accent"),
+        "inactiveBackground": rgb("title-bar-inactive"), "inactiveForeground": rgb("text-muted"),
+        "inactiveBlend": rgb("border"),
+    }
+    colors["ColorEffects:Inactive"]["ChangeSelectionColor"] = "true"
+    colors["ColorEffects:Inactive"]["Enable"] = "false"
+    SCHEMES.mkdir(parents=True, exist_ok=True)
+    with open(SCHEMES / "Levves.colors", "w") as f:
         colors.write(f, space_around_delimiters=False)
 
 

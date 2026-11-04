@@ -57,6 +57,8 @@ pw-metadata -n route-settings 0 restore.stream.Output/Audio.media.role:Notificat
 style="$HOME/.local/share/plasma/desktoptheme/leaves"
 style_hash() { [ -d "$style" ] && find "$style" -type f -exec sha1sum {} + | sort | sha1sum; }
 before=$(style_hash || true)
+scheme="$HOME/.local/share/color-schemes/Levves.colors"
+scheme_before=$(sha1sum "$scheme" 2>/dev/null || true)
 echo "Building Plasma style"
 python3 -I plasma-style/build.py
 plasma-apply-desktoptheme leaves >/dev/null
@@ -64,6 +66,13 @@ if [ "$before" != "$(style_hash)" ]; then
     # Plasma caches rendered SVGs and their element sizes; stale ones keep the old shapes
     rm -f "$HOME/.cache/plasma_theme_leaves.kcache" "$HOME/.cache/ksvg-elements"
     restart=true
+fi
+# The apps' colors, built with the style. kdeglobals keeps a copy of the scheme, and applying the
+# one already set does nothing, so a changed scheme goes through Breeze Dark to land
+if [ "$(kreadconfig6 --group General --key ColorScheme)" != Levves ] || [ "$scheme_before" != "$(sha1sum "$scheme")" ]; then
+    echo "Applying the Levves color scheme"
+    [ "$(kreadconfig6 --group General --key ColorScheme)" = Levves ] && plasma-apply-colorscheme BreezeDark >/dev/null
+    plasma-apply-colorscheme Levves >/dev/null
 fi
 
 for widget in widgets/*/; do
