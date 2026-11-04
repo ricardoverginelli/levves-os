@@ -22,7 +22,8 @@ as_user() {
 
 case ${PAM_TYPE:-} in
 auth)
-    id=$(as_user notify-send -p -a sudo -i fingerprint -u critical -t 30000 \
+    # Normal urgency: Plasma ignores the timeout on critical notifications
+    id=$(as_user notify-send -p -a sudo -i fingerprint -t 30000 \
         -h boolean:transient:true \
         "Touch the fingerprint sensor" \
         "sudo is waiting for your finger. The password dialog opens after 30 seconds." \
@@ -31,11 +32,12 @@ auth)
     mkdir -p -m 700 "$state" && echo "$id" >"$file"
     ;;
 open_session)
-    [ -f "$file" ] || exit 0
+    [ -f "$file" ] || { logger -t fingerprint-sudo-notify "no notification recorded for sudo $PPID"; exit 0; }
     id=$(cat "$file"); rm -f "$file"
     as_user gdbus call --session --dest org.freedesktop.Notifications \
         --object-path /org/freedesktop/Notifications \
-        --method org.freedesktop.Notifications.CloseNotification "$id" >/dev/null
+        --method org.freedesktop.Notifications.CloseNotification "$id" >/dev/null \
+        2> >(logger -t fingerprint-sudo-notify)
     ;;
 esac
 exit 0
