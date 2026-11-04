@@ -5,7 +5,7 @@
 //   │     └ the windows in the columns, left to right (a divider after them)
 //   └ the layout glyph: hovering opens the picker (no layout, 2 or 3 columns)
 //
-// One icon per window; the focused one has an accent underline. Hovering an
+// One icon per window on a flat key; the focused one's key is held down. Hovering an
 // icon opens a live preview (switching at once between icons); a click focuses
 // the window (minimizes it if it's already focused), a middle click closes it,
 // the wheel steps focus along the strip.
@@ -22,6 +22,7 @@ import org.kde.plasma.plasma5support as P5Support
 import org.kde.kirigami as Kirigami
 import org.kde.taskmanager as TaskManager
 import org.kde.pipewire as PipeWire
+import Levves
 
 import "../../../../../leaves"
 
@@ -30,16 +31,15 @@ PlasmoidItem {
 
     // DESIGN.md motion and spacing
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int hoverDuration: 150
+    readonly property int hoverDuration: Theme.durationHover
     readonly property int iconSize: 16
     readonly property int cellWidth: 28
     readonly property int leadingGap: 12  // after the launcher icon, like the perf meter's edge margin
-    readonly property int dividerGap: 8
-    readonly property int pad: 12  // popup content to its frame (16 with the style's 4)
-    readonly property int popupGap: 4  // bar popups float this far off the bar
+    readonly property int dividerGap: Theme.space8
+    readonly property int pad: Theme.space12  // popup content to its frame (16 with the style's 4)
+    readonly property int popupGap: Theme.space4  // bar popups float this far off the bar
     readonly property int thumbWidth: 256
     readonly property int thumbHeight: 160
-    readonly property font barFont: Qt.font({ family: Kirigami.Theme.defaultFont.family, pointSize: 9, weight: Font.Medium })
 
     // Hover popups have no tooltips (TODO.md Top bar)
     toolTipMainText: ""
@@ -280,21 +280,22 @@ PlasmoidItem {
                 Component.onCompleted: glyphAnchor.item = glyphCell
                 HoverHandler { id: glyphHover }
 
-                Rectangle {
+                Key {
                     anchors.centerIn: parent
                     width: root.cellWidth - 4
                     height: 22
-                    radius: 4
-                    color: glyphHover.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06) : "transparent"
-                    Behavior on color { ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve } }
-                }
-
-                LayoutGlyph {
-                    anchors.centerIn: parent
-                    width: root.iconSize
-                    height: 12
-                    columns: root.columns
-                    color: root.columns > 1 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                    flat: true
+                    hoverEnabled: true
+                    focusPolicy: Qt.NoFocus
+                    contentItem: Item {
+                        LayoutGlyph {
+                            anchors.centerIn: parent
+                            width: root.iconSize
+                            height: 12
+                            columns: root.columns
+                            color: root.columns > 1 ? Theme.text : Theme.textMuted
+                        }
+                    }
                 }
 
                 ActiveLine { active: picker.visible }
@@ -318,7 +319,7 @@ PlasmoidItem {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 1
                         height: 12
-                        color: Qt.alpha(Kirigami.Theme.textColor, 0.2)
+                        color: Theme.border
                     }
 
                     Item {
@@ -334,45 +335,27 @@ PlasmoidItem {
                         }
                         Component.onDestruction: root.setHovered(cell, false)
 
-                        Rectangle {
+                        // A flat key, held down for the focused window
+                        Key {
                             anchors.centerIn: parent
                             width: root.cellWidth - 4
                             height: 22
-                            radius: 4
-                            color: cellHover.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06) : "transparent"
-                            Behavior on color { ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve } }
-                        }
-
-                        Kirigami.Icon {
-                            anchors.centerIn: parent
-                            width: root.iconSize
-                            height: root.iconSize
-                            source: slot.window ? slot.window.icon : ""
-                            opacity: slot.window && slot.window.minimized ? 0.4 : 1
-                        }
-
-                        // The focused window
-                        Rectangle {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            anchors.bottom: parent.bottom
-                            width: root.iconSize
-                            height: 2
-                            radius: 1
-                            color: Kirigami.Theme.highlightColor
-                            opacity: slot.window && slot.window.active ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve } }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                            onClicked: mouse => {
-                                if (!slot.window)
-                                    return
-                                if (mouse.button === Qt.MiddleButton)
-                                    root.closeWindow(slot.window)
-                                else
-                                    root.focusOrMinimize(slot.window)
+                            flat: true
+                            focusPolicy: Qt.NoFocus
+                            current: slot.window !== null && slot.window.active
+                            onClicked: if (slot.window) root.focusOrMinimize(slot.window)
+                            contentItem: Item {
+                                Kirigami.Icon {
+                                    anchors.centerIn: parent
+                                    width: root.iconSize
+                                    height: root.iconSize
+                                    source: slot.window ? slot.window.icon : ""
+                                    opacity: slot.window && slot.window.minimized ? 0.4 : 1
+                                }
+                            }
+                            TapHandler {
+                                acceptedButtons: Qt.MiddleButton
+                                onTapped: if (slot.window) root.closeWindow(slot.window)
                             }
                         }
                     }
@@ -448,8 +431,10 @@ PlasmoidItem {
                 width: parent.width - 2 * root.pad
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                font: root.barFont
-                color: Kirigami.Theme.textColor
+                font.family: Theme.typeFamilySerif
+                font.pixelSize: Theme.typeSizeTitle
+                font.weight: Theme.typeWeightSemibold
+                color: Theme.text
                 text: previewContent.window ? previewContent.window.title : ""
             }
 
@@ -510,41 +495,31 @@ PlasmoidItem {
                         width: 80
                         height: 72
 
-                        HoverHandler { id: optionHover }
-
-                        // The current layout is the accented one; hover stays a neutral tint
-                        Rectangle {
+                        // A key per layout; the one in use is held down
+                        Key {
                             anchors.fill: parent
-                            radius: 6  // DESIGN.md: cards inside a popup
-                            color: option.current ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18)
-                                 : optionHover.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
-                                 : "transparent"
-                            Behavior on color { ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve } }
-                        }
-
-                        LayoutGlyph {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: 12
-                            width: 48
-                            height: 30
-                            lineWidth: 2
-                            columns: option.modelData.columns
-                            color: option.current ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
-                        }
-
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: 12 + 30 + 8
-                            font: root.barFont
-                            color: option.current ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
-                            text: option.modelData.label
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
+                            focusPolicy: Qt.NoFocus
+                            current: option.current
                             onClicked: {
                                 root.applyLayout(option.modelData.columns)
                                 picker.visible = false
+                            }
+                            contentItem: Item {
+                                LayoutGlyph {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: 10
+                                    width: 48
+                                    height: 30
+                                    lineWidth: 2
+                                    columns: option.modelData.columns
+                                    color: option.current ? Theme.text : Theme.textMuted
+                                }
+                                Caps {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: 10 + 30 + 8
+                                    color: option.current ? Theme.text : Theme.textMuted
+                                    text: option.modelData.label
+                                }
                             }
                         }
                     }

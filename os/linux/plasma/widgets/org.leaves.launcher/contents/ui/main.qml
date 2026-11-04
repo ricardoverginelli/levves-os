@@ -37,6 +37,7 @@ import org.kde.plasma.private.kicker as Kicker
 import org.kde.plasma.private.sessions as Sessions
 import org.kde.ksysguard.process as Process
 import org.kde.taskmanager as TaskManager
+import Levves
 import "../../../../../leaves"
 
 PlasmoidItem {
@@ -92,26 +93,33 @@ PlasmoidItem {
     toolTipMainText: "Launcher"
     toolTipSubText: "Apps, files, power and session"
 
-    fullRepresentation: MouseArea {
+    // The bar button is a key (design/DESIGN.md Pieces), held down while the launcher is open
+    fullRepresentation: Item {
         id: barButton
-        implicitWidth: root.edgeMargin + 16  // + the perf meter's own 12px edge ≈ 16px group gap
+        implicitWidth: Theme.space8 + barKey.width
         Layout.minimumWidth: implicitWidth
         Layout.maximumWidth: implicitWidth
         Layout.fillHeight: true
-        hoverEnabled: true
-        onClicked: root.toggle()
 
-        Kirigami.Icon {
-            id: barIcon
-            x: root.edgeMargin
+        Key {
+            id: barKey
+            x: Theme.space8
             anchors.verticalCenter: parent.verticalCenter
-            width: 16
-            height: 16
-            source: "leaves-leaf"
-            isMask: true
-            color: barButton.containsMouse || launcher.visible ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
-            Behavior on color {
-                ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
+            width: 26
+            height: 22
+            leftPadding: 0
+            rightPadding: 0
+            current: launcher.visible
+            onClicked: root.toggle()
+            contentItem: Item {
+                Kirigami.Icon {
+                    anchors.centerIn: parent
+                    width: 14
+                    height: 14
+                    source: "leaves-leaf"
+                    isMask: true
+                    color: Theme.text
+                }
             }
         }
     }

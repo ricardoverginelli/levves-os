@@ -13,6 +13,41 @@ if [ "$(kreadconfig6 --group KDE --key LookAndFeelPackage)" != org.kde.breezedar
     lookandfeeltool -a org.kde.breezedark.desktop >/dev/null
 fi
 
+# Levves type (design/DESIGN.md): Source Sans 3 for the UI, Source Serif 4 for window titles,
+# JetBrains Mono for code. Fedora packages the first two under their old "Pro" names
+for family in "Source Sans 3" "Source Serif 4"; do
+    if ! fc-list -q "$family"; then
+        echo "Missing the font $family: sudo dnf install -y adobe-source-sans-pro-fonts adobe-source-serif-pro-fonts"
+    fi
+done
+font() { echo "$1,$2,-1,5,${3:-400},0,0,0,0,0,0,0,0,0,0,1"; }
+for key in font menuFont toolBarFont; do
+    kwriteconfig6 --file kdeglobals --group General --key "$key" "$(font "Source Sans 3" 10.5)"
+done
+kwriteconfig6 --file kdeglobals --group General --key smallestReadableFont "$(font "Source Sans 3" 8.5)"
+kwriteconfig6 --file kdeglobals --group General --key fixed "$(font "JetBrains Mono" 10)"
+kwriteconfig6 --file kdeglobals --group WM --key activeFont "$(font "Source Serif 4" 11 600)"
+
+# The Levves QML module (design/dist/qml), so plasmashell's and KWin's QML can `import Levves`
+# like the apps do. QML_IMPORT_PATH reaches them through systemd's user environment: set now for
+# the plasmashell restart below, and in environment.d for the next login (KWin only reads it then)
+levves_qml="$HOME/.local/share/levves/qml"
+if ! diff -rq ../../../design/dist/qml "$levves_qml" >/dev/null 2>&1; then
+    echo "Installing the Levves QML module"
+    rm -rf "$levves_qml"
+    mkdir -p "$(dirname "$levves_qml")"
+    cp -r ../../../design/dist/qml "$levves_qml"
+    restart=true
+fi
+environment="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d"
+mkdir -p "$environment"
+echo "QML_IMPORT_PATH=$levves_qml" > "$environment/levves.conf"
+if ! systemctl --user show-environment | grep -qx "QML_IMPORT_PATH=$levves_qml"; then
+    systemctl --user set-environment QML_IMPORT_PATH="$levves_qml"
+    echo "KWin's scripts and Alt+Tab see the Levves QML module after the next login"
+    restart=true
+fi
+
 # System sounds off: no pop on volume changes, and Plasma's event sounds (dialogs,
 # notifications) muted through their stream role, which WirePlumber remembers
 kwriteconfig6 --file plasmaparc --group General --key AudioFeedback false

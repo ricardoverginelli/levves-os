@@ -7,8 +7,8 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
-import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.mpris as Mpris
+import Levves
 
 import "../../../../../leaves"
 
@@ -17,14 +17,13 @@ PlasmoidItem {
 
     // DESIGN.md motion and spacing
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: 240
-    readonly property int closeDuration: 170
-    readonly property int hoverDuration: 150
-    readonly property int innerGap: 4
-    readonly property int groupGap: 8
-    readonly property int trailingGap: 16  // space before the tray, like the gaps between the perf meter's groups
+    readonly property int openDuration: Theme.durationPopupOpen
+    readonly property int closeDuration: Theme.durationPopupClose
+    readonly property int hoverDuration: Theme.durationHover
+    readonly property int innerGap: 3  // keys in a row, as in a title bar
+    readonly property int groupGap: Theme.space8
+    readonly property int trailingGap: Theme.space16  // space before the tray, like the gaps between the perf meter's groups
     readonly property int maxTextWidth: 280
-    readonly property font barFont: Qt.font({ family: Kirigami.Theme.defaultFont.family, pointSize: 9, weight: Font.Medium })
 
     // Row 0 of the model is Plasma's multiplexer, which follows whichever
     // player is active; the players themselves come after it. Picking a
@@ -97,10 +96,6 @@ PlasmoidItem {
             expanded = false
     }
 
-    function htmlEscaped(text) {
-        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    }
-
     HoverOpener {
         id: hoverOpener
         enabled: root.active
@@ -146,27 +141,34 @@ PlasmoidItem {
             anchors.verticalCenter: parent.verticalCenter
             spacing: root.groupGap
 
-            // Title · Artist — click to bring the player window forward
-            Text {
+            // Title · Artist, the artist as a quiet remark — click to bring the player window forward
+            RowLayout {
                 id: label
-                Layout.maximumWidth: root.maxTextWidth
-                elide: Text.ElideRight
-                font: root.barFont
-                textFormat: Text.StyledText
-                color: Kirigami.Theme.textColor
-                text: {
-                    if (!root.player) return ""
-                    const title = root.player.track || root.player.identity
-                    const artist = root.player.artist
-                    const muted = Kirigami.Theme.disabledTextColor
-                    return root.htmlEscaped(title) + (artist ? ` <font color="${muted}">· ${root.htmlEscaped(artist)}</font>` : "")
+                spacing: Theme.space4
+                readonly property string artist: root.player ? root.player.artist : ""
+
+                Text {
+                    Layout.maximumWidth: label.artist ? root.maxTextWidth * 0.6 : root.maxTextWidth
+                    elide: Text.ElideRight
+                    font.family: Theme.typeFamilySans
+                    font.pixelSize: Theme.typeSizeBody
+                    color: Theme.text
+                    text: root.player ? (root.player.track || root.player.identity) : ""
+                }
+                Quiet {
+                    visible: label.artist !== ""
+                    Layout.maximumWidth: root.maxTextWidth * 0.4
+                    elide: Text.ElideRight
+                    text: "· " + label.artist
                 }
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
+                HoverHandler {
                     enabled: root.player && root.player.canRaise
-                    onClicked: root.player.Raise()
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    enabled: root.player && root.player.canRaise
+                    onTapped: root.player.Raise()
                 }
             }
 

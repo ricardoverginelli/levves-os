@@ -1,2 +1,16 @@
 module Levves
 singleton Theme 1.0 Theme.qml
+Caps 1.0 Caps.qml
+Dither 1.0 Dither.qml
+Field 1.0 Field.qml
+GroupBox 1.0 GroupBox.qml
+Key 1.0 Key.qml
+Led 1.0 Led.qml
+Meter 1.0 Meter.qml
+Num 1.0 Num.qml
+Quiet 1.0 Quiet.qml
+Tag 1.0 Tag.qml
+Title 1.0 Title.qml
+TitleBar 1.0 TitleBar.qml
+Well 1.0 Well.qml
+WindowFrame 1.0 WindowFrame.qml

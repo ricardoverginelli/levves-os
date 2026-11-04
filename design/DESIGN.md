@@ -16,7 +16,8 @@ python3 design/build/build.py --check  # what CI runs, with check_hardcoded.py: 
 | Platform | File | Use |
 |---|---|---|
 | Web (suite, p45 editor) | `dist/tokens.css` | `var(--lv-color-accent)` |
-| QML (desktop apps) | `dist/qml/Levves/` | `engine.addImportPath(<repo>/design/dist/qml)`, `import Levves`, then `Theme.accent` |
+| QML (desktop apps, Plasma) | `dist/qml/Levves/` | `engine.addImportPath(<repo>/design/dist/qml)` (Plasma: `QML_IMPORT_PATH`, set by `os/linux/plasma/apply.sh`), `import Levves`, then `Theme.accent` and the pieces below |
+| Web pieces | `web/levves.css` | `.lv-window`, `.lv-key`, ... |
 | Compose (TV launcher) | `dist/kotlin/Levves.kt` | `Levves.accent` |
 | Python builds | `dist/levves_tokens.py`, `dist/palette.json` | `TOKENS["color.accent"]` |
 | Android XML | `dist/android/res/` | `@color/levves_accent` |
@@ -74,6 +75,12 @@ Neutrals, from darkest: `bg-deep` (desktop), `bg` (top bar, lists), `surface` (w
   serif titles and inline numbers, 24-28px readouts.
 
 ## Pieces
+Each piece is built once per platform: CSS classes in `web/levves.css` (`.lv-window`, `.lv-key`...)
+and QML types in `qml/` (`WindowFrame`, `TitleBar`, `Key`, `Field`, `Well`, `GroupBox`, `Meter`,
+`Tag`, `Led`, `Dither`, and the text styles `Caps`, `Num`, `Title`, `Quiet`), which the build copies
+into the `Levves` module. A `flat` key shows only a hover tint until pressed or current (toolbars,
+the top bar's window strip).
+
 - **Window**: `surface`, black engraved edge. A 30px title bar (`title-bar`, `title-bar-inactive`
   when unfocused) with a 6px light at the left (amber when focused, `border` otherwise), the serif
   title, and small keys for minimize, maximize and close.
@@ -106,6 +113,8 @@ MingCute, Fill style, drawn as masks in a text color. Details in `os/linux/plasm
 until the icon set moves here.
 
 ## What's still on the old look
-Until the reskin, Plasma keeps its glass (`legacy.*` tokens) and the suite keeps its Win95 tokens
-in `packages/design-tokens/`. `os/linux/plasma/DESIGN.md` still describes Plasma-specific
-mechanics (popup frames, KWin effects, menus); its colors and motion come from here.
+The suite's components still read some of its older token names, mapped onto Levves in
+`packages/design-tokens/tokens.css`. Plasma's reskin goes in phases (`os/linux/plasma/TODO.md`): the
+style, the top bar and the fonts are on Levves; the popups and windows drawn in QML, Plasma's own
+controls, Yakuake and VS Code still have the glass look (`legacy.*` tokens). `os/linux/plasma/DESIGN.md`
+still describes Plasma-specific mechanics (popup frames, KWin effects, menus).

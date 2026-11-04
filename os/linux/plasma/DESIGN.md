@@ -75,25 +75,24 @@ Bright variants are the color 25% toward white, faint ones 35% toward `bg`. The 
 `success` 8.6 · `info` 7.2 · `on-accent` on `accent` 8.6. All ≥ 4.5 except
 `text-faint` (3.3), which is why it's decorative only.
 
-### Translucency
-Glass is the default for every surface that floats over other content: a
-translucent fill with KWin's blur behind it. The Plasma style applies it to all
-panels, popups and tooltips (`plasma-style/build.py`); custom windows get it by
-using the style's background (`PlasmaCore.Window`/`Dialog`), never an opaque
-`Rectangle`.
-- Fill: `bg` at 75% opacity (`glass-opacity`), the same for panels, popups, the launcher and tooltips.
-  Kept low on purpose: the blur flattens what's behind into one tone, so a denser fill reads as solid.
+### Surfaces (Levves: no glass)
+Every surface is opaque (design/DESIGN.md Mood). The Plasma style draws panels, popups and
+tooltips as D containers (`plasma-style/build.py`): popups and tooltips are windows on `surface`
+inside the black engraved edge, the top bar is `bg` with an edge along its bottom. The widgets
+drawn in QML are moving over in phases (TODO.md, Levves reskin); until then some still use the
+glass fill (`legacy.glass-opacity`).
 
 ## Typography
+The Levves type (design/DESIGN.md Type), set for all of Plasma and the apps by `apply.sh`:
 | Role | Font | Notes |
 |---|---|---|
-| UI | **Noto Sans** | Everything in panels, widgets, apps (package `google-noto-sans-fonts`) |
-| Mono | **JetBrains Mono** | Terminals, code, numeric readouts that must align (package `jetbrains-mono-fonts`) |
+| UI | **Source Sans 3** 10.5pt | Body text, rows, fields (Fedora: `adobe-source-sans-pro-fonts`) |
+| Titles, numbers | **Source Serif 4** | Window titles (11pt semibold), the bar's readings, the clock (`adobe-source-serif-pro-fonts`) |
+| Labels | Source Sans 3 caps | `Caps` from `import Levves`: 11px semibold, tracked |
+| Mono | **JetBrains Mono** | Terminals, code (`jetbrains-mono-fonts`) |
 
-- Sizes: 10pt default UI, 9pt for dense readouts (perf meter), 11pt for titles.
-- Weights: Regular for content, Medium/Bold only for emphasis (e.g. the clock).
-- Numbers that update live (clock, meters) use tabular figures so they don't
-  jiggle; Noto Sans digits are tabular by default.
+- In QML use the Levves text pieces (`Caps`, `Num`, `Title`, `Quiet`), never a family by name.
+- Numbers that update live (clock, meters) use tabular lining figures (`Num` sets them).
 
 ## Shape & spacing
 - Spacing on a 4px grid: 4, 8, 12, 16, 24, 32. Standard uses:

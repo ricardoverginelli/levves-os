@@ -1,12 +1,11 @@
-// Compact perf meter: [cpu] 31% 69°  [monitor] 99% 79°  [ram] 78%  [drive] 9%  [wifi] ↓2.4M ↑96K
-// Each component is a MingCute icon (DESIGN.md Icons). Colors come from the
-// Plasma theme: icon/arrows = muted text, value = text, warning >= 70, critical >= 85.
+// Compact perf meter: CPU 31 69°  GPU 99 79°  RAM 78  SSD 9  NET ↓2.4M ↑96K
+// The Levves top bar (design/DESIGN.md): caps labels in text-muted, serif readings in text,
+// warning from 70 and critical from 85.
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
-import org.kde.kirigami as Kirigami
-import org.kde.plasma.components as PlasmaComponents
 import org.kde.ksysguard.sensors as Sensors
+import Levves
 
 import "../../../../../leaves"
 import "../../../../../leaves/bus.js" as LeavesBus
@@ -16,12 +15,11 @@ PlasmoidItem {
 
     readonly property int warnAt: 70
     readonly property int critAt: 85
-    readonly property font meterFont: Qt.font({ family: Kirigami.Theme.defaultFont.family, pointSize: 9 })
 
-    // Spacing on the DESIGN.md 4px grid: 4 inside a metric, 16 between metrics
-    readonly property int edgeMargin: 12
-    readonly property int innerGap: 4
-    readonly property int groupGap: 16
+    // Spacing on the 4px grid: 4 inside a metric, 16 between metrics
+    readonly property int edgeMargin: Theme.space12
+    readonly property int innerGap: Theme.space4
+    readonly property int groupGap: Theme.space16
 
     preferredRepresentation: fullRepresentation
     fullRepresentation: Item {
@@ -45,53 +43,36 @@ PlasmoidItem {
             anchors.verticalCenter: parent.verticalCenter
             spacing: root.groupGap
 
-            Metric { label: "CPU"; icon: "leaves-cpu"; usageId: "cpu/all/usage"; tempId: "cpu/all/maximumTemperature" }
-            Metric { label: "GPU"; icon: "mingcute-monitor-fill"; usageId: "gpu/all/usage"; tempId: "gpu/gpu0/temperature" }
-            Metric { label: "RAM"; icon: "leaves-ram"; usageId: "memory/physical/usedPercent" }
-            Metric { label: "SSD"; icon: "mingcute-server-2-fill"; usageId: "disk/all/usedPercent" }
+            Metric { label: "CPU"; usageId: "cpu/all/usage"; tempId: "cpu/all/maximumTemperature" }
+            Metric { label: "GPU"; usageId: "gpu/all/usage"; tempId: "gpu/gpu0/temperature" }
+            Metric { label: "RAM"; usageId: "memory/physical/usedPercent" }
+            Metric { label: "SSD"; usageId: "disk/all/usedPercent" }
             NetworkMetric { id: network }
         }
     }
 
     function levelColor(value) {
-        if (value >= critAt) return Kirigami.Theme.negativeTextColor
-        if (value >= warnAt) return Kirigami.Theme.neutralTextColor
-        return Kirigami.Theme.textColor
+        if (value >= critAt) return Theme.critical
+        if (value >= warnAt) return Theme.warning
+        return Theme.text
     }
 
-    component Reading: Text {
+    component Reading: Num {
         property real value: NaN
         property string suffix
         property string widest
         visible: !isNaN(value)
+        font.pixelSize: Theme.typeSizeBody  // the bar's readings, a step under inline numbers
         text: Math.round(value) + suffix
         color: root.levelColor(value)
-        font: root.meterFont
         // Reserve room for a two-digit value so the bar doesn't shift as
         // numbers change; left-aligned so the label-value gap stays 4px
         Layout.minimumWidth: widestMetrics.advanceWidth
-        TextMetrics { id: widestMetrics; font: root.meterFont; text: widest }
-    }
-
-    // Component icon in the muted label color; the name shows as a tooltip
-    component MetricIcon: Kirigami.Icon {
-        property string label
-        property bool toolTip: true
-        implicitWidth: 16
-        implicitHeight: 16
-        isMask: true
-        color: Kirigami.Theme.disabledTextColor
-
-        HoverHandler { id: hover }
-        PlasmaComponents.ToolTip {
-            text: parent.label
-            visible: parent.toolTip && hover.hovered
-        }
+        TextMetrics { id: widestMetrics; font: parent.font; text: widest }
     }
 
     component Metric: RowLayout {
         property string label
-        property string icon
         property string usageId
         property string tempId
 
@@ -100,8 +81,8 @@ PlasmoidItem {
         Sensors.Sensor { id: usage; sensorId: usageId; updateRateLimit: 2000 }
         Sensors.Sensor { id: temp; sensorId: tempId; updateRateLimit: 2000 }
 
-        MetricIcon { source: icon; label: parent.label }
-        Reading { value: usage.value ?? NaN; suffix: "%"; widest: "00%" }
+        Caps { text: label }
+        Reading { value: usage.value ?? NaN; widest: "00" }
         Reading { value: tempId ? (temp.value ?? NaN) : NaN; suffix: "°"; widest: "00°" }
     }
 
@@ -135,17 +116,16 @@ PlasmoidItem {
         Sensors.Sensor { id: down; sensorId: "network/all/download"; updateRateLimit: 2000 }
         Sensors.Sensor { id: up; sensorId: "network/all/upload"; updateRateLimit: 2000 }
 
-        MetricIcon { source: "mingcute-wifi-fill"; label: "Network"; toolTip: false }  // it opens a popup
-        Text {
-            readonly property string muted: Kirigami.Theme.disabledTextColor
+        Caps { text: "Net" }
+        Num {
+            readonly property string muted: Theme.textMuted
             visible: !isNaN(down.value ?? NaN)
+            font.pixelSize: Theme.typeSizeBody
             textFormat: Text.StyledText
             text: `<font color="${muted}">↓</font>${root.formatRate(down.value)} <font color="${muted}">↑</font>${root.formatRate(up.value ?? 0)}`
-            color: Kirigami.Theme.textColor
-            font: root.meterFont
             // Room for a typical reading so the bar doesn't shift; only 100-999K widens it a little
             Layout.minimumWidth: rateMetrics.advanceWidth
-            TextMetrics { id: rateMetrics; font: root.meterFont; text: "↓99K ↑99K" }
+            TextMetrics { id: rateMetrics; font: parent.font; text: "↓99K ↑99K" }
         }
     }
 

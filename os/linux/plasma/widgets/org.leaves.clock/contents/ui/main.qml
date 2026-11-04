@@ -1,4 +1,5 @@
-// Weekday, date and time for the top bar: "Sun 25 Oct  9:45 PM". Hovering it
+// Weekday, date and time for the top bar: "Sun 25 Oct  9:45 PM", in serif with the weekday
+// italic and muted (design/DESIGN.md Type). Hovering it
 // opens the popup (CalendarPopup.qml): a month calendar on the left and the next
 // 15 days of events on the right.
 //
@@ -11,7 +12,7 @@ import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.plasma.workspace.calendar as PlasmaCalendar
-import org.kde.kirigami as Kirigami
+import Levves
 
 import "../../../../../leaves"
 
@@ -19,7 +20,6 @@ PlasmoidItem {
     id: root
 
     readonly property int daysAhead: 15
-    readonly property font barFont: Qt.font({ family: Kirigami.Theme.defaultFont.family, pointSize: 9, weight: Font.DemiBold })
 
     // The clock ticks on the minute
     property date now: new Date()
@@ -156,15 +156,13 @@ PlasmoidItem {
         RowLayout {
             id: row
             anchors.centerIn: parent
-            spacing: 8
-            Text {
-                font: root.barFont
-                color: Kirigami.Theme.textColor
-                text: Qt.formatDate(root.now, "ddd d MMM")
+            spacing: Theme.space8
+            Num {
+                textFormat: Text.StyledText
+                text: `<i><font color="${Theme.textMuted}">${Qt.formatDate(root.now, "ddd")}</font></i> `
+                    + Qt.formatDate(root.now, "d MMM")
             }
-            Text {
-                font: root.barFont
-                color: Kirigami.Theme.textColor
+            Num {
                 text: Qt.formatTime(root.now, Qt.locale().timeFormat(Locale.ShortFormat))
             }
         }

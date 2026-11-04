@@ -1,43 +1,29 @@
-// A MingCute glyph on a rounded hover/press tint (DESIGN.md: 4px small-control radius, hover tint)
+// A MingCute glyph on a key (design/DESIGN.md Pieces): the bar's and the popup's player controls
 import QtQuick
 import org.kde.kirigami as Kirigami
+import Levves
 
-Rectangle {
+Key {
     id: button
 
     property alias icon: glyph.source
     property int iconSize: 16
     signal triggered()
 
-    implicitWidth: iconSize + 4
-    implicitHeight: iconSize + 4
-    radius: 4
-    color: mouse.pressed ? Qt.alpha(Kirigami.Theme.textColor, 0.16)
-         : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.10)
-         : "transparent"
-    opacity: enabled ? 1 : 0.4
+    implicitWidth: iconSize + 8
+    implicitHeight: iconSize + 6
+    leftPadding: 0
+    rightPadding: 0
+    onClicked: button.triggered()
 
-    Behavior on color {
-        ColorAnimation {
-            duration: 150  // DESIGN.md hover
-            easing.type: Easing.OutQuint
+    contentItem: Item {
+        Kirigami.Icon {
+            id: glyph
+            anchors.centerIn: parent
+            width: button.iconSize
+            height: button.iconSize
+            color: button.enabled ? Theme.text : Theme.textFaint
+            isMask: true
         }
-    }
-
-    Kirigami.Icon {
-        id: glyph
-        anchors.centerIn: parent
-        width: button.iconSize
-        height: button.iconSize
-        color: Kirigami.Theme.textColor
-        isMask: true
-    }
-
-    MouseArea {
-        id: mouse
-        anchors.fill: parent
-        hoverEnabled: true
-        enabled: button.enabled
-        onClicked: button.triggered()
     }
 }

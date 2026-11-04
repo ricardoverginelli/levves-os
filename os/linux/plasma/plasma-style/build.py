@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Build the "Leaves" Plasma style from design/dist/palette.json into ~/.local/share/plasma/desktoptheme/leaves.
+"""Build the "Leaves" Plasma style from the Levves tokens into ~/.local/share/plasma/desktoptheme/leaves.
 
-Starts from the Breeze Dark style installed on this machine (so it tracks Plasma
-updates), swaps in the palette, and makes translucent panels and popups more see-through
-(glass: the fill lets KWin's blur show through).
+Starts from the Breeze Dark style installed on this machine (so it tracks Plasma updates), swaps
+in the Levves colors and redraws the frames of panels, popups and tooltips as D draws containers
+(design/DESIGN.md): opaque, a 1px near-black edge with an engraved inner line, 2px corners. No glass.
 Everything not overridden falls back to the stock "default" style.
 """
 import configparser
 import gzip
-import json
-import re
+import importlib.util
 import shutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -18,21 +17,28 @@ HERE = Path(__file__).resolve().parent
 SYSTEM = Path("/usr/share/plasma/desktoptheme")
 OUT = Path.home() / ".local/share/plasma/desktoptheme/leaves"
 
-palette = json.loads((HERE.parents[3] / "design/dist/palette.json").read_text())
+_spec = importlib.util.spec_from_file_location("levves_tokens", HERE.parents[3] / "design/dist/levves_tokens.py")
+_tokens = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_tokens)
+TOKENS = _tokens.TOKENS
+
+
+def color(name):
+    return TOKENS[f"color.{name}"]
 
 
 def rgb(name):
-    h = palette[name].lstrip("#")
+    h = color(name).lstrip("#")
     return ",".join(str(int(h[i:i + 2], 16)) for i in (0, 2, 4))
 
 
 # Background per color set; foregrounds/decorations are shared
 BACKGROUNDS = {
-    "Window": ("bg", "surface"),
-    "View": ("bg-deep", "bg"),
-    "Button": ("raised", "surface"),
-    "Header": ("surface", "bg"),
-    "Header][Inactive": ("bg", "bg-deep"),
+    "Window": ("surface", "bg"),            # popups are windows in D
+    "View": ("well", "bg"),                 # lists and fields sit in a well
+    "Button": ("raised", "surface"),        # keys
+    "Header": ("title-bar", "surface"),     # popup headings
+    "Header][Inactive": ("title-bar-inactive", "bg"),
     "Tooltip": ("surface", "raised"),
     "Complementary": ("bg-deep", "bg"),
     "Selection": ("accent", "accent-pressed"),
@@ -47,7 +53,7 @@ FOREGROUNDS = {
     "ForegroundNeutral": "warning",
     "ForegroundPositive": "success",
     "DecorationFocus": "accent",
-    "DecorationHover": "accent-hover",
+    "DecorationHover": "text-muted",        # hover stays neutral; amber is one thing per view
 }
 
 
@@ -69,125 +75,180 @@ def build_colors():
         colors.write(f, space_around_delimiters=False)
 
 
-# Translucent backgrounds (used while KWin blur is on). Breeze draws their
-# fill at 0.85; glass uses the palette's glass-opacity.
-GLASS = [
-    "widgets/panel-background.svgz",
-    "widgets/tooltip.svgz",
-]
-
-
-def build_glass():
-    for path in GLASS:
-        src = SYSTEM / "default/translucent" / path
-        svg = gzip.decompress(src.read_bytes()).decode()
-        svg = re.sub(r"opacity:0\.85\b", f"opacity:{palette['glass-opacity']}", svg)
-        dest = OUT / "translucent" / path
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(gzip.compress(svg.encode(), mtime=0))  # reproducible, so apply.sh can spot changes
-
+# --- Frames ----------------------------------------------------------------
+# Drawn as pixels (whole-pixel rects), never strokes or curves: every piece then measures whole
+# pixels, which KSvg needs to lay a frame out without gaps (agents/notes/plasma-svg-frames.md).
 
 SVG_NS = "http://www.w3.org/2000/svg"
 FRAME = ["topleft", "top", "topright", "left", "center", "right", "bottomleft", "bottom", "bottomright"]
 HINTS = ["hint-top-margin", "hint-bottom-margin", "hint-left-margin", "hint-right-margin",
          "hint-top-inset", "hint-bottom-inset", "hint-left-inset", "hint-right-inset"]
+EDGE = 32  # length of the edge pieces and side of the center
 
 
-def frame_svg(r, fill_attrs, prefix="", ox=0, oy=0, line_attrs=None):
-    """The 9 frame pieces of a box with corner radius r, laid out from (ox, oy):
-    corners are r×r quarter circles, edges are r thick, the center is 32×32.
-    With line_attrs, each outer piece also gets a 1px line along its outer edge."""
-    c = 32
-    quarter = {  # quarter-circle corner, filled toward the box's inside
-        "topleft": f"M0,{r} A{r},{r} 0 0 1 {r},0 V{r} Z",
-        "topright": f"M0,0 A{r},{r} 0 0 1 {r},{r} H0 Z",
-        "bottomleft": f"M0,0 H{r} V{r} A{r},{r} 0 0 1 0,0 Z",
-        "bottomright": f"M0,0 H{r} A{r},{r} 0 0 1 0,{r} Z",
-    }
-    cells = {  # name: (x, y, w, h) inside a 3×3 grid
-        "topleft": (0, 0, r, r), "top": (r, 0, c, r), "topright": (r + c, 0, r, r),
-        "left": (0, r, r, c), "center": (r, r, c, c), "right": (r + c, r, r, c),
-        "bottomleft": (0, r + c, r, r), "bottom": (r, r + c, c, r), "bottomright": (r + c, r + c, r, r),
-    }
-    # The 1px line is filled, not stroked: Qt counts a stroke's width into an
-    # element's bounds, so stroked pieces measured 8.5/33px and KSvg left gaps
-    # where the corners meet the edges (and seams along tiled edges)
-    i = r - 1  # the line's inner radius
-    lines = {  # 1px outer line per piece: quarter rings in the corners, strips on the edges
-        "topleft": f'<path d="M0,{r} A{r},{r} 0 0 1 {r},0 V1 A{i},{i} 0 0 0 1,{r} Z"/>',
-        "topright": f'<path d="M0,0 A{r},{r} 0 0 1 {r},{r} H{i} A{i},{i} 0 0 0 0,1 Z"/>',
-        "bottomright": f'<path d="M{r},0 A{r},{r} 0 0 1 0,{r} V{i} A{i},{i} 0 0 0 {i},0 Z"/>',
-        "bottomleft": f'<path d="M{r},{r} A{r},{r} 0 0 1 0,0 H1 A{i},{i} 0 0 0 {r},{i} Z"/>',
-        "top": f'<rect width="{c}" height="1"/>',
-        "bottom": f'<rect y="{i}" width="{c}" height="1"/>',
-        "left": f'<rect width="1" height="{c}"/>',
-        "right": f'<rect x="{i}" width="1" height="{c}"/>',
-    }
+def white(opacity):
+    return ("#ffffff", opacity)
+
+
+def black(opacity):
+    return ("#000000", opacity)
+
+
+def solid(name):
+    return (color(name), 1)
+
+
+def over(paint, fill):
+    """paint laid over fill, as one opaque color: a frame's lines are see-through tints of its fill."""
+    (c, o), (base, _) = paint, fill
+    mixed = [round(int(c[i:i + 2], 16) * o + int(base[i:i + 2], 16) * (1 - o)) for i in (1, 3, 5)]
+    return ("#" + "".join(f"{v:02x}" for v in mixed), 1)
+
+
+def frame_pixels(sides, fill, cut_corners=True):
+    """The 9 pieces of a frame as {piece: (w, h, [(x, y, w, h, (color, opacity))])}.
+
+    sides maps top/bottom/left/right to its lines from the outside in, one color per pixel, all
+    the same length t (the frame's thickness). Corners are t x t: each pixel takes the line of the
+    side it is nearest to, top and bottom winning ties. With cut_corners, the outermost corner
+    pixel is left out and the one inside it takes the outer line, which reads as a 2px radius."""
+    t = len(sides["top"])
+    sides = {side: [over(paint, fill) for paint in lines] for side, lines in sides.items()}
+    pieces = {}
+
+    def corner(name, flip_x, flip_y):
+        rects = []
+        vertical = sides["bottom" if flip_y else "top"]
+        horizontal = sides["right" if flip_x else "left"]
+        for y in range(t):
+            for x in range(t):
+                dy, dx = (t - 1 - y if flip_y else y), (t - 1 - x if flip_x else x)
+                if cut_corners and dx == 0 and dy == 0:
+                    continue
+                if cut_corners and dx == 1 and dy == 1:
+                    paint = vertical[0]
+                else:
+                    paint = vertical[dy] if dy <= dx else horizontal[dx]
+                rects.append((x, y, 1, 1, paint))
+        pieces[name] = (t, t, rects)
+
+    corner("topleft", False, False)
+    corner("topright", True, False)
+    corner("bottomleft", False, True)
+    corner("bottomright", True, True)
+    pieces["top"] = (EDGE, t, [(0, i, EDGE, 1, c) for i, c in enumerate(sides["top"])])
+    pieces["bottom"] = (EDGE, t, [(0, t - 1 - i, EDGE, 1, c) for i, c in enumerate(sides["bottom"])])
+    pieces["left"] = (t, EDGE, [(i, 0, 1, EDGE, c) for i, c in enumerate(sides["left"])])
+    pieces["right"] = (t, EDGE, [(t - 1 - i, 0, 1, EDGE, c) for i, c in enumerate(sides["right"])])
+    pieces["center"] = (EDGE, EDGE, [(0, 0, EDGE, EDGE, fill)])
+    return pieces
+
+
+def frame_svg(pieces, prefix, ox, oy):
+    """The pieces laid out in a 3x3 grid from (ox, oy), each a <g id="{prefix}{piece}">."""
+    t = pieces["topleft"][0]
+    cols = {"left": 0, "": t, "right": t + EDGE}
+    rows = {"top": 0, "": t, "bottom": t + EDGE}
     out = []
     for name in FRAME:
-        x, y, w, h = cells[name]
-        shape = (f'<path d="{quarter[name]}" {fill_attrs}/>' if name in quarter
-                 else f'<rect width="{w}" height="{h}" {fill_attrs}/>')
-        if line_attrs and name in lines:
-            shape += f'<g {line_attrs}>{lines[name]}</g>'
-        out.append(f'<g id="{prefix}{name}" transform="translate({ox + x},{oy + y})">{shape}</g>')
+        row = next((r for r in ("top", "bottom") if name.startswith(r)), "")
+        col = next((c for c in ("left", "right") if name.endswith(c)), "")
+        _, _, rects = pieces[name]
+        shapes = "".join(
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="fill:{c};fill-opacity:{o}"/>'
+            for x, y, w, h, (c, o) in rects)
+        out.append(f'<g id="{prefix}{name}" transform="translate({ox + cols[col]},{oy + rows[row]})">{shapes}</g>')
     return "".join(out)
 
 
-def build_dialog_background():
-    """Popups: glass fill with the DESIGN.md popup radius and a 1px border line,
-    as Yakuake and the side panel have. Breeze's corners are ~6px, so the frame
-    and its blur mask are redrawn; Breeze's shadow is kept. Plasma leaves out the
-    frame's edge against a panel, so a bar popup has no line on the bar side."""
-    src = SYSTEM / "default/translucent/dialogs/background.svgz"
+def mask_of(pieces):
+    """The blur/input mask: the frame's own shape in black."""
+    return {name: (w, h, [(x, y, rw, rh, black(1)) for x, y, rw, rh, _ in rects])
+            for name, (w, h, rects) in pieces.items()}
+
+
+def rebuild(src, dest_paths, pieces, margin, keep_shadow):
+    """Replace a Breeze frame SVG's pieces (and mask) with ours; keep its other elements.
+    margin sets the content padding hints; None keeps Breeze's."""
     ET.register_namespace("", SVG_NS)
     root = ET.fromstring(gzip.decompress(src.read_bytes()))
-
-    # Drop Breeze's frame, blur mask and margin hints (shadow-* pieces stay)
-    drop = set(FRAME) | {f"mask-{n}" for n in FRAME} | set(HINTS)
+    drop = set(FRAME) | {f"mask-{n}" for n in FRAME}
+    if margin is not None:
+        drop |= set(HINTS)
+    if not keep_shadow:
+        drop |= {f"shadow-{n}" for n in FRAME}
     for parent in root.iter():
         for child in list(parent):
             if child.get("id") in drop:
                 parent.remove(child)
 
-    r = palette["popup-radius"]
-    margin = 4  # content padding inside the frame, as in Breeze
-    oy = 80  # below Breeze's shadow pieces
-    size = r * 2 + 32
-    fill = f'class="ColorScheme-Background" style="fill:currentColor;opacity:{palette['glass-opacity']}"'
-    line = f'style="fill:{palette["border"]}"'
-    extra = frame_svg(r, fill, ox=0, oy=oy, line_attrs=line)
-    extra += frame_svg(r, 'style="fill:#000000"', prefix="mask-", ox=size + 8, oy=oy)
-    # Hints: margin rects set the content padding; zero-size insets as in Breeze
-    extra += (f'<rect id="hint-top-margin" x="0" y="{oy + size + 8}" width="{margin}" height="{margin}"/>'
-              f'<rect id="hint-bottom-margin" x="8" y="{oy + size + 8}" width="{margin}" height="{margin}"/>'
-              f'<rect id="hint-left-margin" x="16" y="{oy + size + 8}" width="{margin}" height="{margin}"/>'
-              f'<rect id="hint-right-margin" x="24" y="{oy + size + 8}" width="{margin}" height="{margin}"/>')
-    # Stretch the edge pieces instead of tiling them: tiles meet with a faint
-    # seam every 32px, which drew tick marks along the border
-    extra += f'<rect id="hint-stretch-borders" x="32" y="{oy + size + 8}" width="1" height="1"/>'
+    oy = float(root.get("height")) + 8  # below everything Breeze has
+    size = pieces["topleft"][0] * 2 + EDGE
+    extra = frame_svg(pieces, "", 0, oy) + frame_svg(mask_of(pieces), "mask-", size + 8, oy)
+    hy = oy + size + 8
+    if margin is not None:  # zero-size insets stay as in Breeze
+        extra += "".join(f'<rect id="hint-{side}-margin" x="{i * 8}" y="{hy}" width="{margin}" height="{margin}"/>'
+                         for i, side in enumerate(("top", "bottom", "left", "right")))
+    # Stretch the edge pieces instead of tiling them: tiles meet with a faint seam every 32px
+    extra += f'<rect id="hint-stretch-borders" x="40" y="{hy}" width="1" height="1"/>'
     for el in ET.fromstring(f'<g xmlns="{SVG_NS}">{extra}</g>'):
         root.append(el)
 
     width = max(float(root.get("width")), (size + 8) * 2)
-    height = oy + size + 8 + margin
+    height = hy + max(margin or 0, 1)
     root.set("width", str(width))
     root.set("height", str(height))
     root.set("viewBox", f"0 0 {width} {height}")
+    data = gzip.compress(ET.tostring(root), mtime=0)  # reproducible, so apply.sh can spot changes
+    for path in dest_paths:
+        dest = OUT / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
 
-    dest = OUT / "translucent/dialogs/background.svgz"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(gzip.compress(ET.tostring(root), mtime=0))
+
+def everywhere(path):
+    """A frame used with and without compositing: Plasma picks translucent/, solid/ or the plain one."""
+    return [path, f"translucent/{path}", f"solid/{path}"]
+
+
+def window_sides():
+    """A window's engraved edge: `edge` outside, then light top-left and shade bottom-right."""
+    light, shade = white(TOKENS["opacity.edge-light"]), black(TOKENS["opacity.edge-shade"])
+    return {"top": [solid("edge"), light], "left": [solid("edge"), light],
+            "bottom": [solid("edge"), shade], "right": [solid("edge"), shade]}
+
+
+def build_frames():
+    default = SYSTEM / "default/translucent"
+    # Popups (bar popups, the launcher, menus) are windows, on `surface`; Breeze's shadow is kept
+    popup = frame_pixels(window_sides(), solid("surface"))
+    rebuild(default / "dialogs/background.svgz", everywhere("dialogs/background.svgz"),
+            popup, margin=4, keep_shadow=True)
+    rebuild(default / "widgets/tooltip.svgz", everywhere("widgets/tooltip.svgz"),
+            popup, margin=None, keep_shadow=True)
+    # The top bar: `bg`, a near-black edge along the side away from the screen edge with an etched
+    # line inside it (Plasma leaves out the sides against the screen). Square, no shadow
+    line = [solid("edge"), white(TOKENS["opacity.etch"])]
+    bar = frame_pixels({"top": line, "bottom": line, "left": line, "right": line}, solid("bg"),
+                       cut_corners=False)
+    rebuild(default / "widgets/panel-background.svgz", everywhere("widgets/panel-background.svgz"),
+            bar, margin=None, keep_shadow=False)
+
+
+def build_plasmarc():
+    rc = (SYSTEM / "breeze-dark/plasmarc").read_text()
+    # Opaque always: no see-through panels over an empty desktop either
+    rc = rc.replace("[AdaptiveTransparency]\nenabled=true", "[AdaptiveTransparency]\nenabled=false")
+    (OUT / "plasmarc").write_text(rc)
 
 
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     OUT.mkdir(parents=True)
     shutil.copy(HERE / "metadata.json", OUT)
-    shutil.copy(SYSTEM / "breeze-dark/plasmarc", OUT)
+    build_plasmarc()
     build_colors()
-    build_glass()
-    build_dialog_background()
+    build_frames()
     print(f"Built {OUT}")
 
 
