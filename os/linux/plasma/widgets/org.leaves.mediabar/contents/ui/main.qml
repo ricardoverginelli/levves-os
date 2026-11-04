@@ -1,6 +1,7 @@
 // Now-playing controls for a thin panel: "Title · Artist  ⏮ ⏯ ⏭".
 // Collapsed to zero width unless a media player is playing or paused;
 // opens/closes with the DESIGN.md house curve. Click the text to raise the player.
+// Steps aside while the Leaves Music dock is open, which shows the same track.
 // Hovering it opens the player popup (PlayerPopup.qml), which also switches
 // between media sources when there's more than one.
 import QtQuick
@@ -8,6 +9,7 @@ import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.private.mpris as Mpris
+import org.kde.plasma.workspace.dbus as DBus
 import Levves
 
 import "../../../../../leaves"
@@ -46,8 +48,18 @@ PlasmoidItem {
         && (player.playbackStatus === Mpris.PlaybackStatus.Playing
             || player.playbackStatus === Mpris.PlaybackStatus.Paused)
     readonly property bool playing: active && player.playbackStatus === Mpris.PlaybackStatus.Playing
+    readonly property bool shown: active && !dockOpen.registered
 
-    Plasmoid.status: active ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
+    // The dock owns this name only while it's open (apps/leaves-music mpris.py),
+    // so a dock that quits or crashes gives the bar back too
+    DBus.DBusServiceWatcher {
+        id: dockOpen
+        busType: DBus.BusType.Session
+        watchedService: "org.leavesmusic.DockOpen"
+        onRegisteredChanged: if (registered) root.expanded = false
+    }
+
+    Plasmoid.status: shown ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
     // Hover popups have no tooltips (TODO.md Top bar)
     toolTipMainText: ""
     toolTipSubText: ""
@@ -98,7 +110,7 @@ PlasmoidItem {
 
     HoverOpener {
         id: hoverOpener
-        enabled: root.active
+        enabled: root.shown
         open: root.expanded
         onOpenRequested: root.expanded = true
         onCloseRequested: root.expanded = false
@@ -109,27 +121,27 @@ PlasmoidItem {
         id: container
 
         readonly property real openWidth: row.implicitWidth + root.trailingGap
-        property real shownWidth: root.active ? openWidth : 0
+        property real shownWidth: root.shown ? openWidth : 0
 
         Layout.minimumWidth: shownWidth
         Layout.preferredWidth: shownWidth
         Layout.maximumWidth: shownWidth
         Layout.fillHeight: true
         clip: true
-        opacity: root.active ? 1 : 0
+        opacity: root.shown ? 1 : 0
 
         Binding { target: hoverOpener; property: "bar"; value: container.Window.window }
         Binding { target: hoverOpener; property: "triggerHovered"; value: barHover.hovered }
 
         Behavior on shownWidth {
             NumberAnimation {
-                duration: root.active ? root.openDuration : root.closeDuration
+                duration: root.shown ? root.openDuration : root.closeDuration
                 easing.type: root.houseCurve
             }
         }
         Behavior on opacity {
             NumberAnimation {
-                duration: root.active ? root.openDuration : root.closeDuration
+                duration: root.shown ? root.openDuration : root.closeDuration
                 easing.type: root.houseCurve
             }
         }
