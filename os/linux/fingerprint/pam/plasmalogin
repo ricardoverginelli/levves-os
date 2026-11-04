@@ -1,0 +1,36 @@
+#%PAM-1.0
+# Plasma Login Manager with fingerprint. Installed to /etc/pam.d/plasmalogin by
+# install-pam.sh; it overrides Fedora's /usr/lib/pam.d/plasmalogin, which is this file
+# with "auth substack password-auth" in place of the four lines after pam_env.
+#
+# Type the password: pam_unix accepts it and skips the fingerprint (KWallet unlocks).
+# Leave it empty and press Enter: pam_unix fails, then pam_fprintd waits for a finger
+# (KWallet asks for the password later, since it never got one).
+auth     [success=done ignore=ignore default=bad] pam_selinux_permit.so
+auth        required      pam_env.so
+auth        [success=2 default=ignore] pam_unix.so
+auth        [success=1 default=ignore] pam_fprintd.so
+auth        requisite     pam_deny.so
+-auth        optional      pam_gnome_keyring.so
+-auth        optional      pam_kwallet5.so
+-auth        optional      pam_kwallet.so
+-auth        optional      pam_oo7.so
+auth        include       postlogin
+
+account     required      pam_nologin.so
+account     include       password-auth
+
+password    include       password-auth
+
+session     required      pam_selinux.so close
+session     required      pam_loginuid.so
+-session    optional    pam_ck_connector.so
+session     required      pam_selinux.so open
+session     optional      pam_keyinit.so force revoke
+session     required      pam_namespace.so
+session     include       password-auth
+-session     optional      pam_gnome_keyring.so auto_start
+-session     optional      pam_kwallet5.so auto_start
+-session     optional      pam_kwallet.so auto_start
+-session     optional      pam_oo7.so auto_start
+session     include       postlogin

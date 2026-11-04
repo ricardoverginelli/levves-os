@@ -1,0 +1,41 @@
+#!/usr/bin/bash
+# Run as root by pam_exec from /etc/pam.d/sudo (install-pam.sh puts it in
+# /usr/local/libexec/fingerprint-sudo-notify). Without a terminal, as with Claude
+# Code's "! <command>", nobody sees pam_fprintd's "Place your finger" text, and sudo
+# looks stuck for 30 s before the password dialog. So:
+#   auth:         show a notification asking for the finger
+#   open_session: sudo got in (finger or password), close that notification
+# Always exits 0, so a failure here never blocks sudo.
+
+case ${PAM_TTY:-} in /dev/*|tty*|pts/*) exit 0 ;; esac   # a terminal shows the text
+uid=$(id -u "$PAM_USER" 2>/dev/null) || exit 0
+bus=/run/user/$uid/bus
+[ -S "$bus" ] || exit 0
+state=/run/fingerprint-sudo-notify
+file=$state/$PPID   # PPID is the sudo process
+
+as_user() {
+    setpriv --reuid="$uid" --regid="$(id -g "$PAM_USER")" --init-groups \
+        env DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" XDG_RUNTIME_DIR="/run/user/$uid" \
+        timeout 3 "$@"
+}
+
+case ${PAM_TYPE:-} in
+auth)
+    id=$(as_user notify-send -p -a sudo -i fingerprint -u critical -t 30000 \
+        -h boolean:transient:true \
+        "Touch the fingerprint sensor" \
+        "sudo is waiting for your finger. The password dialog opens after 30 seconds." \
+        2> >(logger -t fingerprint-sudo-notify)) \
+        || { logger -t fingerprint-sudo-notify "notify-send failed (uid $(id -u), euid $EUID)"; exit 0; }
+    mkdir -p -m 700 "$state" && echo "$id" >"$file"
+    ;;
+open_session)
+    [ -f "$file" ] || exit 0
+    id=$(cat "$file"); rm -f "$file"
+    as_user gdbus call --session --dest org.freedesktop.Notifications \
+        --object-path /org/freedesktop/Notifications \
+        --method org.freedesktop.Notifications.CloseNotification "$id" >/dev/null
+    ;;
+esac
+exit 0
