@@ -12,6 +12,7 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
+import Levves
 import org.kde.kwin as KWin
 
 import "sheet.js" as Sheet
@@ -19,14 +20,13 @@ import "sheet.js" as Sheet
 Item {
     id: root
 
-    // DESIGN.md motion and spacing. Not a Plasma window, so it opens like snap
+    // Levves motion and spacing (design/DESIGN.md). Not a Plasma window, so it opens like snap
     // assist: a 0.96 scale plus a fade, on popup timing.
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: 240
-    readonly property int closeDuration: 170
-    readonly property int pad: 16
-    readonly property int columnGap: 32
-    readonly property var colors: Sheet.palette
+    readonly property int openDuration: Theme.durationPopupOpen
+    readonly property int closeDuration: Theme.durationPopupClose
+    readonly property int pad: Theme.space16
+    readonly property int columnGap: Theme.space24
     property bool closing: false
 
     // Sections grouped into columns: a section with "column" starts a new one
@@ -72,7 +72,7 @@ Item {
         const area = KWin.Workspace.clientArea(KWin.Workspace.MaximizeArea, KWin.Workspace.activeScreen,
                                                KWin.Workspace.currentDesktop);
         sheet.width = Math.min(layout.implicitWidth + 2 * pad, area.width - 64) + sheet.leftPadding + sheet.rightPadding;
-        sheet.height = Math.min(layout.implicitHeight + 2 * pad, area.height - 64) + sheet.topPadding + sheet.bottomPadding;
+        sheet.height = Math.min(layout.implicitHeight + 2 * pad + Theme.sizeTitleBar, area.height - 64) + sheet.topPadding + sheet.bottomPadding;
         sheet.x = area.x + Math.round((area.width - sheet.width) / 2);
         sheet.y = area.y + Math.round((area.height - sheet.height) / 2);
         closeAnim.stop();
@@ -104,41 +104,53 @@ Item {
 
     // ── Pieces ────────────────────────────────────────────────────────────
 
-    // A key: raised, 1px border, 4px corners (DESIGN.md small control), mono label
-    component Keycap: Rectangle {
+    // A key as drawn on a Levves key (design/DESIGN.md Pieces): raised, a lighter outline, a 2px
+    // bottom edge, a caps label; Meta is the leaf
+    component Keycap: Item {
         id: cap
         required property string key
         readonly property bool meta: key === "Meta"
         implicitHeight: 24
         implicitWidth: Math.max(24, (meta ? 14 : label.implicitWidth) + 12)
-        radius: 4
-        color: root.colors["raised"]
-        border.width: 1
-        border.color: root.colors["border"]
 
-        Text {
+        Rectangle { anchors.fill: parent; radius: Theme.radiusKey; color: Theme.keyDepth }
+        Rectangle {
+            anchors.fill: parent
+            anchors.bottomMargin: Theme.edgeKeyDepth
+            radius: Theme.radiusKey
+            color: Theme.keyEdge
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: Theme.edgeWidth
+                radius: Theme.radiusKey - 1
+                color: Theme.raised
+            }
+        }
+
+        Caps {
             id: label
             visible: !cap.meta
             anchors.centerIn: parent
+            anchors.verticalCenterOffset: -1
             text: root.keyLabel(cap.key)
-            color: root.colors["text"]
-            font.family: "JetBrains Mono"
-            font.pointSize: 9
+            color: Theme.text
         }
         Kirigami.Icon {
             visible: cap.meta
             anchors.centerIn: parent
+            anchors.verticalCenterOffset: -1
             width: 14
             height: 14
             source: "leaves-leaf"
             isMask: true
-            color: root.colors["text"]
+            color: Theme.text
         }
     }
 
     component Joiner: Text {
-        color: root.colors["text-faint"]
-        font.pointSize: 9
+        color: Theme.textFaint
+        font.family: Theme.typeFamilySans
+        font.pixelSize: Theme.typeSizeSmall
         Layout.alignment: Qt.AlignVCenter
     }
 
@@ -196,70 +208,58 @@ Item {
                 ScriptAction { script: { sheet.visible = false; root.closing = false } }
             }
 
+            // Flush with the frame's edge (the style pads its content by 4, inside a 2px edge)
+            TitleBar {
+                id: titleBar
+                x: -2
+                y: -2
+                width: parent.width + 4
+                title: "Cheat sheet"
+                Key {
+                    implicitWidth: 20
+                    implicitHeight: 20
+                    leftPadding: 0
+                    rightPadding: 0
+                    onClicked: root.close()
+                    contentItem: Item {
+                        Kirigami.Icon {
+                            anchors.centerIn: parent
+                            width: 12
+                            height: 12
+                            source: "mingcute-close-fill"
+                            isMask: true
+                            color: Theme.textMuted
+                        }
+                    }
+                }
+            }
+
             Flickable {
                 id: flick
                 anchors.fill: parent
                 anchors.margins: root.pad - 4  // the style's frame gives 4
+                anchors.topMargin: titleBar.height - 2 + root.pad
                 contentWidth: layout.implicitWidth
                 contentHeight: layout.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
 
-                ColumnLayout {
+                RowLayout {
                     id: layout
-                    spacing: 24  // DESIGN.md: between sections
-
-                    // Title, centered, with the close button at the end
-                    Item {
-                        Layout.fillWidth: true
-                        implicitHeight: 28
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Cheat sheet"
-                            color: root.colors["text"]
-                            font.pointSize: 11
-                            font.weight: Font.Medium
-                        }
-                        Rectangle {
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 28
-                            height: 28
-                            radius: 4
-                            color: closeMouse.containsMouse ? Qt.alpha(root.colors["text"], 0.06) : "transparent"
-                            Kirigami.Icon {
-                                anchors.centerIn: parent
-                                width: 16
-                                height: 16
-                                source: "mingcute-close-fill"
-                                isMask: true
-                                color: root.colors["text"]
-                            }
-                            MouseArea {
-                                id: closeMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: root.close()
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        spacing: root.columnGap
-                        Repeater {
-                            model: root.columns
-                            delegate: ColumnLayout {
-                                id: sheetColumn
-                                required property var modelData
-                                // The widest keys in the column: every section's
-                                // descriptions start at the same x
-                                property real keyWidth: 0
-                                Layout.alignment: Qt.AlignTop
-                                spacing: 24
-                                Repeater {
-                                    model: sheetColumn.modelData
-                                    delegate: SectionView { column: sheetColumn }
-                                }
+                    spacing: root.columnGap
+                    Repeater {
+                        model: root.columns
+                        delegate: ColumnLayout {
+                            id: sheetColumn
+                            required property var modelData
+                            // The widest keys in the column: every section's
+                            // descriptions start at the same x
+                            property real keyWidth: 0
+                            Layout.alignment: Qt.AlignTop
+                            spacing: Theme.space16
+                            Repeater {
+                                model: sheetColumn.modelData
+                                delegate: SectionView { column: sheetColumn }
                             }
                         }
                     }
@@ -270,24 +270,18 @@ Item {
 
     // A section: title, then a grid of keys and descriptions. Built with
     // explicit row/column so keys and descriptions line up across rows.
-    component SectionView: ColumnLayout {
+    component SectionView: GroupBox {
         id: sectionView
         required property var modelData
         required property Item column
         readonly property bool commands: modelData.kind === "commands"
-        spacing: 12  // DESIGN.md: a section's title to its content
-
-        Text {
-            text: sectionView.modelData.title
-            color: root.colors["text"]
-            font.pointSize: 11
-            font.weight: Font.Medium
-        }
+        Layout.fillWidth: true
+        title: modelData.title
 
         GridLayout {
             columns: 2
-            rowSpacing: 8
-            columnSpacing: 12
+            rowSpacing: Theme.space8
+            columnSpacing: Theme.space12
 
             Repeater {
                 model: sectionView.modelData.rows
@@ -307,14 +301,15 @@ Item {
                         keys: keysCell.modelData[0]
                         anchors.verticalCenter: parent.verticalCenter
                     }
+                    // Commands are code: JetBrains Mono
                     Text {
                         id: command
                         visible: sectionView.commands
                         anchors.verticalCenter: parent.verticalCenter
                         text: keysCell.modelData[0]
-                        color: root.colors["text"]
-                        font.family: "JetBrains Mono"
-                        font.pointSize: 9
+                        color: Theme.text
+                        font.family: Theme.typeFamilyMono
+                        font.pixelSize: Theme.typeSizeSmall
                     }
                 }
             }
@@ -327,8 +322,9 @@ Item {
                     Layout.column: 1
                     Layout.alignment: Qt.AlignVCenter
                     text: modelData[1]
-                    color: root.colors["text-muted"]
-                    font.pointSize: 10
+                    color: Theme.textSoft
+                    font.family: Theme.typeFamilySans
+                    font.pixelSize: Theme.typeSizeBody
                 }
             }
         }

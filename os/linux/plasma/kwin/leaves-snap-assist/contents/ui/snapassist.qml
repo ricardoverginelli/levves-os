@@ -21,16 +21,17 @@ import QtQuick
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 import org.kde.kwin as KWin
+import Levves
 
 Item {
     id: root
 
-    // DESIGN.md motion and spacing
+    // Levves motion and spacing (design/DESIGN.md)
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: 240
-    readonly property int closeDuration: 170
-    readonly property int hoverDuration: 150
-    readonly property int pad: 12
+    readonly property int openDuration: Theme.durationPopupOpen
+    readonly property int closeDuration: Theme.durationPopupClose
+    readonly property int hoverDuration: Theme.durationHover
+    readonly property int pad: Theme.space12
     readonly property int thumbWidth: 240
     readonly property int thumbHeight: 150
     readonly property int captionHeight: 20
@@ -239,23 +240,23 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 2
-                        radius: 6  // DESIGN.md: cards inside a popup
-                        color: cell.selected ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18)
-                             : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
+                        color: cell.selected ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.opacitySelection)
+                             : mouse.containsMouse ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
                              : "transparent"
                         Behavior on color {
                             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
                     }
 
-                    // KWin.WindowThumbnail needs a container; it keeps the window's aspect ratio
-                    Item {
-                        x: 8
-                        y: 8
-                        width: root.thumbWidth
-                        height: root.thumbHeight
+                    // The window sunk in a well; KWin.WindowThumbnail keeps its aspect ratio
+                    Well {
+                        x: 7
+                        y: 7
+                        width: root.thumbWidth + 2
+                        height: root.thumbHeight + 2
                         KWin.WindowThumbnail {
                             anchors.fill: parent
+                            anchors.margins: 1
                             wId: cell.modelData.internalId
                         }
                     }
@@ -278,9 +279,9 @@ Item {
                             width: parent.width - 16 - parent.spacing
                             text: cell.modelData.caption
                             elide: Text.ElideRight
-                            font.family: "Noto Sans"
-                            font.pointSize: 10
-                            color: Kirigami.Theme.textColor
+                            font.family: Theme.typeFamilySans
+                            font.pixelSize: Theme.typeSizeBody
+                            color: Theme.text
                         }
                     }
 

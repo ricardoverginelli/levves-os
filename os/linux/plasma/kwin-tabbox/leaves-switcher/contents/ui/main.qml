@@ -17,21 +17,22 @@ import QtQuick
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 import org.kde.kwin as KWin
+import Levves
 
 KWin.TabBoxSwitcher {
     id: tabBox
 
-    // DESIGN.md motion and spacing
+    // Levves motion and spacing (design/DESIGN.md)
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: 240
-    readonly property int hoverDuration: 150
-    readonly property int pad: 12
+    readonly property int openDuration: Theme.durationPopupOpen
+    readonly property int hoverDuration: Theme.durationHover
+    readonly property int pad: Theme.space12
     readonly property int thumbWidth: 240
     readonly property int thumbHeight: 150
     readonly property int captionHeight: 20
     readonly property int cellWidth: thumbWidth + 2 * 8
     readonly property int cellHeight: 8 + thumbHeight + 8 + captionHeight + 8
-    readonly property int dividerGap: 24  // DESIGN.md: between sections, a 1px line in the middle
+    readonly property int dividerGap: Theme.space24  // between the groups, an etched line in the middle
 
     property var order: []    // shown position → KWin row
     property int splitAt: -1  // first shown position of the other monitors' windows; -1 when there's one group
@@ -155,7 +156,8 @@ KWin.TabBoxSwitcher {
                             y: 8
                             width: 1
                             height: parent.height - 16
-                            color: "#2e383d"  // DESIGN.md border
+                            color: Theme.edge
+                            Rectangle { x: 1; width: 1; height: parent.height; color: Qt.rgba(1, 1, 1, Theme.opacityEtch) }
                         }
 
                         Item {
@@ -167,24 +169,24 @@ KWin.TabBoxSwitcher {
                             Rectangle {
                                 anchors.fill: parent
                                 anchors.margins: 2
-                                radius: 6  // DESIGN.md: cards inside a popup
-                                color: cell.selected ? Qt.alpha(Kirigami.Theme.highlightColor, 0.18)
-                                     : mouse.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.06)
+                                color: cell.selected ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.opacitySelection)
+                                     : mouse.containsMouse ? Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover)
                                      : "transparent"
                                 Behavior on color {
                                     ColorAnimation { duration: tabBox.hoverDuration; easing.type: tabBox.houseCurve }
                                 }
                             }
 
-                            // KWin.WindowThumbnail needs a container; it keeps the window's aspect ratio
-                            Item {
-                                x: 8
-                                y: 8
-                                width: tabBox.thumbWidth
-                                height: tabBox.thumbHeight
-                                opacity: cell.win && cell.win.minimized ? 0.5 : 1
+                            // The window sunk in a well; KWin.WindowThumbnail keeps its aspect ratio
+                            Well {
+                                x: 7
+                                y: 7
+                                width: tabBox.thumbWidth + 2
+                                height: tabBox.thumbHeight + 2
                                 KWin.WindowThumbnail {
                                     anchors.fill: parent
+                                    anchors.margins: 1
+                                    opacity: cell.win && cell.win.minimized ? 0.5 : 1
                                     wId: cell.win ? cell.win.wid : ""
                                 }
                             }
@@ -208,9 +210,9 @@ KWin.TabBoxSwitcher {
                                     text: cell.win ? cell.win.caption : ""
                                     textFormat: Text.PlainText
                                     elide: Text.ElideRight
-                                    font.family: "Noto Sans"
-                                    font.pointSize: 10
-                                    color: Kirigami.Theme.textColor
+                                    font.family: Theme.typeFamilySans
+                                    font.pixelSize: Theme.typeSizeBody
+                                    color: cell.win && cell.win.minimized ? Theme.textMuted : Theme.text
                                 }
                             }
 

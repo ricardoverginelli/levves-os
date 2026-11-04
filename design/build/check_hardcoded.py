@@ -28,8 +28,7 @@ SKIP = (
 SKIP_SUFFIXES = (".md", ".svg", ".png", ".jpg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".sxb", ".jar")
 
 DEFERRED = {
-    # Loaded by plasmashell and KWin, which can't see design/dist/qml until the Plasma reskin installs it
-    "os/linux/plasma/kwin-tabbox/leaves-switcher/contents/ui/main.qml": "Plasma reskin",
+    # file: why it can't use the generated files yet
 }
 
 
