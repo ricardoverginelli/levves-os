@@ -540,12 +540,12 @@ PlasmoidItem {
     readonly property int skipPrompt: Sessions.SessionManagement.ConfirmationMode.Skip
 
     readonly property var sideActions: [
-        { icon: "system-lock-screen", label: "Lock",      run: () => session.lock() },
-        { icon: "system-shutdown",    label: "Power Off", confirm: "Press again", run: () => session.requestShutdown(skipPrompt) },
-        { icon: "system-reboot",      label: "Restart",   confirm: "Press again", run: () => session.requestReboot(skipPrompt) },
-        { icon: "system-suspend",     label: "Sleep",     run: () => session.suspend() },
-        { icon: "leaves-log-out", label: "Log Out", confirm: "Press again", run: () => session.requestLogout(skipPrompt) },
-        { icon: "configure",          label: "System Settings", run: () => KCMUtils.KCMLauncher.openSystemSettings("") },
+        { icon: "mingcute-lock-fill",       label: "Lock",           run: () => session.lock() },
+        { icon: "mingcute-power-fill",      label: "Power Off",      confirm: "Press again", run: () => session.requestShutdown(skipPrompt) },
+        { icon: "mingcute-refresh-1-fill",  label: "Restart",        confirm: "Press again", run: () => session.requestReboot(skipPrompt) },
+        { icon: "mingcute-moon-fill",       label: "Sleep",          run: () => session.suspend() },
+        { icon: "leaves-log-out",           label: "Log Out",        confirm: "Press again", run: () => session.requestLogout(skipPrompt) },
+        { icon: "mingcute-settings-6-fill", label: "System Settings", run: () => KCMUtils.KCMLauncher.openSystemSettings("") },
         { user: true,                 label: user.fullName || user.loginName, run: () => KCMUtils.KCMLauncher.openSystemSettings("kcm_users") },
     ]
     readonly property int dividerAfter: 4  // line between Log Out and System Settings
@@ -714,7 +714,7 @@ PlasmoidItem {
                             x: 10
                             anchors.verticalCenter: parent.verticalCenter
                             width: 16; height: 16
-                            source: "search"
+                            source: "mingcute-search-fill"
                             isMask: true
                             color: Theme.textMuted
                         }
@@ -1004,7 +1004,7 @@ PlasmoidItem {
                 id: pinIcon
                 anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                 width: 16; height: 16
-                source: "pin"
+                source: "mingcute-pin-fill"
                 isMask: true
                 visible: entryRow.modelData.favoriteId !== ""
                 color: Theme.text

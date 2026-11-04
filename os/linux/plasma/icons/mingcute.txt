@@ -30,6 +30,8 @@ pic-fill
 pin-fill
 play-fill
 playlist-2-fill
+power-fill
+refresh-1-fill
 refresh-2-fill
 repeat-fill
 repeat-one-fill
@@ -37,6 +39,7 @@ restore-fill
 right-fill
 scissors-fill
 screenshot-fill
+search-fill
 server-2-fill
 settings-6-fill
 shuffle-2-fill
