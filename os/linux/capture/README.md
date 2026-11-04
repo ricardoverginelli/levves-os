@@ -63,14 +63,15 @@ shortcuts stay).
 - **Instant replay:** `capture-replay.service` starts with the Plasma session
   and, only while a game runs, keeps the last 60 s of the main monitor in RAM
   (about 375 MB). A game is anything Steam launched (native, Proton or a
-  non-Steam shortcut: its `reaper SteamLaunch AppId=` process); the buffer
-  starts within 5 s and stays on for 60 s after the game closes, so its end
-  can still be saved. The rest of the time nothing records. H.264 CBR
-  50 Mbps, 60 fps, a keyframe every second (lossless trims in LosslessCut land
-  within 1 s), desktop audio and mic mixed into one AAC track, cursor
-  included. The main monitor is the largest connected one, so it survives
-  connector renames; while it's turned off (`main-monitor`) the buffer stops
-  and waits, it never records another screen. `Alt+F10` saves to
+  non-Steam shortcut: its `reaper SteamLaunch AppId=` process), plus the
+  process names in `capture`'s `other_games` (PokeXGames' `pxgme-linux`),
+  fullscreen or not; the buffer starts within 5 s and stays on for 60 s after
+  the game closes, so its end can still be saved. The rest of the time nothing
+  records. H.264 CBR 50 Mbps, 60 fps, a keyframe every second (lossless trims
+  in LosslessCut land within 1 s), desktop audio and mic mixed into one AAC
+  track, cursor included. The main monitor is the largest connected one, so it
+  survives connector renames; while it's turned off (`main-monitor`) the
+  buffer stops and waits, it never records another screen. `Alt+F10` saves to
   `~/Videos/Replays/YYYY-MM/` (kept, never auto-deleted), and clicking the
   "Replay saved" notification shows the file in Dolphin. `Alt+Shift+F10` stops
   the buffer until the next login, to free VRAM for a game. Failures notify

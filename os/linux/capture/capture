@@ -147,9 +147,13 @@ clipboard() {
 # 60 s buffer of the main monitor in RAM while a game runs and that monitor is on
 replay_seconds=60
 
+# Games Steam doesn't start, by process name: PokeXGames (~/pxg-linux)
+other_games=(pxgme-linux)
+
 # Steam starts every game (native, Proton or a non-Steam shortcut) under its reaper
 game_running() {
-    pgrep -f '^([^ ]*/)?reaper SteamLaunch AppId=' >/dev/null
+    pgrep -f '^([^ ]*/)?reaper SteamLaunch AppId=' >/dev/null ||
+        pgrep -x "$(IFS='|'; echo "${other_games[*]}")" >/dev/null
 }
 
 # Largest connected output (survives connector renames); empty while it's off,
