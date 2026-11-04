@@ -210,8 +210,6 @@ def palette(tokens):
             out[path[1]] = t["value"]
         elif path[:2] == ("color", "terminal"):
             terminal[path[2]] = t["value"]
-    out["glass-opacity"] = tokens[("legacy", "glass-opacity")]["value"]
-    out["popup-radius"] = number(tokens[("legacy", "popup-radius")]["value"], "px")
     out["terminal"] = terminal
     return json.dumps(out, indent=4) + "\n"
 

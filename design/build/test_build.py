@@ -79,7 +79,7 @@ class RealTokens(unittest.TestCase):
         palette = json.loads(build.palette(self.tokens))
         old = {"bg-deep", "bg", "surface", "raised", "border", "text-faint", "text-muted", "text", "accent",
                "accent-hover", "accent-pressed", "on-accent", "critical", "warning", "success", "info",
-               "glass-opacity", "popup-radius", "terminal"}
+               "terminal"}
         self.assertLessEqual(old, set(palette))
         self.assertEqual(set(palette["terminal"]), {"black", "bright-black", "magenta", "cyan"})
 

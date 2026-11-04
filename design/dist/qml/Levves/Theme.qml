@@ -74,8 +74,6 @@ QtObject {
     readonly property real radiusKey: 3
     readonly property real edgeWidth: 1
     readonly property real edgeKeyDepth: 2
-    readonly property real legacyGlassOpacity: 0.75
-    readonly property real legacyPopupRadius: 8
     readonly property string typeFamilySerif: "Source Serif 4"
     readonly property string typeFamilySans: "Source Sans 3"
     readonly property string typeFamilyMono: "JetBrains Mono"

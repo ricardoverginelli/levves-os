@@ -77,8 +77,6 @@ object Levves {
     val radiusKey = 3.dp
     val edgeWidth = 1.dp
     val edgeKeyDepth = 2.dp
-    const val legacyGlassOpacity = 0.75f
-    val legacyPopupRadius = 8.dp
     const val typeFamilySerif = "Source Serif 4"
     const val typeFamilySans = "Source Sans 3"
     const val typeFamilyMono = "JetBrains Mono"

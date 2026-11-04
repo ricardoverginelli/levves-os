@@ -77,8 +77,6 @@ TOKENS = {
     "radius.key": "3px",
     "edge.width": "1px",
     "edge.key-depth": "2px",
-    "legacy.glass-opacity": 0.75,
-    "legacy.popup-radius": "8px",
     "type.family.serif": [
         "Source Serif 4",
         "serif"

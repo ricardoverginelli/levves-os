@@ -31,10 +31,5 @@
     "$type": "dimension",
     "width": { "$value": "1px", "$description": "Every outline and inner line" },
     "key-depth": { "$value": "2px", "$description": "A key's bottom edge; 3px on the phone's main key" }
-  },
-  "legacy": {
-    "$description": "Plasma's current glass look, still read by the Plasma style builds. Removed with the Plasma reskin",
-    "glass-opacity": { "$type": "number", "$value": 0.75 },
-    "popup-radius": { "$type": "dimension", "$value": "8px" }
   }
 }
