@@ -22,7 +22,7 @@ T.Button {
     contentItem: Caps {
         text: key.text
         horizontalAlignment: Text.AlignHCenter
-        font.pixelSize: Theme.typeSizeSmall
+        size: Theme.typeSizeSmall
         color: !key.enabled ? Theme.textFaint : key.primary ? Theme.textOnAccent : Theme.text
     }
 

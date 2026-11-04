@@ -320,7 +320,7 @@ Item {
                 spacing: 16
 
                 ControlButton {
-                    icon: "mingcute-skip-previous-fill"
+                    glyph: "mingcute-skip-previous-fill"
                     iconSize: 20
                     implicitWidth: 32
                     implicitHeight: 32
@@ -328,16 +328,15 @@ Item {
                     onTriggered: popup.player.Previous()
                 }
                 ControlButton {
-                    icon: popup.playing ? "mingcute-pause-fill" : "mingcute-play-fill"
+                    glyph: popup.playing ? "mingcute-pause-fill" : "mingcute-play-fill"
                     iconSize: 24
                     implicitWidth: 40
                     implicitHeight: 40
-                    radius: 20
                     enabled: popup.player && (popup.playing ? popup.player.canPause : popup.player.canPlay)
                     onTriggered: popup.player.PlayPause()
                 }
                 ControlButton {
-                    icon: "mingcute-skip-forward-fill"
+                    glyph: "mingcute-skip-forward-fill"
                     iconSize: 20
                     implicitWidth: 32
                     implicitHeight: 32

@@ -6,7 +6,7 @@ import Levves
 Key {
     id: button
 
-    property alias icon: glyph.source
+    property alias glyph: glyphIcon.source  // a MingCute icon name (Button's own icon is FINAL)
     property int iconSize: 16
     signal triggered()
 
@@ -18,7 +18,7 @@ Key {
 
     contentItem: Item {
         Kirigami.Icon {
-            id: glyph
+            id: glyphIcon
             anchors.centerIn: parent
             width: button.iconSize
             height: button.iconSize

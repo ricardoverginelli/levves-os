@@ -16,7 +16,7 @@ Rectangle {
         id: label
         anchors.centerIn: parent
         color: parent.tone
-        font.pixelSize: 10
-        font.letterSpacing: Theme.typeTrackingTag * font.pixelSize
+        size: 10
+        tracking: Theme.typeTrackingTag
     }
 }

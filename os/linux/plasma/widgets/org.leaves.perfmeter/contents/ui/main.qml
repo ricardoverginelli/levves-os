@@ -58,6 +58,7 @@ PlasmoidItem {
     }
 
     component Reading: Num {
+        id: reading
         property real value: NaN
         property string suffix
         property string widest
@@ -68,7 +69,7 @@ PlasmoidItem {
         // Reserve room for a two-digit value so the bar doesn't shift as
         // numbers change; left-aligned so the label-value gap stays 4px
         Layout.minimumWidth: widestMetrics.advanceWidth
-        TextMetrics { id: widestMetrics; font: parent.font; text: widest }
+        TextMetrics { id: widestMetrics; font: reading.font; text: reading.widest }
     }
 
     component Metric: RowLayout {
@@ -118,6 +119,7 @@ PlasmoidItem {
 
         Caps { text: "Net" }
         Num {
+            id: rate
             readonly property string muted: Theme.textMuted
             visible: !isNaN(down.value ?? NaN)
             font.pixelSize: Theme.typeSizeBody
@@ -125,7 +127,7 @@ PlasmoidItem {
             text: `<font color="${muted}">↓</font>${root.formatRate(down.value)} <font color="${muted}">↑</font>${root.formatRate(up.value ?? 0)}`
             // Room for a typical reading so the bar doesn't shift; only 100-999K widens it a little
             Layout.minimumWidth: rateMetrics.advanceWidth
-            TextMetrics { id: rateMetrics; font: parent.font; text: "↓99K ↑99K" }
+            TextMetrics { id: rateMetrics; font: rate.font; text: "↓99K ↑99K" }
         }
     }
 

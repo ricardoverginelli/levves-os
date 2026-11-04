@@ -3,11 +3,15 @@
 import QtQuick
 
 Text {
+    // Set size, not font.pixelSize: the tracking follows it
+    property real size: Theme.typeSizeLabel
+    property real tracking: Theme.typeTrackingLabel
+
     color: Theme.textMuted
     font.family: Theme.typeFamilySans
-    font.pixelSize: Theme.typeSizeLabel
+    font.pixelSize: size
     font.weight: Theme.typeWeightSemibold
     font.capitalization: Font.AllUppercase
-    font.letterSpacing: Theme.typeTrackingLabel * font.pixelSize
+    font.letterSpacing: tracking * size
     verticalAlignment: Text.AlignVCenter
 }
