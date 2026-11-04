@@ -28,8 +28,6 @@ Item {
 
     // Levves motion and spacing (design/DESIGN.md)
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: Theme.durationPopupOpen
-    readonly property int closeDuration: Theme.durationPopupClose
     readonly property int hoverDuration: Theme.durationHover
     readonly property int pad: Theme.space12
     readonly property int thumbWidth: 240
@@ -142,17 +140,15 @@ Item {
         picker.height = contentHeight + picker.topPadding + picker.bottomPadding
         picker.x = emptyArea.x + Math.round((emptyArea.width - picker.width) / 2)
         picker.y = emptyArea.y + Math.round((emptyArea.height - picker.height) / 2)
-        closeAnim.stop()
         picker.visible = true
-        openAnim.restart()
+        appear.open()
     }
 
     function close() {
         if (!picker.visible || closing)
             return
         closing = true
-        openAnim.stop()
-        closeAnim.restart()
+        appear.close()
     }
 
     // Clicking another window counts as a cancel
@@ -202,19 +198,7 @@ Item {
             width: picker.width - picker.leftPadding - picker.rightPadding
             height: picker.height - picker.topPadding - picker.bottomPadding
 
-            ParallelAnimation {
-                id: openAnim
-                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
-                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
-            }
-            SequentialAnimation {
-                id: closeAnim
-                ParallelAnimation {
-                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: root.houseCurve }
-                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: root.houseCurve }
-                }
-                ScriptAction { script: { picker.visible = false; root.candidates = []; root.closing = false } }
-            }
+            Appear { id: appear; targets: [content]; onClosed: { picker.visible = false; root.candidates = []; root.closing = false } }
 
             GridView {
                 id: grid

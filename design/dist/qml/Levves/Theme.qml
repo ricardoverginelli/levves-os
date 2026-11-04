@@ -54,6 +54,7 @@ QtObject {
     readonly property int durationPanelClose: 220
     readonly property int durationHoverRest: 150
     readonly property int durationHoverGrace: 400
+    readonly property real scaleAppear: 0.96
     readonly property real space4: 4
     readonly property real space8: 8
     readonly property real space12: 12

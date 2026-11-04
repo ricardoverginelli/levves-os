@@ -1,5 +1,8 @@
 module Levves
 singleton Theme 1.0 Theme.qml
+Appear 1.0 Appear.qml
+AppearIn 1.0 AppearIn.qml
+AppearOut 1.0 AppearOut.qml
 Caps 1.0 Caps.qml
 Dither 1.0 Dither.qml
 Field 1.0 Field.qml

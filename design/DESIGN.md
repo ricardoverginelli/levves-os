@@ -158,7 +158,8 @@ Everything under `os/linux/plasma/`, applied by its `apply.sh`; phases in its `T
 - Windows moved or resized by KWin glide there on the panel timing (`leaves-geometry`); mouse
   drags never animate.
 - What no KWin effect reaches (KWin scripts like snap assist and the cheat sheet, the S25 OSD)
-  opens with a 0.96 scale plus a fade in QML, and closes the same way, faster.
+  opens with a 0.96 scale (`scale.appear`) plus a fade in QML, and closes the same way, faster:
+  the Levves `Appear` piece, or `AppearIn` / `AppearOut` as a Popup's or a list's transitions.
 - An open bar item gets a 1px accent line along its bottom that grows from the left
   (`shared/ActiveLine.qml`).
 

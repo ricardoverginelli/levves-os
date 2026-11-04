@@ -24,7 +24,6 @@ KWin.TabBoxSwitcher {
 
     // Levves motion and spacing (design/DESIGN.md)
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: Theme.durationPopupOpen
     readonly property int hoverDuration: Theme.durationHover
     readonly property int pad: Theme.space12
     readonly property int thumbWidth: 240
@@ -123,8 +122,8 @@ KWin.TabBoxSwitcher {
                 width: Math.max(tabBox.cellWidth, Math.min(fullWidth, tabBox.screenGeometry.width * 0.9)) + 2 * tabBox.pad
                 height: tabBox.cellHeight + 2 * tabBox.pad
 
-                NumberAnimation on opacity { from: 0; to: 1; duration: tabBox.openDuration; easing.type: tabBox.houseCurve }
-                NumberAnimation on scale { from: 0.96; to: 1; duration: tabBox.openDuration; easing.type: tabBox.houseCurve }
+                Appear { id: appear; targets: [content] }
+                Component.onCompleted: appear.open()
 
                 ListView {
                     id: list

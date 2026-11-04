@@ -13,5 +13,9 @@
     "panel-close": { "$value": "220ms" },
     "hover-rest": { "$value": "150ms", "$description": "Rest before a hovered bar item opens" },
     "hover-grace": { "$value": "400ms", "$description": "Grace before a hovered bar item closes" }
+  },
+  "scale": {
+    "$type": "number",
+    "appear": { "$value": 0.96, "$description": "What a popup grows from as it fades in, and shrinks to as it fades out" }
   }
 }

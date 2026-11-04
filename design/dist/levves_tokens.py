@@ -57,6 +57,7 @@ TOKENS = {
     "duration.panel-close": "220ms",
     "duration.hover-rest": "150ms",
     "duration.hover-grace": "400ms",
+    "scale.appear": 0.96,
     "space.4": "4px",
     "space.8": "8px",
     "space.12": "12px",

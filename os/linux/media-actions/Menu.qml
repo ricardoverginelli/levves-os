@@ -48,7 +48,7 @@ Window {
             return
         closing = true
         closeAnim.choice = choice
-        closeAnim.start()
+        closeAnim.close()
     }
 
     function openSub(withKeyboard) {
@@ -115,14 +115,11 @@ Window {
     }
 
     // Cards close together; the choice runs once they're gone
-    SequentialAnimation {
+    Appear {
         id: closeAnim
         property string choice
-        ParallelAnimation {
-            NumberAnimation { targets: [main, sub]; property: "opacity"; to: 0; duration: 170; easing.type: Easing.OutQuint }
-            NumberAnimation { targets: [main, sub]; property: "scale"; to: 0.96; duration: 170; easing.type: Easing.OutQuint }
-        }
-        ScriptAction { script: menu.choose(closeAnim.choice) }
+        targets: [main, sub]
+        onClosed: menu.choose(choice)
     }
 
     MenuCard {
@@ -184,30 +181,14 @@ Window {
         height: column.implicitHeight + 8
         transformOrigin: Item.TopLeft
 
-        // Not a Plasma window, so it opens itself: 0.96 scale plus a fade (popup timing)
+        // Not a Plasma window, so it opens itself (Appear)
         opacity: 0
-        scale: 0.96
+        scale: Theme.scaleAppear
         onShownChanged: {
-            if (win.closing)
-                return
-            if (shown) {
-                hideAnim.stop()
-                showAnim.start()
-            } else {
-                showAnim.stop()
-                hideAnim.start()
-            }
+            if (!win.closing)
+                shown ? cardAppear.open() : cardAppear.close()
         }
-        ParallelAnimation {
-            id: showAnim
-            NumberAnimation { target: card; property: "opacity"; to: 1; duration: 240; easing.type: Easing.OutQuint }
-            NumberAnimation { target: card; property: "scale"; to: 1; duration: 240; easing.type: Easing.OutQuint }
-        }
-        ParallelAnimation {
-            id: hideAnim
-            NumberAnimation { target: card; property: "opacity"; to: 0; duration: 170; easing.type: Easing.OutQuint }
-            NumberAnimation { target: card; property: "scale"; to: 0.96; duration: 170; easing.type: Easing.OutQuint }
-        }
+        Appear { id: cardAppear; targets: [card] }
 
         MouseArea { anchors.fill: parent; enabled: card.shown }  // clicks between rows don't close it
 

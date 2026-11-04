@@ -57,6 +57,7 @@ object Levves {
     const val durationPanelClose = 220
     const val durationHoverRest = 150
     const val durationHoverGrace = 400
+    const val scaleAppear = 0.96f
     val space4 = 4.dp
     val space8 = 8.dp
     val space12 = 12.dp

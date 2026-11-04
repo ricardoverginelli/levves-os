@@ -21,10 +21,8 @@ Item {
     id: root
 
     // Levves motion and spacing (design/DESIGN.md). Not a Plasma window, so it opens like snap
-    // assist: a 0.96 scale plus a fade, on popup timing.
+    // assist (Appear).
     readonly property int houseCurve: Easing.OutQuint
-    readonly property int openDuration: Theme.durationPopupOpen
-    readonly property int closeDuration: Theme.durationPopupClose
     readonly property int pad: Theme.space16
     readonly property int columnGap: Theme.space24
     property bool closing: false
@@ -75,19 +73,17 @@ Item {
         sheet.height = Math.min(layout.implicitHeight + 2 * pad + Theme.sizeTitleBar, area.height - 64) + sheet.topPadding + sheet.bottomPadding;
         sheet.x = area.x + Math.round((area.width - sheet.width) / 2);
         sheet.y = area.y + Math.round((area.height - sheet.height) / 2);
-        closeAnim.stop();
         closing = false;
         flick.contentY = 0;
         sheet.visible = true;
-        openAnim.restart();
+        appear.open();
     }
 
     function close() {
         if (!sheet.visible || closing)
             return;
         closing = true;
-        openAnim.stop();
-        closeAnim.restart();
+        appear.close();
     }
 
     // Shown keys: arrows as arrows, Meta as the Leaves leaf
@@ -194,19 +190,7 @@ Item {
             width: sheet.width - sheet.leftPadding - sheet.rightPadding
             height: sheet.height - sheet.topPadding - sheet.bottomPadding
 
-            ParallelAnimation {
-                id: openAnim
-                NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
-                NumberAnimation { target: content; property: "scale"; from: 0.96; to: 1; duration: root.openDuration; easing.type: root.houseCurve }
-            }
-            SequentialAnimation {
-                id: closeAnim
-                ParallelAnimation {
-                    NumberAnimation { target: content; property: "opacity"; to: 0; duration: root.closeDuration; easing.type: root.houseCurve }
-                    NumberAnimation { target: content; property: "scale"; to: 0.96; duration: root.closeDuration; easing.type: root.houseCurve }
-                }
-                ScriptAction { script: { sheet.visible = false; root.closing = false } }
-            }
+            Appear { id: appear; targets: [content]; onClosed: { sheet.visible = false; root.closing = false } }
 
             // Flush with the frame's edge (the style pads its content by 4, inside a 2px edge)
             TitleBar {

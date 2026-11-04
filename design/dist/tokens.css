@@ -51,6 +51,7 @@
   --lv-duration-panel-close: 220ms;
   --lv-duration-hover-rest: 150ms;
   --lv-duration-hover-grace: 400ms;
+  --lv-scale-appear: 0.96;
   --lv-space-4: 4px;
   --lv-space-8: 8px;
   --lv-space-12: 12px;
