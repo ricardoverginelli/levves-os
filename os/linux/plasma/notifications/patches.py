@@ -2,18 +2,18 @@
 
 Each patch replaces an exact snippet; if the snippet is gone (Plasma changed
 it), PatchError stops the build so the stock applet stays in use.
-Leaves.Palette is palette.json (global/Palette.qml, written by build.py).
+Theme.* is the Levves module (build.py adds `import Levves` where a patch uses it); Leaves.Palette
+is palette.json (global/Palette.qml, written by build.py).
 
 - spacing: content 12px from the popup's edges (the style's 4px plus 8), gaps
   on the 4px grid, popups 8px from the bar and from each other
-- type: 11pt Medium title; app name and time in text-muted
+- type: a serif semibold title; app name and time as caps labels in text-muted
 - icons: MingCute for configure, minimize/restore, close and the thumbnail's
   menu button; app icons listed in leavesAppIcons are swapped for a MingCute
   one in text-muted (Spectacle's colored logo)
-- buttons: the first action is the primary one (accent), the rest are raised;
-  4px corners (DESIGN.md radius table)
+- buttons: keys (design/DESIGN.md Pieces); the first action is the primary (amber) key
 - panel: the bell (click or hover) opens a full-height sheet on the right (qml/SidePanel.qml)
-  instead of a tray popup: notifications as cards with Do not disturb, then the
+  instead of a tray popup: notifications as group boxes with Do not disturb, then the
   volume mixer and a brightness slider per monitor (qml/Controls.qml); the tray
   takes volume and brightness out of the bar for it
 - colors: timeout bar in text-faint (the accent stays on the primary button),
@@ -80,24 +80,43 @@ ACTION_BUTTON = '''            PlasmaComponents3.ToolButton {
                 Layout.maximumWidth: implicitWidth
                 Layout.leftMargin: index > 0 ? 8 : 0  // Leaves
 
-                // Leaves: the first action is the primary one (accent), the rest are raised
+                // Leaves: the first action is the primary (amber) key, the rest are plain keys
                 readonly property bool leavesPrimary: index === 0
                 leftPadding: 12
                 rightPadding: 12
                 topPadding: 6
                 bottomPadding: 6
                 Kirigami.Theme.inherit: false
-                Kirigami.Theme.textColor: leavesPrimary ? Leaves.Palette.textOnAccent : Leaves.Palette.text
-                background: Rectangle {
-                    radius: 4  // DESIGN.md: small control
-                    color: {
-                        const button = leavesActionButton;
-                        if (button.leavesPrimary) {
-                            return button.down ? Leaves.Palette.accentPressed
-                                : button.hovered ? Leaves.Palette.accentHover : Leaves.Palette.accent;
-                        }
-                        return button.down || button.hovered ? Qt.tint(Leaves.Palette.raised, Leaves.Palette.hover)
-                            : Leaves.Palette.raised;
+                Kirigami.Theme.textColor: leavesPrimary ? Theme.textOnAccent : Theme.text
+                // A caps label, as on every key
+                font.family: Theme.typeFamilySans
+                font.pixelSize: Theme.typeSizeSmall
+                font.weight: Theme.typeWeightSemibold
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: Theme.typeTrackingLabel * Theme.typeSizeSmall
+                background: Item {  // Leaves: a key (design/DESIGN.md Pieces)
+                    readonly property bool sunk: leavesActionButton.down || false
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.radiusKey
+                        visible: !parent.sunk
+                        color: leavesActionButton.leavesPrimary ? Theme.accentEdge : Theme.keyDepth
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.bottomMargin: parent.sunk ? 0 : Theme.edgeKeyDepth
+                        radius: Theme.radiusKey
+                        color: parent.sunk ? Theme.fieldEdge : leavesActionButton.leavesPrimary ? Theme.accentHover : Theme.keyEdge
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: Theme.edgeWidth
+                        anchors.bottomMargin: parent.sunk ? Theme.edgeWidth : Theme.edgeKeyDepth
+                        radius: Theme.radiusKey - 1
+                        color: leavesActionButton.leavesPrimary ? (leavesActionButton.down ? Theme.accentPressed : leavesActionButton.hovered ? Theme.accentHover : Theme.accent)
+                            : parent.sunk ? Theme.wellPressed
+                            : leavesActionButton.hovered ? Qt.tint(Theme.raised, Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover))
+                            : Theme.raised
                     }
                 }
 '''
@@ -106,19 +125,43 @@ MENU_BUTTON = '''            PlasmaComponents3.Button {
                 id: menuButton
                 Layout.alignment: Qt.AlignTop
                 Accessible.name: tooltip.text
-                // Leaves: MingCute icon on a raised button
+                // Leaves: MingCute icon on a key
                 icon.name: "mingcute-menu-fill"
-                icon.color: Leaves.Palette.text
+                icon.color: Theme.text
                 icon.width: 16
                 icon.height: 16
                 padding: 8
-                background: Rectangle {
-                    radius: 4  // DESIGN.md: small control
-                    color: menuButton.down || menuButton.checked || menuButton.hovered
-                        ? Qt.tint(Leaves.Palette.raised, Leaves.Palette.hover) : Leaves.Palette.raised
+                background: Item {  // Leaves: a key (design/DESIGN.md Pieces)
+                    readonly property bool sunk: menuButton.down || menuButton.checked
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.radiusKey
+                        visible: !parent.sunk
+                        color: false ? Theme.accentEdge : Theme.keyDepth
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.bottomMargin: parent.sunk ? 0 : Theme.edgeKeyDepth
+                        radius: Theme.radiusKey
+                        color: parent.sunk ? Theme.fieldEdge : false ? Theme.accentHover : Theme.keyEdge
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: Theme.edgeWidth
+                        anchors.bottomMargin: parent.sunk ? Theme.edgeWidth : Theme.edgeKeyDepth
+                        radius: Theme.radiusKey - 1
+                        color: false ? (menuButton.down ? Theme.accentPressed : menuButton.hovered ? Theme.accentHover : Theme.accent)
+                            : parent.sunk ? Theme.wellPressed
+                            : menuButton.hovered ? Qt.tint(Theme.raised, Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, Theme.opacityHover))
+                            : Theme.raised
+                    }
                 }
                 checkable: true
 '''
+
+
+# The app name and time over a notification: a caps label (design/DESIGN.md Type)
+CAPS_LABEL = '        level: 5\n        color: Kirigami.Theme.disabledTextColor  // Leaves: a caps label in text-muted\n        font.family: Theme.typeFamilySans\n        font.pixelSize: Theme.typeSizeLabel\n        font.weight: Theme.typeWeightSemibold\n        font.capitalization: Font.AllUppercase\n        font.letterSpacing: Theme.typeTrackingLabel * Theme.typeSizeLabel\n'
 
 
 def apply(files):
@@ -211,16 +254,17 @@ def apply(files):
     type: Kirigami.Heading.Type.Primary
 """,
             """    level: 4
-    // Leaves: 11pt Medium title (DESIGN.md Typography)
-    font.pointSize: 11
-    font.weight: Font.Medium
+    // Leaves: a serif title (design/DESIGN.md Type)
+    font.family: Theme.typeFamilySerif
+    font.pixelSize: Theme.typeSizeTitle + 1
+    font.weight: Theme.typeWeightSemibold
 """)
     replace(files, HEADER,
             "        level: 5\n        opacity: 0.9\n",
-            "        level: 5\n        color: Kirigami.Theme.disabledTextColor  // Leaves: text-muted\n")
+            CAPS_LABEL)
     replace(files, BUTTONS,
             "        level: 5\n        opacity: 0.9\n",
-            "        level: 5\n        color: Kirigami.Theme.disabledTextColor  // Leaves: text-muted\n")
+            CAPS_LABEL)
 
     # ── Icons ────────────────────────────────────────────────────────────
     replace(files, HEADER,
@@ -262,7 +306,7 @@ def apply(files):
     # ── Colors ───────────────────────────────────────────────────────────
     replace(files, DELEGATE_POPUP,
             "            color: Kirigami.Theme.highlightColor\n",
-            "            color: Leaves.Palette.textFaint  // Leaves: the accent stays on the primary button\n")
+            "            color: Theme.textFaint  // Leaves: the accent stays on the primary key\n")
     replace(files, DELEGATE_POPUP,
             "        color: Kirigami.Theme.neutralTextColor\n",
             "        color: Kirigami.Theme.negativeTextColor  // Leaves: critical\n")
@@ -308,7 +352,7 @@ def apply(files):
             '                    icon.name: "edit-clear-history"\n',
             '                    icon.name: "mingcute-delete-2-fill"  // Leaves\n'
             '                    icon.color: Kirigami.Theme.textColor\n')
-    # Notifications as cards: surface, 6px corners, 12px padding, 8px apart; no
+    # Notifications as group boxes: the near-black edge, etched, 12px padding, 8px apart; no
     # lines between apps (the cards already separate them)
     replace(files, FULL,
             "            topMargin: Kirigami.Units.largeSpacing\n"
@@ -328,14 +372,25 @@ def apply(files):
             """            delegate: DraggableDelegate {
                 id: delegate
                 width: ListView.view.width
-                // Leaves: a card
+                // Leaves: a group box (design/DESIGN.md Edges): the near-black edge, etched
                 leftPadding: 12
                 rightPadding: 12
                 topPadding: 12
                 bottomPadding: 12
-                background: Rectangle {
-                    radius: 6  // DESIGN.md: card
-                    color: Leaves.Palette.surface
+                background: Item {
+                    Rectangle {
+                        x: 1; y: 1
+                        width: parent.width; height: parent.height
+                        radius: Theme.radiusContainer
+                        color: "transparent"
+                        border.color: Qt.rgba(1, 1, 1, Theme.opacityEtch)
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.radiusContainer
+                        color: Theme.surface
+                        border.color: Theme.edge
+                    }
                 }
 """)
     # Cards have top and bottom padding (the popups have none, so they're unchanged)

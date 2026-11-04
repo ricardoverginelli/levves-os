@@ -9,7 +9,7 @@ import org.kde.plasma.components as PlasmaComponents3
 import org.kde.plasma.private.volume
 import org.kde.plasma.private.brightnesscontrolplugin
 
-import "../global" as Leaves
+import Levves
 
 ColumnLayout {
     id: controls
@@ -46,52 +46,35 @@ ColumnLayout {
         isSilent: true  // no OSD while dragging here
     }
 
-    // DESIGN.md spacing: 24px between sections (a 1px line in the middle),
+    // Levves spacing: 24px between sections (an etched line in the middle),
     // 12px from a section's title to its content, 8px between rows
-    component Separator: Rectangle {
+    component Separator: Item {
         Layout.fillWidth: true
         Layout.topMargin: 12
         Layout.bottomMargin: 12
-        implicitHeight: 1
-        color: Leaves.Palette.border
+        implicitHeight: 2
+        Rectangle { width: parent.width; height: 1; color: Theme.edge }
+        Rectangle { y: 1; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, Theme.opacityEtch) }
     }
 
-    component SectionTitle: PlasmaComponents3.Label {
+    component SectionTitle: Caps {
         Layout.fillWidth: true
-        font.pointSize: 11
-        font.weight: Font.Medium
         textFormat: Text.PlainText
     }
 
-    component SectionLabel: PlasmaComponents3.Label {
+    component SectionLabel: Caps {
         Layout.fillWidth: true
-        font.pointSize: 9
-        color: Kirigami.Theme.disabledTextColor
+        size: 10
+        color: Theme.textFaint
         textFormat: Text.PlainText
     }
 
-    // Applications / Devices as a segmented control: raised track, the current one on top
-    component Tab: PlasmaComponents3.AbstractButton {
-        id: tabButton
+    // Applications / Devices as a row of keys, the current one held down
+    component Tab: Key {
         required property int index
-        implicitWidth: label.implicitWidth + 24
-        implicitHeight: 28
-        hoverEnabled: true
+        focusPolicy: Qt.NoFocus
+        current: controls.tab === index
         onClicked: controls.tab = index
-        contentItem: PlasmaComponents3.Label {
-            id: label
-            text: tabButton.text
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            color: controls.tab === tabButton.index || tabButton.hovered
-                ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
-            Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutQuint } }
-        }
-        background: Rectangle {
-            radius: 4  // inside the 4px track, never below 4
-            color: controls.tab === tabButton.index ? Leaves.Palette.surface : "transparent"
-            Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutQuint } }
-        }
     }
 
     function volumeTo(model) {
@@ -116,20 +99,10 @@ ColumnLayout {
         SectionTitle { text: i18nd("plasma_applet_org.kde.plasma.volume", "Volume") }
 
         // Applications / Devices
-        Rectangle {
-            implicitWidth: tabs.implicitWidth + 4
-            implicitHeight: 32
-            radius: 4  // DESIGN.md: small control
-            color: Leaves.Palette.raised
-
-            RowLayout {
-                id: tabs
-                anchors.fill: parent
-                anchors.margins: 2
-                spacing: 2
-                Tab { index: 0; text: i18nd("plasma_applet_org.kde.plasma.volume", "Applications") }
-                Tab { index: 1; text: i18nd("plasma_applet_org.kde.plasma.volume", "Devices") }
-            }
+        RowLayout {
+            spacing: 3
+            Tab { index: 0; text: i18nd("plasma_applet_org.kde.plasma.volume", "Applications") }
+            Tab { index: 1; text: i18nd("plasma_applet_org.kde.plasma.volume", "Devices") }
         }
     }
 
@@ -164,14 +137,12 @@ ColumnLayout {
                     onMuteToggled: model.Muted = !model.Muted
                 }
             }
-            PlasmaComponents3.Label {
+            Quiet {
                 visible: streams.count === 0
                 Layout.fillWidth: true
                 Layout.preferredHeight: 40
-                verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignHCenter
                 text: i18nd("plasma_applet_org.kde.plasma.volume", "No applications playing or recording audio")
-                color: Kirigami.Theme.disabledTextColor
                 wrapMode: Text.Wrap
             }
         }

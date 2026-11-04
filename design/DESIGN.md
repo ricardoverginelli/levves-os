@@ -77,7 +77,7 @@ Neutrals, from darkest: `bg-deep` (desktop), `bg` (top bar, lists), `surface` (w
 ## Pieces
 Each piece is built once per platform: CSS classes in `web/levves.css` (`.lv-window`, `.lv-key`...)
 and QML types in `qml/` (`WindowFrame`, `TitleBar`, `Key`, `Field`, `Well`, `GroupBox`, `Meter`,
-`Tag`, `Led`, `Dither`, and the text styles `Caps`, `Num`, `Title`, `Quiet`), which the build copies
+`Tag`, `Slider`, `Led`, `Dither`, and the text styles `Caps`, `Num`, `Title`, `Quiet`), which the build copies
 into the `Levves` module. A `flat` key shows only a hover tint until pressed or current (toolbars,
 the top bar's window strip).
 

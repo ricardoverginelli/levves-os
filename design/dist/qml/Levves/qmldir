@@ -9,6 +9,7 @@ Led 1.0 Led.qml
 Meter 1.0 Meter.qml
 Num 1.0 Num.qml
 Quiet 1.0 Quiet.qml
+Slider 1.0 Slider.qml
 Tag 1.0 Tag.qml
 Title 1.0 Title.qml
 TitleBar 1.0 TitleBar.qml

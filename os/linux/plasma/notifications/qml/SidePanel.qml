@@ -1,4 +1,4 @@
-// The Leaves panel: a full-height glass sheet on the right edge of the bar's
+// The Leaves panel: a full-height Levves window on the right edge of the bar's
 // monitor, 22% of its width. Notifications (with Do not disturb) on top, the
 // volume mixer and brightness at the bottom (Controls.qml). The bell opens it
 // (CompactRepresentation, main.qml); Esc or a click outside closes it.
@@ -14,6 +14,7 @@ import org.kde.notificationmanager as NotificationManager
 
 import ".." as Ui
 import "../global" as Leaves
+import Levves
 
 PlasmaCore.Window {
     id: panel
@@ -59,8 +60,8 @@ PlasmaCore.Window {
 
     visible: false
     title: "leaves-panel"
-    // Square, like Yakuake: no rounded frame edges (glass and blur stay), and a
-    // 1px border line on the inner (left) side drawn below instead
+    // Square, like Yakuake: no frame edges from the style; the engraved edge is drawn on the
+    // inner (left) side only, below
     Component.onCompleted: borders = 0  // (a literal 0 isn't accepted as Qt::Edges)
     // Layer surfaces need a real size up front; the anchors then set the height
     property int screenWidth: 2560
@@ -85,11 +86,17 @@ PlasmaCore.Window {
         // Keeps the panel open while the bell opened it on hover (tray/patches.py)
         HoverHandler { onHoveredChanged: panel.applet.leavesPanelHovered = hovered }
 
-        // DESIGN.md: an edge-to-edge window draws its border on the inner side only
+        // An edge-to-edge window draws its edge on the inner side only: the black edge, then
+        // the engraved light line (design/DESIGN.md Edges)
         Rectangle {
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+            width: Theme.edgeWidth
+            color: Theme.edge
+        }
+        Rectangle {
+            anchors { left: parent.left; leftMargin: Theme.edgeWidth; top: parent.top; bottom: parent.bottom }
             width: 1
-            color: Leaves.Palette.border
+            color: Qt.rgba(1, 1, 1, Theme.opacityEdgeLight)
         }
 
         Ui.FullRepresentation {

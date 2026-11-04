@@ -96,6 +96,10 @@ def use_leaves_globals(files):
             imports = list(re.finditer(r"^import .*\n", text, re.M))
             line = f'import "{"../" * depth}global" as Leaves\n'
             text = text[:imports[-1].end()] + line + text[imports[-1].end():]
+        # The patches' Levves pieces and tokens (Theme.*, not Kirigami.Theme)
+        if re.search(r"(?<![\w.])Theme\.", text) and "\nimport Levves\n" not in text:
+            imports = list(re.finditer(r"^import .*\n", text, re.M))
+            text = text[:imports[-1].end()] + "import Levves\n" + text[imports[-1].end():]
         files[name] = text
 
 

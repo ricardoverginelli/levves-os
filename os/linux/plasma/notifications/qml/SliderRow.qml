@@ -2,12 +2,11 @@
 // Used for app streams, audio devices and monitors (Controls.qml).
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Templates as T
 
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents3
 
-import "../global" as Leaves
+import Levves
 
 RowLayout {
     id: row
@@ -41,7 +40,7 @@ RowLayout {
         Layout.rightMargin: row.iconIsMask ? 4 : 0
         source: row.iconSource
         isMask: row.iconIsMask
-        color: Kirigami.Theme.disabledTextColor
+        color: Theme.textMuted
     }
 
     ColumnLayout {
@@ -52,23 +51,28 @@ RowLayout {
             Layout.fillWidth: true
             spacing: 8
 
-            // Default-device marker: filled when selected
-            Rectangle {
+            // Default-device marker: a slot, its square knob lit when selected
+            Field {
                 visible: row.selectable
-                implicitWidth: 8
-                implicitHeight: 8
-                radius: 4
-                color: row.selected ? Leaves.Palette.text : "transparent"
-                border.width: row.selected ? 0 : 1
-                border.color: Leaves.Palette.textFaint
+                implicitWidth: 12
+                implicitHeight: 12
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 6
+                    height: 6
+                    radius: 1
+                    color: row.selected ? Theme.text : "transparent"
+                }
             }
 
-            PlasmaComponents3.Label {
+            Text {
                 id: label
                 Layout.fillWidth: true
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
-                color: row.muted ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
+                font.family: Theme.typeFamilySans
+                font.pixelSize: Theme.typeSizeBody
+                color: row.muted ? Theme.textMuted : Theme.text
 
                 TapHandler {
                     enabled: row.selectable && !row.selected
@@ -77,67 +81,29 @@ RowLayout {
                 }
             }
 
-            PlasmaComponents3.Label {
+            Num {
                 Layout.minimumWidth: 32
                 horizontalAlignment: Text.AlignRight
-                text: Math.round(100 * (slider.pressed ? slider.value : row.value) / row.normal) + "%"
-                color: Kirigami.Theme.disabledTextColor
-                font.pointSize: 9
+                text: Math.round(100 * (slider.pressed ? slider.value : row.value) / row.normal)
+                color: Theme.textMuted
+                font.pixelSize: Theme.typeSizeBar
             }
         }
 
-        T.Slider {
+        Slider {
             id: slider
             Layout.fillWidth: true
-            implicitHeight: 16
             from: row.from
             to: row.to
             stepSize: (row.normal - row.from) / 100
             enabled: !row.muted || row.mutable
-            hoverEnabled: true
             onMoved: row.moved(value)
+            fill: row.muted ? Theme.textFaint : Theme.textMuted
+            mark: row.normal < row.to ? row.normal : NaN
 
             Binding on value {
                 when: !slider.pressed
                 value: row.value
-            }
-
-            background: Rectangle {
-                x: slider.leftPadding
-                y: slider.topPadding + (slider.availableHeight - height) / 2
-                width: slider.availableWidth
-                height: 4
-                radius: 2
-                color: Leaves.Palette.raised
-
-                Rectangle {
-                    width: slider.visualPosition * parent.width
-                    height: parent.height
-                    radius: 2
-                    color: row.muted ? Leaves.Palette.textFaint : Leaves.Palette.textMuted
-                }
-                // Where 100% is, when the slider goes past it
-                Rectangle {
-                    visible: row.normal < row.to
-                    x: (row.normal - row.from) / (row.to - row.from) * parent.width - 1
-                    y: -2
-                    width: 2
-                    height: 8
-                    radius: 1
-                    color: Leaves.Palette.border
-                }
-            }
-
-            handle: Rectangle {
-                x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
-                y: slider.topPadding + (slider.availableHeight - height) / 2
-                width: 12
-                height: 12
-                radius: 6
-                // The one accent: the handle you're dragging
-                color: slider.pressed ? Leaves.Palette.accent
-                    : slider.hovered ? Leaves.Palette.text : Leaves.Palette.textMuted
-                Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutQuint } }
             }
         }
     }
@@ -146,7 +112,7 @@ RowLayout {
         visible: row.mutable
         Layout.alignment: Qt.AlignVCenter
         icon.name: row.muted ? "mingcute-volume-off-fill" : "mingcute-volume-fill"
-        icon.color: row.muted ? Leaves.Palette.textFaint : Kirigami.Theme.textColor
+        icon.color: row.muted ? Theme.textFaint : Theme.text
         icon.width: 16
         icon.height: 16
         display: PlasmaComponents3.AbstractButton.IconOnly
