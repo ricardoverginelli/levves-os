@@ -24,7 +24,8 @@
 //
 // Keys on a monitor with a layout (without one, the old ones):
 //   Meta+Left/Right        move the window one column along, swapping with the
-//                          window there; a window behind goes into the edge column
+//                          window there; a window behind goes into the edge column;
+//                          from the edge column, to the monitor beside it, if any
 //                          (no layout: KWin's half tiling; on Yakuake: split
 //                          the terminal side by side)
 //   Meta+Shift+Right/Left  span: grow the window over the next column (the other
@@ -590,7 +591,19 @@ function down() {
                  "Window One Screen Down");
 }
 
-// Meta+Left/Right: the window's columns trade places with the next run along
+// The monitor directly left or right of this one, sharing some height with it
+function outputBeside(output, side) {
+    const g = output.geometry;
+    return workspace.screens.find(o => {
+        const h = o.geometry;
+        if (o == output || h.y >= g.y + g.height || g.y >= h.y + h.height)
+            return false;
+        return side == "left" ? h.x + h.width <= g.x : h.x >= g.x + g.width;
+    });
+}
+
+// Meta+Left/Right: the window's columns trade places with the next run along;
+// from the edge column, to the monitor beside it (if there's one that way)
 function moveWindow(side) {
     if (yakuakeFocused()) {
         splitYakuake();
@@ -617,6 +630,14 @@ function moveWindow(side) {
         const bs = blocks(s);
         const b = bs.findIndex(x => x.w == w);
         const t = side == "left" ? b - 1 : b + 1;
+        if ((t < 0 || t >= bs.length) && outputBeside(w.output, side)) {
+            // At the edge with a monitor beside it: over there, as KWin does without
+            // a layout (watch() gives it a column there, and this one refills)
+            callDBus("org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component",
+                     "invokeShortcut", side == "left" ? "Window One Screen to the Left"
+                                                      : "Window One Screen to the Right");
+            return;
+        }
         if (t >= 0 && t < bs.length) {  // at the edge: only un-maximized
             const moved = bs[b];
             bs[b] = bs[t];
