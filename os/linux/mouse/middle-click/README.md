@@ -12,4 +12,8 @@
   `--enable-blink-features=MiddleClickAutoscroll`, and local copies of their
   `.desktop` files point the menu and taskbar at it. The flag only applies when
   the browser starts from nothing, so quit it fully first. Re-run after a
-  browser update changes its `.desktop` file.
+  browser update changes its `.desktop` file. The flag makes the browsers show
+  "You are using an unsupported command-line flag" on start, so the script also
+  sets the `CommandLineFlagSecurityWarningsEnabled` policy to false (a file in
+  `/etc/opt/chrome/policies/managed` and `/etc/brave/policies/managed`; asks for
+  sudo). Side effect: the browser menu says it is managed by your organization.
