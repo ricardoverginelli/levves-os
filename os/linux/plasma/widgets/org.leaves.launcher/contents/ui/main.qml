@@ -1,15 +1,17 @@
 // Centered launcher. Subtle icon in the bar; Super or a click opens a window
-// centered on the active screen (layer shell, no anchors).
+// centered on the active screen (layer shell, no anchors). Drawn like the terminal
+// launcher (agents/launcher): flat, all mono, lines only between the areas and in
+// the task table.
 //
-//   ┌ Tasks CPU GPU VRAM RAM Disk ┬ search ─────────────────┬ Lock ──────────┐
-//   │ System totals, used / of│ pinned apps (pin at end)│ Power Off      │
-//   │ ───                     │ ───                     │ Restart        │
-//   │ every running app, one  │ recent apps, newest     │ Sleep          │
-//   │ flat list, highest load │ first — or search       │ Log Out        │
-//   │ first (no window: muted │ results while typing,   │ ───            │
-//   │ name)                   │ grouped (Apps, Files…)  │ System Settings│
-//   │                         │                         │ (user)         │
-//   └─────────────────────────┴─────────────────────────┴────────────────┘
+//   TASKS · BY LOAD  CPU GPU VRAM RAM DISK │ › search ───────────── │ SESSION
+//   ───────────────────────────────────────│                        │ Lock
+//   SYSTEM  used / available, and the last │ PINNED 6               │ Power Off
+//           two minutes under each         │ pinned apps (pin icon) │ Restart
+//   ───────────────────────────────────────│                        │ Sleep
+//   every running app, one flat list,      │ RECENT 12              │ Log Out
+//   highest load first (no window: muted)  │ recent apps, or search │
+//                                          │ results, or a folder   │ System Settings
+//                                          │                        │ (user)
 //
 // Keys: focus stays in the search field; arrows move a highlight between
 // areas. Down = list, Right = side panel (from search only when the cursor is
@@ -57,12 +59,14 @@ PlasmoidItem {
     readonly property int hoverDuration: Theme.durationHover
     readonly property int edgeMargin: Theme.space12   // same as the perf meter's
     readonly property int pad: Theme.space12
-    readonly property int rowHeight: Theme.sizeRow
-    readonly property int twoLineRowHeight: 44
-    readonly property int sideWidth: 200
-    readonly property int taskWidth: 480
-    readonly property int taskRowHeight: 32
-    readonly property int taskCellWidth: 50
+    readonly property int rowHeight: 30
+    readonly property int twoLineRowHeight: 46
+    readonly property int sideWidth: 210
+    readonly property int taskWidth: 720
+    readonly property int taskRowHeight: 30
+    readonly property int taskCellWidth: 96   // room for "used / available" on one line
+    readonly property int columnGap: 40       // each side of the rules between the areas
+    readonly property string mono: Theme.typeFamilyMono
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
     readonly property string pinsClient: "org.leaves.launcher.favorites"
@@ -167,7 +171,7 @@ PlasmoidItem {
     }
 
     // Instantiators turn each model's rows into plain objects we can merge
-    component Row: QtObject {
+    component RowData: QtObject {
         required property int index
         required property var model
         readonly property string name: model.display ?? ""
@@ -179,14 +183,14 @@ PlasmoidItem {
     Instantiator {
         id: pinRows
         model: pins
-        delegate: Row {}
+        delegate: RowData {}
         onObjectAdded: Qt.callLater(root.rebuildHome)
         onObjectRemoved: Qt.callLater(root.rebuildHome)
     }
     Instantiator {
         id: recentRows
         model: recents
-        delegate: Row {}
+        delegate: RowData {}
         onObjectAdded: Qt.callLater(root.rebuildHome)
         onObjectRemoved: Qt.callLater(root.rebuildHome)
     }
@@ -200,7 +204,7 @@ PlasmoidItem {
             readonly property string name: source ? source.description : ""
             readonly property Instantiator rows: Instantiator {
                 model: group.source
-                delegate: Row {}
+                delegate: RowData {}
                 onObjectAdded: Qt.callLater(root.rebuildSearch)
                 onObjectRemoved: Qt.callLater(root.rebuildSearch)
             }
@@ -215,11 +219,21 @@ PlasmoidItem {
         function onModelReset() { Qt.callLater(root.rebuildHome) }
     }
 
-    // above: "" | "divider" | a group header; subtitle: a second, muted line
+    // above: "" or a group's heading; count: its rows (set by countGroups); subtitle: a
+    // second, muted line
     function entryFrom(row, source, i) {
         return { source: source, row: i, name: row.name, icon: row.icon,
                  description: row.description, favoriteId: row.favoriteId,
-                 above: "", subtitle: "" }
+                 above: "", count: 0, subtitle: "" }
+    }
+
+    function countGroups(out) {
+        let head = null
+        for (const e of out) {
+            if (e.above) { head = e; e.count = 0 }
+            if (head) head.count++
+        }
+        return out
     }
 
     function rebuildHome() {
@@ -241,9 +255,9 @@ PlasmoidItem {
             const r = recentRows.objectAt(i)
             if (r && !pinned.has(r.favoriteId) && !pinned.has(r.name) && !isHidden(r.favoriteId)) add(r, recents, i)
         }
-        if (pinCount > 0 && out.length > pinCount)
-            out[pinCount].above = "divider"  // thin line between pinned and recent
-        homeEntries = out
+        if (pinCount > 0) out[0].above = "Pinned"
+        if (out.length > pinCount) out[pinCount].above = "Recent"
+        homeEntries = countGroups(out)
         pinsVersion++
 
         // Keep the highlight on the app that was just pinned, unpinned or moved
@@ -281,7 +295,7 @@ PlasmoidItem {
                 out.push(e)
             }
         }
-        searchEntries = out
+        searchEntries = countGroups(out)
         if (!navigating) list.currentIndex = 0
     }
 
@@ -334,6 +348,10 @@ PlasmoidItem {
     readonly property string navFilter: navigating ? search.text.slice(search.text.lastIndexOf("/") + 1) : ""
     readonly property string navFolder: navTyped.startsWith("~") ? homePath + navTyped.slice(1) : navTyped
     property var navEntries: []
+    readonly property var navCrumbs: {
+        const parts = navTyped.split("/").slice(0, -1)
+        return parts.map((part, i) => ({ name: part === "" ? "/" : part, path: parts.slice(0, i + 1).join("/") + "/" }))
+    }
     onNavFilterChanged: Qt.callLater(rebuildNav)
 
     FolderListModel {
@@ -402,7 +420,7 @@ PlasmoidItem {
         const folders = out.findIndex(e => e.isDir), files = out.findIndex(e => !e.isDir)
         if (folders >= 0) out[folders].above = "Folders"
         if (files >= 0) out[files].above = "Files"
-        navEntries = out
+        navEntries = countGroups(out)
         list.currentIndex = 0
         list.positionViewAtBeginning()
     }
@@ -523,7 +541,8 @@ PlasmoidItem {
     // The machine's totals, shown under the column headers. From the system sensors,
     // not the rows' sum: the kernel, KWin and anything outside an app cgroup count too.
     // gpu0 is the NVIDIA card, gpu1 Intel's (its memory is RAM, so VRAM is NVIDIA's).
-    component Total: Sensors.Sensor { updateRateLimit: 2000; enabled: launcher.visible }
+    // They're read all the time (five cheap reads every 2s) so the history is there on opening.
+    component Total: Sensors.Sensor { updateRateLimit: 2000 }
     Total { id: cpuTotal;     sensorId: "cpu/all/usage" }
     Total { id: cpuThreads;   sensorId: "cpu/all/coreCount" }
     Total { id: nvidiaTotal;  sensorId: "gpu/gpu0/usage" }
@@ -534,6 +553,25 @@ PlasmoidItem {
     Total { id: ramTotal;     sensorId: "memory/physical/total" }
     Total { id: diskRead;     sensorId: "disk/all/read" }
     Total { id: diskWrite;    sensorId: "disk/all/write" }
+
+    // The totals' last two minutes, one sample every 2s: percent of what's available
+    // (GPU: the busier of the two), disk in bytes per second
+    readonly property int historyLength: 60
+    property var history: ({ cpu: [], gpu: [], vram: [], ram: [], disk: [] })
+    Timer { interval: 2000; running: true; repeat: true; onTriggered: root.sampleTotals() }
+    function sampleTotals() {
+        const percent = (used, total) => total ? (used ?? 0) / total * 100 : 0
+        const now = {
+            cpu: cpuTotal.value ?? 0,
+            gpu: Math.max(nvidiaTotal.value ?? 0, intelTotal.value ?? 0),
+            vram: percent(vramUsed.value, vramTotal.value),
+            ram: percent(ramUsed.value, ramTotal.value),
+            disk: (diskRead.value ?? 0) + (diskWrite.value ?? 0),
+        }
+        const next = {}
+        for (const key in now) next[key] = history[key].concat([now[key]]).slice(-historyLength)
+        history = next
+    }
     property int taskIndex: 0
     // Pids and window rows per row key, kept out of the ListModel (it would turn arrays into models)
     property var taskPids: ({})
@@ -793,13 +831,15 @@ PlasmoidItem {
 
     // ── Window ────────────────────────────────────────────────────────────
 
+    // Drawn like the terminal launcher (agents/launcher): one flat surface, everything in
+    // mono, lines only between the three areas and inside the task table
     PlasmaCore.Window {
         id: launcher
         visible: false
-        // Layer surfaces need a real size up front (0 is a protocol error)
-        // Tasks, then search (~600px wide: room for paths), then the side panel
-        width: 820 + root.taskWidth + root.pad + 1
-        height: 620
+        // Layer surfaces need a real size up front (0 is a protocol error).
+        // Tasks (720), search (~540), session (210), with 40px gaps around the rules
+        width: 1664
+        height: 660
         LayerShell.Window.scope: "leaves-launcher"
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone
         LayerShell.Window.layer: LayerShell.Window.LayerTop
@@ -814,33 +854,30 @@ PlasmoidItem {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: root.pad - 4   // the dialog frame already pads a little
-                anchors.topMargin: root.pad     // 4px more breathing room top and bottom
-                anchors.bottomMargin: root.pad
-                spacing: root.pad
+                anchors.margins: 16
+                anchors.topMargin: 18
+                spacing: root.columnGap
 
-                // Left: task manager, a sunk list under a dithered row of column headers
-                Well {
-                    // Fixed width, like the side panel
-                    Layout.preferredWidth: root.taskWidth - root.pad
-                    Layout.maximumWidth: root.taskWidth - root.pad
-                    Layout.fillWidth: false
+                // Left: task manager. Column names, the machine's totals, then the apps
+                ColumnLayout {
+                    Layout.preferredWidth: root.taskWidth
+                    Layout.maximumWidth: root.taskWidth
                     Layout.fillHeight: true
+                    spacing: 0
 
-                    // Column headers; click one to sort by it
+                    HoverHandler { id: taskHover }
+
+                    // Column names; click one to sort by it. "Tasks" sorts by name, and again back to load
                     Item {
                         id: taskHeader
-                        x: 1; y: 1
-                        width: parent.width - 2
-                        height: Theme.sizeGroupHeader
+                        Layout.fillWidth: true
+                        implicitHeight: 30
 
-                        Dither { anchors.fill: parent }
-                        // "Tasks" sorts by name, and again back to load
-                        Caps {
-                            x: 8
+                        MonoCaps {
                             height: parent.height
                             text: root.sortKey === "load" ? "Tasks · by load" : "Tasks"
-                            color: root.sortKey === "name" || tasksTitleHover.hovered ? Theme.text : Theme.textMuted
+                            color: root.area === "tasks" || root.sortKey === "name" || tasksTitleHover.hovered
+                                   ? Theme.text : Theme.textMuted
                             TapHandler { onTapped: root.sortKey = root.sortKey === "name" ? "load" : "name" }
                             HoverHandler { id: tasksTitleHover; cursorShape: Qt.PointingHandCursor }
                             PlasmaComponents.ToolTip {
@@ -857,64 +894,67 @@ PlasmoidItem {
                                 TaskHeader {}
                             }
                         }
-                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+                        Rule { anchors.bottom: parent.bottom; width: parent.width }
                     }
 
-                    // The machine's totals: used over available, per column
+                    // The machine's totals: used / available on one line, the last two minutes under it
                     Item {
-                        id: taskTotals
-                        x: 1
-                        y: taskHeader.y + taskHeader.height
-                        width: parent.width - 2
-                        height: 40
+                        Layout.fillWidth: true
+                        implicitHeight: totalsRow.implicitHeight + 26
 
-                        Caps { x: 8; height: parent.height; text: "System" }
+                        MonoCaps { y: 13; text: "System" }
                         RowLayout {
+                            id: totalsRow
+                            y: 12
                             spacing: 0
-                            height: parent.height
                             anchors { right: parent.right; rightMargin: 8 }
                             TotalCell {
                                 used: Math.round(cpuTotal.value ?? 0) + "%"
-                                of: (cpuThreads.value ?? "") + " thr"
+                                of: " of " + (cpuThreads.value ?? "")
                                 level: cpuTotal.value ?? 0
+                                values: root.history.cpu
                                 tip: "CPU: " + used + " of " + (cpuThreads.value ?? "?") + " threads"
                             }
                             TotalCell {
                                 used: "N " + Math.round(nvidiaTotal.value ?? 0) + "%"
-                                of: "I " + Math.round(intelTotal.value ?? 0) + "%"
+                                of: " · I " + Math.round(intelTotal.value ?? 0) + "%"
                                 level: Math.max(nvidiaTotal.value ?? 0, intelTotal.value ?? 0)
-                                tip: "NVIDIA " + Math.round(nvidiaTotal.value ?? 0) + "% · Intel " + Math.round(intelTotal.value ?? 0) + "%"
+                                values: root.history.gpu
+                                tip: "GPU: NVIDIA " + Math.round(nvidiaTotal.value ?? 0) + "% · Intel "
+                                     + Math.round(intelTotal.value ?? 0) + "% (history: the busier one)"
                             }
                             TotalCell {
                                 used: root.formatMemory((vramUsed.value ?? 0) / 1024)
-                                of: "/ " + root.formatMemory((vramTotal.value ?? 0) / 1024)
+                                of: " / " + root.formatMemory((vramTotal.value ?? 0) / 1024)
                                 level: vramTotal.value ? vramUsed.value / vramTotal.value * 100 : 0
-                                tip: "NVIDIA video memory: " + used + " of " + root.formatMemory((vramTotal.value ?? 0) / 1024)
+                                values: root.history.vram
+                                tip: "NVIDIA video memory: " + used + of
                             }
                             TotalCell {
                                 used: root.formatMemory((ramUsed.value ?? 0) / 1024)
-                                of: "/ " + root.formatMemory((ramTotal.value ?? 0) / 1024)
+                                of: " / " + root.formatMemory((ramTotal.value ?? 0) / 1024)
                                 level: ramTotal.value ? ramUsed.value / ramTotal.value * 100 : 0
-                                tip: "Memory: " + used + " of " + root.formatMemory((ramTotal.value ?? 0) / 1024)
+                                values: root.history.ram
+                                tip: "Memory: " + used + of
                             }
                             TotalCell {
-                                // A rate has no "of"; the tooltip splits it into read and write
+                                // A rate has no "available": its history scales to its own peak
                                 used: root.formatRate((diskRead.value ?? 0) + (diskWrite.value ?? 0))
+                                of: "/s"
+                                values: root.history.disk
+                                percent: false
                                 tip: "Disk: read " + root.formatRate(diskRead.value ?? 0) + "/s · write "
                                      + root.formatRate(diskWrite.value ?? 0) + "/s"
                             }
                         }
-                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+                        Rule { anchors.bottom: parent.bottom; width: parent.width }
                     }
-
-                    HoverHandler { id: taskHover }
 
                     ListView {
                         id: taskList
-                        x: 1
-                        y: taskTotals.y + taskTotals.height
-                        width: parent.width - 2
-                        height: parent.height - y - 1
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        topMargin: 6
                         clip: true
                         model: taskRows
                         currentIndex: root.taskIndex
@@ -926,48 +966,64 @@ PlasmoidItem {
                         layer.enabled: !atYBeginning || !atYEnd
                         layer.effect: GE.OpacityMask { maskSource: taskFadeMask }
 
-                        Quiet {
+                        Mono {
                             anchors.centerIn: parent
                             visible: taskList.count === 0
+                            color: Theme.textMuted
                             text: apps.available ? "" : "Needs systemd app cgroups"
                         }
                     }
                 }
 
-                // Middle: search + list
+                Rule { vertical: true }
+
+                // Middle: the prompt, the folder path while navigating, and the list
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: Theme.space8
+                    spacing: 0
 
-                    Field {
+                    Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: root.rowHeight
-                        // Neutral focus: the accent is kept for the highlighted row
-                        border.color: root.area === "search" ? Theme.textFaint : Theme.fieldEdge
+                        implicitHeight: 42
+                        color: "transparent"
+                        radius: 3
+                        border.width: 1
+                        border.color: root.area === "search" ? Theme.accent : Theme.border
                         Behavior on border.color {
                             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
 
-                        Kirigami.Icon {
-                            id: searchIcon
-                            x: 10
+                        Mono {
+                            id: caret
+                            x: 14
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 16; height: 16
-                            source: "mingcute-search-fill"
-                            isMask: true
-                            color: Theme.textMuted
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                            color: Theme.accent
+                            text: "›"
                         }
 
                         TextInput {
                             id: search
-                            anchors { left: searchIcon.right; right: parent.right; leftMargin: 8; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                            anchors {
+                                left: caret.right; leftMargin: 10
+                                right: modeTag.visible ? modeTag.left : parent.right; rightMargin: 12
+                                verticalCenter: parent.verticalCenter
+                            }
                             color: Theme.text
                             selectionColor: Theme.accent
                             selectedTextColor: Theme.textOnAccent
-                            font.family: Theme.typeFamilySans
-                            font.pixelSize: Theme.typeSizeBody
+                            font.family: root.mono
+                            font.pixelSize: 14
                             clip: true
+                            // A block at the end of the text, a bar inside it (so it hides no letter)
+                            cursorDelegate: Rectangle {
+                                width: search.cursorPosition < search.text.length ? 2 : 8
+                                height: search.cursorRectangle.height
+                                color: Theme.accent
+                                visible: search.cursorVisible
+                            }
                             property string lastText: ""
                             onTextChanged: {
                                 root.area = "search"
@@ -979,62 +1035,121 @@ PlasmoidItem {
 
                             Text {
                                 anchors.fill: parent
+                                anchors.leftMargin: 12   // after the block cursor
                                 visible: !search.text
                                 verticalAlignment: Text.AlignVCenter
-                                text: "Search apps and files, or / for folders"
+                                text: "search apps and files, or / for folders"
                                 color: Theme.textFaint
                                 font: search.font
                             }
 
                             Keys.onPressed: event => root.handleKey(event)
                         }
+
+                        // The mode, inverted like the terminal launcher's provider chip
+                        Rectangle {
+                            id: modeTag
+                            visible: root.navigating
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            width: modeLabel.implicitWidth + 16
+                            height: 22
+                            radius: 2
+                            color: Theme.accent
+                            Mono {
+                                id: modeLabel
+                                anchors.centerIn: parent
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                color: Theme.textOnAccent
+                                text: "folders"
+                            }
+                        }
                     }
 
-                    Well {
+                    // The folder being listed, one crumb per folder (click one to go there)
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: root.navigating ? 36 : 14
+
+                        Row {
+                            visible: root.navigating
+                            anchors.verticalCenter: parent.verticalCenter
+                            Repeater {
+                                model: root.navCrumbs
+                                Row {
+                                    required property var modelData
+                                    Mono {
+                                        font.pixelSize: 12
+                                        color: crumbHover.hovered ? Theme.accent : Theme.textSoft
+                                        text: modelData.name
+                                        HoverHandler { id: crumbHover; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: search.text = modelData.path }
+                                    }
+                                    Mono {
+                                        visible: modelData.name !== "/"
+                                        font.pixelSize: 12
+                                        color: Theme.textFaint
+                                        text: "/"
+                                    }
+                                }
+                            }
+                        }
+                        Mono {
+                            visible: root.navigating && folder.status === FolderListModel.Ready
+                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                            font.pixelSize: 12
+                            color: Theme.textFaint
+                            text: root.navFilter ? root.navEntries.length + " of " + folder.count + " match “" + root.navFilter + "”"
+                                                 : folder.count + (folder.count === 1 ? " item" : " items")
+                        }
+                    }
+
+                    ListView {
+                        id: list
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
+                        model: root.entries
+                        currentIndex: 0
+                        boundsBehavior: Flickable.StopAtBounds
+                        highlightMoveDuration: 0
+                        keyNavigationEnabled: false
+                        delegate: EntryRow {}
 
-                        ListView {
-                            id: list
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            clip: true
-                            model: root.entries
-                            currentIndex: 0
-                            boundsBehavior: Flickable.StopAtBounds
-                            highlightMoveDuration: 0
-                            keyNavigationEnabled: false
-                            delegate: EntryRow {}
+                        // Scroll hint: rows fade out at an edge with more content past it
+                        layer.enabled: !atYBeginning || !atYEnd
+                        layer.effect: GE.OpacityMask { maskSource: fadeMask }
 
-                            // Scroll hint: rows fade out at an edge with more content past it
-                            layer.enabled: !atYBeginning || !atYEnd
-                            layer.effect: GE.OpacityMask { maskSource: fadeMask }
-
-                            Quiet {
-                                anchors.centerIn: parent
-                                visible: list.count === 0
-                                text: root.navigating ? (folder.status !== FolderListModel.Ready ? ""
-                                                         : root.navFilter ? "No matches" : "Empty folder")
-                                    : root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
-                            }
+                        Mono {
+                            anchors.centerIn: parent
+                            visible: list.count === 0
+                            color: Theme.textMuted
+                            text: root.navigating ? (folder.status !== FolderListModel.Ready ? ""
+                                                     : root.navFilter ? "No matches" : "Empty folder")
+                                : root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
                         }
                     }
                 }
 
-                // Right: power & session as keys, then settings and the user
-                ColumnLayout {
-                    // Fixed width; without the max it inherits fillWidth from its rows
-                    Layout.preferredWidth: root.sideWidth - root.pad
-                    Layout.maximumWidth: root.sideWidth - root.pad
-                    Layout.fillWidth: false
-                    Layout.fillHeight: true
-                    spacing: Theme.space4
+                Rule { vertical: true }
 
+                // Right: power & session, then settings and the user
+                ColumnLayout {
+                    Layout.preferredWidth: root.sideWidth
+                    Layout.maximumWidth: root.sideWidth
+                    Layout.fillHeight: true
+                    spacing: 0
+
+                    MonoCaps {
+                        Layout.preferredHeight: 30
+                        color: root.area === "side" ? Theme.text : Theme.textMuted
+                        text: "Session"
+                    }
                     Repeater {
                         model: root.dividerAfter + 1
                         SideRow { required property int index; actionIndex: index }
                     }
-                    Item { implicitHeight: Theme.space8 }
+                    Item { implicitHeight: 16 }
                     SideRow { actionIndex: root.dividerAfter + 1 }
                     Item { Layout.fillHeight: true }
                     SideRow { actionIndex: root.sideActions.length - 1 }
@@ -1165,29 +1280,83 @@ PlasmoidItem {
 
     // ── Rows ──────────────────────────────────────────────────────────────
 
-    // A row in a sunk list: the keyboard highlight is the one accented thing (amber at
-    // opacity.selection), hover a neutral tint; a row-line under each
+    // Mono text, the launcher's one face (JetBrains Mono, as in the terminal launcher)
+    component Mono: Text {
+        font.family: root.mono
+        font.pixelSize: 13
+        color: Theme.text
+        verticalAlignment: Text.AlignVCenter
+    }
+
+    // A caps label in mono: headings and column names
+    component MonoCaps: Mono {
+        font.pixelSize: 11
+        font.weight: Font.DemiBold
+        font.capitalization: Font.AllUppercase
+        font.letterSpacing: 0.9
+        color: Theme.textMuted
+    }
+
+    // A 1px line: between the three areas (vertical) and inside the task table
+    component Rule: Rectangle {
+        property bool vertical
+        color: Theme.border
+        implicitWidth: 1
+        implicitHeight: 1
+        Layout.fillHeight: vertical
+        Layout.preferredWidth: vertical ? 1 : -1
+    }
+
+    // A row: the keyboard highlight is the one accented thing (amber at opacity.selection),
+    // hover a neutral tint; no line under it
     component RowBackground: Rectangle {
         property bool selected
         property bool hovered
         property color tint: Theme.accent
+        radius: 3
         color: selected ? Qt.rgba(tint.r, tint.g, tint.b, Theme.opacitySelection)
              : hovered ? Theme.hoverTint
              : "transparent"
         Behavior on color {
             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
         }
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.rowLine }
     }
 
-    // A group's name over its rows ("Apps", "Files"): a caps label on the dither
-    component GroupHeader: Item {
-        property alias text: groupLabel.text
-        height: Theme.sizeGroupHeader
-        Dither { anchors.fill: parent }
-        Caps { id: groupLabel; x: 8; height: parent.height }
-        Rectangle { width: parent.width; height: 1; color: Theme.edge; visible: parent.y > 0 }
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+    // The last two minutes of a total: a thin line over a faint fill, newest at the right.
+    // Percentages are drawn 0-100; a rate (disk) against its own peak
+    component History: Canvas {
+        property var values: []
+        property bool percent: true
+        property color tone: Theme.text
+        implicitWidth: root.taskCellWidth - 12
+        implicitHeight: 22
+        onValuesChanged: requestPaint()
+        onToneChanged: requestPaint()
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            const v = values
+            if (!v || v.length < 2) return
+            const max = percent ? 100 : Math.max(1024, ...v) * 1.15
+            const n = root.historyLength
+            const x = i => (n - v.length + i) / (n - 1) * width
+            const y = value => height - 1 - Math.min(value, max) / max * (height - 2)
+            ctx.beginPath()
+            ctx.moveTo(x(0), height)
+            v.forEach((value, i) => ctx.lineTo(x(i), y(value)))
+            ctx.lineTo(x(v.length - 1), height)
+            ctx.closePath()
+            ctx.globalAlpha = 0.12
+            ctx.fillStyle = tone
+            ctx.fill()
+            ctx.globalAlpha = 1
+            ctx.beginPath()
+            v.forEach((value, i) => i ? ctx.lineTo(x(i), y(value)) : ctx.moveTo(x(i), y(value)))
+            ctx.strokeStyle = tone
+            ctx.lineWidth = 1.2
+            ctx.lineJoin = "round"
+            ctx.stroke()
+        }
     }
 
     component EntryRow: Item {
@@ -1195,25 +1364,26 @@ PlasmoidItem {
         required property var modelData
         required property int index
         readonly property bool pinned: root.isPinned(modelData)
-        readonly property bool hasDivider: modelData.above === "divider"
-        readonly property bool hasHeader: modelData.above !== "" && !hasDivider
-        // Space above the row: a 2px divider (pinned / recent) or a group header strip
-        readonly property int aboveHeight: hasDivider ? 2 : hasHeader ? Theme.sizeGroupHeader : 0
+        readonly property bool hasHeader: modelData.above !== ""
+        // A group's heading ("Pinned 6", "Files 3"): a caps label and a faint count, with
+        // space above it when it isn't the first
+        readonly property int aboveHeight: !hasHeader ? 0 : index > 0 ? 44 : 30
 
         width: ListView.view.width
         height: aboveHeight + rowBackground.height
 
-        Rectangle {
-            visible: entryRow.hasDivider
-            width: parent.width
-            height: 2
-            color: Theme.edge
-        }
-
-        GroupHeader {
+        Row {
             visible: entryRow.hasHeader
-            width: parent.width
-            text: entryRow.modelData.above
+            y: entryRow.aboveHeight - 30
+            height: 30
+            spacing: 10
+            MonoCaps { height: parent.height; text: entryRow.modelData.above }
+            Mono {
+                height: parent.height
+                font.pixelSize: 11
+                color: Theme.textFaint
+                text: entryRow.modelData.count ?? ""
+            }
         }
 
         RowBackground {
@@ -1230,27 +1400,23 @@ PlasmoidItem {
                 id: appIcon
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
-                width: 24; height: 24
+                width: 20; height: 20
                 source: entryRow.modelData.icon
             }
 
             Column {
                 anchors { left: appIcon.right; leftMargin: 12; right: pinIcon.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                spacing: 0
-                Text {
+                spacing: 3
+                Mono {
                     width: parent.width
                     elide: Text.ElideRight
-                    font.family: Theme.typeFamilySans
-                    font.pixelSize: Theme.typeSizeBody
-                    color: Theme.text
                     text: entryRow.modelData.name
                 }
-                Text {
+                Mono {
                     visible: text !== ""
                     width: parent.width
                     elide: Text.ElideMiddle  // paths: keep the start and the file's folder
-                    font.family: Theme.typeFamilySans
-                    font.pixelSize: Theme.typeSizeSmall
+                    font.pixelSize: 11
                     color: Theme.textMuted
                     text: entryRow.modelData.subtitle
                 }
@@ -1260,12 +1426,12 @@ PlasmoidItem {
             Kirigami.Icon {
                 id: pinIcon
                 anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                width: 16; height: 16
+                width: 14; height: 14
                 source: "mingcute-pin-fill"
                 isMask: true
                 visible: entryRow.modelData.favoriteId !== ""
                 color: Theme.text
-                opacity: entryRow.pinned || pinMouse.containsMouse ? 0.7 : mouse.containsMouse ? 0.25 : 0
+                opacity: entryRow.pinned || pinMouse.containsMouse ? 0.6 : mouse.containsMouse ? 0.25 : 0
                 Behavior on opacity {
                     NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                 }
@@ -1292,7 +1458,7 @@ PlasmoidItem {
         }
     }
 
-    // A column header, a caps label; the sorted column is drawn in the text color
+    // A column name; the sorted column is drawn in the text color
     component TaskHeader: Item {
         id: header
         required property var modelData
@@ -1301,7 +1467,7 @@ PlasmoidItem {
         Layout.preferredWidth: root.taskCellWidth
         Layout.fillHeight: true
 
-        Caps {
+        MonoCaps {
             anchors.right: parent.right
             height: parent.height
             text: header.modelData.short
@@ -1320,42 +1486,45 @@ PlasmoidItem {
 
     // A right-aligned reading; idle ones (nothing happening) are faint, and when sorting
     // by load the cells other than the row's lead are muted
-    component TaskCell: Num {
+    component TaskCell: Mono {
         property string column
         property string lead
         property real level
         property bool idle
         Layout.preferredWidth: root.taskCellWidth
         horizontalAlignment: Text.AlignRight
-        font.pixelSize: Theme.typeSizeBar
+        font.pixelSize: 12
         color: idle ? Theme.textFaint
              : level >= 70 || lead === "" || lead === column ? root.levelColor(level)
              : Theme.textMuted
     }
 
-    // A total: used on top, what there is below (muted); the tooltip spells it out
+    // A total: used / available on one line (available faint), its history under it
     component TotalCell: Item {
         id: totalCell
         property string used
         property string of
         property real level
         property string tip
+        property var values: []
+        property bool percent: true
         Layout.preferredWidth: root.taskCellWidth
-        Layout.fillHeight: true
+        implicitHeight: totalColumn.implicitHeight
 
         Column {
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            Num {
+            id: totalColumn
+            anchors.right: parent.right
+            spacing: 8
+            Row {
                 anchors.right: parent.right
-                font.pixelSize: Theme.typeSizeBar
-                color: root.levelColor(totalCell.level)
-                text: totalCell.used
+                Mono { font.pixelSize: 12; color: root.levelColor(totalCell.level); text: totalCell.used }
+                Mono { font.pixelSize: 12; color: Theme.textFaint; text: totalCell.of }
             }
-            Num {
+            History {
                 anchors.right: parent.right
-                font.pixelSize: Theme.typeSizeLabel
-                color: Theme.textMuted
-                text: totalCell.of
+                values: totalCell.values
+                percent: totalCell.percent
+                tone: root.levelColor(totalCell.level)
             }
         }
         HoverHandler { id: totalHover }
@@ -1384,7 +1553,6 @@ PlasmoidItem {
         height: root.taskRowHeight
 
         RowBackground {
-            id: taskBackground
             width: parent.width
             height: root.taskRowHeight
             hovered: taskRow.hovered
@@ -1395,20 +1563,18 @@ PlasmoidItem {
                 id: taskIcon
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
-                width: 24; height: 24
+                width: 20; height: 20
                 source: taskRow.icon || "application-x-executable"
             }
 
             // Background apps (no window) in the muted color
-            Text {
+            Mono {
                 anchors {
-                    left: taskIcon.right; leftMargin: 8
+                    left: taskIcon.right; leftMargin: 12
                     right: cells.left; rightMargin: taskRow.hovered ? 28 : 4
                     verticalCenter: parent.verticalCenter
                 }
                 elide: Text.ElideRight
-                font.family: Theme.typeFamilySans
-                font.pixelSize: Theme.typeSizeBody
                 color: taskRow.ending ? Theme.critical
                      : taskRow.windowRow >= 0 ? Theme.text : Theme.textMuted
                 text: taskRow.ending ? "Again to force quit" : taskRow.name
@@ -1418,7 +1584,7 @@ PlasmoidItem {
             Kirigami.Icon {
                 id: endIcon
                 anchors { right: cells.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                width: 16; height: 16
+                width: 14; height: 14
                 source: "mingcute-close-fill"
                 isMask: true
                 color: endMouse.containsMouse ? Theme.critical : Theme.text
@@ -1429,8 +1595,8 @@ PlasmoidItem {
             }
 
             RowLayout {
-                spacing: 0
                 id: cells
+                spacing: 0
                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 TaskCell { column: "cpu"; lead: taskRow.lead; text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
                 TaskCell { column: "gpu"; lead: taskRow.lead; text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
@@ -1456,30 +1622,28 @@ PlasmoidItem {
         }
     }
 
-    // Power and session as keys; the keyboard's place is highlighted, and a key that asks to be
-    // pressed again turns critical
-    component SideRow: Key {
+    // Power and session as rows with their icons; the keyboard's place is highlighted,
+    // and a row that asks to be pressed again turns critical
+    component SideRow: RowBackground {
         id: sideRow
         property int actionIndex
-        readonly property var sideAction: root.sideActions[actionIndex]  // Button's own action is FINAL
+        readonly property var sideAction: root.sideActions[actionIndex]
         readonly property bool confirming: root.confirmIndex === actionIndex
 
         Layout.fillWidth: true
-        implicitHeight: sideAction.user ? 40 : Theme.sizeKey
-        flat: !!sideAction.user
-        focusPolicy: Qt.NoFocus
-        leftPadding: 8
-        highlighted: (root.area === "side" && root.sideIndex === actionIndex) || confirming
-        tone: confirming ? Theme.critical : Theme.accent
-        onClicked: root.runSide(sideRow.actionIndex)
+        implicitHeight: sideAction.user ? 40 : root.rowHeight
+        selected: (root.area === "side" && root.sideIndex === actionIndex) || confirming
+        hovered: sideMouse.containsMouse
+        tint: confirming ? Theme.critical : Theme.accent
 
-        contentItem: RowLayout {
-            spacing: Theme.space8
+        RowLayout {
+            anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+            spacing: 12
 
             KirigamiComponents.Avatar {
                 visible: !!sideRow.sideAction.user
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
                 name: sideRow.sideAction.label
                 source: user.faceIconUrl
                 cache: false
@@ -1492,24 +1656,18 @@ PlasmoidItem {
                 isMask: true
                 color: sideRow.confirming ? Theme.critical : Theme.text
             }
-            // Session actions are caps like any key; the user's name stays as written
-            Caps {
-                visible: !sideRow.sideAction.user
+            Mono {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                size: Theme.typeSizeSmall
-                color: sideRow.confirming ? Theme.critical : Theme.text
+                color: sideRow.confirming ? Theme.critical : sideRow.sideAction.user ? Theme.textMuted : Theme.text
                 text: sideRow.confirming ? sideRow.sideAction.confirm : sideRow.sideAction.label
             }
-            Text {
-                visible: !!sideRow.sideAction.user
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-                font.family: Theme.typeFamilySans
-                font.pixelSize: Theme.typeSizeBody
-                color: Theme.text
-                text: sideRow.sideAction.label
-            }
+        }
+        MouseArea {
+            id: sideMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: root.runSide(sideRow.actionIndex)
         }
     }
 }

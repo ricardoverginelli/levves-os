@@ -14,10 +14,10 @@ if [ "$(kreadconfig6 --group KDE --key LookAndFeelPackage)" != org.kde.breezedar
 fi
 
 # Levves type (design/DESIGN.md): Source Sans 3 for the UI, Source Serif 4 for window titles,
-# JetBrains Mono for code. Fedora packages the first two under their old "Pro" names
-for family in "Source Sans 3" "Source Serif 4"; do
+# JetBrains Mono for code and the launcher. Fedora packages the first two under their old "Pro" names
+for family in "Source Sans 3" "Source Serif 4" "JetBrains Mono"; do
     if ! fc-list -q "$family"; then
-        echo "Missing the font $family: sudo dnf install -y adobe-source-sans-pro-fonts adobe-source-serif-pro-fonts"
+        echo "Missing the font $family: sudo dnf install -y adobe-source-sans-pro-fonts adobe-source-serif-pro-fonts jetbrains-mono-fonts"
     fi
 done
 font() { echo "$1,$2,-1,5,${3:-400},0,0,0,0,0,0,0,0,0,0,1"; }
