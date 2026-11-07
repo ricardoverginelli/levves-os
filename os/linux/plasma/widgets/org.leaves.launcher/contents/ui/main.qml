@@ -852,6 +852,19 @@ PlasmoidItem {
             width: launcher.width - launcher.leftPadding - launcher.rightPadding
             height: launcher.height - launcher.topPadding - launcher.bottomPadding
 
+            // The terminal launcher's background (bg) over the whole window, frame padding
+            // included: PlasmaCore.Window can't drop the Plasma style's frame (surface)
+            Rectangle {
+                x: -launcher.leftPadding
+                y: -launcher.topPadding
+                width: launcher.width
+                height: launcher.height
+                radius: 12   // the popups' corners (Plasma style)
+                color: Theme.bg
+                border.width: 1
+                border.color: Theme.border
+            }
+
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 16
