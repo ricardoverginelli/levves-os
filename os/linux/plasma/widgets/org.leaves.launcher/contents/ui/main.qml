@@ -3,14 +3,13 @@
 // launcher (agents/launcher): flat, all mono, lines only between the areas and in
 // the task table.
 //
-//   TASKS · BY LOAD  CPU GPU VRAM RAM DISK │ › search ───────────── │ SESSION
-//   ───────────────────────────────────────│                        │ Lock
-//   SYSTEM  used / available, and the last │ PINNED 6               │ Power Off
-//           two minutes under each         │ pinned apps (pin icon) │ Restart
-//   ───────────────────────────────────────│                        │ Sleep
-//   every running app, one flat list,      │ RECENT 12              │ Log Out
-//   highest load first (no window: muted)  │ recent apps, or search │
-//                                          │ results, or a folder   │ System Settings
+//   TASKS · BY LOAD  CPU GPU VRAM RAM DISK │ › search ───────────── │ Lock
+//   ───────────────────────────────────────│ pinned apps (pin icon) │ Power Off
+//   SYSTEM  used / available, and the last │ then recent apps, one  │ Restart
+//           two minutes under each         │ list; or search        │ Sleep
+//   ───────────────────────────────────────│ results grouped (APPS, │ Log Out
+//   every running app, one flat list,      │ FILES…), or a folder   │
+//   highest load first (no window: muted)  │ (FOLDERS, FILES)       │ System Settings
 //                                          │                        │ (user)
 //
 // Keys: focus stays in the search field; arrows move a highlight between
@@ -69,6 +68,8 @@ PlasmoidItem {
     function columnWidth(key) { return key === "gpu" ? 124 : taskCellWidth }
     readonly property int columnGap: 24       // each side of the rules between the areas
     readonly property string mono: Theme.typeFamilyMono
+    readonly property int iconX: 14                       // a row's icon
+    readonly property int nameX: iconX + 20 + 12          // a row's name, and the prompt's text
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
     readonly property string pinsClient: "org.leaves.launcher.favorites"
@@ -252,14 +253,11 @@ PlasmoidItem {
             const r = pinRows.objectAt(i)
             if (r) add(r, pins, i)
         }
-        const pinCount = out.length
         for (let i = 0; i < recentRows.count; i++) {
             const r = recentRows.objectAt(i)
             if (r && !pinned.has(r.favoriteId) && !pinned.has(r.name) && !isHidden(r.favoriteId)) add(r, recents, i)
         }
-        if (pinCount > 0) out[0].above = "Pinned"
-        if (out.length > pinCount) out[pinCount].above = "Recent"
-        homeEntries = countGroups(out)
+        homeEntries = out   // one list: pinned apps first (they show their pin), then recent
         pinsVersion++
 
         // Keep the highlight on the app that was just pinned, unpinned or moved
@@ -1003,7 +1001,7 @@ PlasmoidItem {
 
                         Mono {
                             id: caret
-                            x: 14
+                            x: root.iconX + 10 - width / 2   // centered over the icons below
                             anchors.verticalCenter: parent.verticalCenter
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -1014,7 +1012,7 @@ PlasmoidItem {
                         TextInput {
                             id: search
                             anchors {
-                                left: caret.right; leftMargin: 10
+                                left: parent.left; leftMargin: root.nameX
                                 right: modeTag.visible ? modeTag.left : parent.right; rightMargin: 12
                                 verticalCenter: parent.verticalCenter
                             }
@@ -1076,10 +1074,11 @@ PlasmoidItem {
                     // The folder being listed, one crumb per folder (click one to go there)
                     Item {
                         Layout.fillWidth: true
-                        implicitHeight: root.navigating ? 36 : 14
+                        implicitHeight: root.navigating ? 36 : 10
 
                         Row {
                             visible: root.navigating
+                            x: root.nameX
                             anchors.verticalCenter: parent.verticalCenter
                             Repeater {
                                 model: root.navCrumbs
@@ -1103,7 +1102,7 @@ PlasmoidItem {
                         }
                         Mono {
                             visible: root.navigating && folder.status === FolderListModel.Ready
-                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                             font.pixelSize: 12
                             color: Theme.textFaint
                             text: root.navFilter ? root.navEntries.length + " of " + folder.count + " match “" + root.navFilter + "”"
@@ -1147,11 +1146,7 @@ PlasmoidItem {
                     Layout.fillHeight: true
                     spacing: 0
 
-                    MonoCaps {
-                        Layout.preferredHeight: 30
-                        color: root.area === "side" ? Theme.text : Theme.textMuted
-                        text: "Session"
-                    }
+                    Item { implicitHeight: 6 }   // first row's middle level with the prompt's
                     Repeater {
                         model: root.dividerAfter + 1
                         SideRow { required property int index; actionIndex: index }
@@ -1374,15 +1369,16 @@ PlasmoidItem {
         readonly property bool hasHeader: modelData.above !== ""
         // A group's heading ("Pinned 6", "Files 3"): a caps label and a faint count, with
         // space above it when it isn't the first
-        readonly property int aboveHeight: !hasHeader ? 0 : index > 0 ? 44 : 30
+        readonly property int aboveHeight: !hasHeader ? 0 : index > 0 ? 38 : 28
 
         width: ListView.view.width
         height: aboveHeight + rowBackground.height
 
         Row {
             visible: entryRow.hasHeader
-            y: entryRow.aboveHeight - 30
-            height: 30
+            x: root.nameX
+            y: entryRow.aboveHeight - 28
+            height: 28
             spacing: 10
             MonoCaps { height: parent.height; text: entryRow.modelData.above }
             Mono {
@@ -1405,14 +1401,14 @@ PlasmoidItem {
 
             Kirigami.Icon {
                 id: appIcon
-                x: 8
+                x: root.iconX
                 anchors.verticalCenter: parent.verticalCenter
                 width: 20; height: 20
                 source: entryRow.modelData.icon
             }
 
             Column {
-                anchors { left: appIcon.right; leftMargin: 12; right: pinIcon.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                anchors { left: parent.left; leftMargin: root.nameX; right: pinIcon.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 spacing: 3
                 Mono {
                     width: parent.width
@@ -1432,7 +1428,7 @@ PlasmoidItem {
             // Pin indicator at the end: always shown when pinned, faint on hover otherwise
             Kirigami.Icon {
                 id: pinIcon
-                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 width: 14; height: 14
                 source: "mingcute-pin-fill"
                 isMask: true
@@ -1645,7 +1641,7 @@ PlasmoidItem {
         tint: confirming ? Theme.critical : Theme.accent
 
         RowLayout {
-            anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+            anchors { fill: parent; leftMargin: root.iconX; rightMargin: 8 }
             spacing: 12
 
             KirigamiComponents.Avatar {
