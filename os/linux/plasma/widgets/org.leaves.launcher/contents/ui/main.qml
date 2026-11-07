@@ -759,9 +759,8 @@ PlasmoidItem {
                                 tip: "Memory: " + used + " of " + root.formatMemory((ramTotal.value ?? 0) / 1024)
                             }
                             TotalCell {
-                                // A rate has no "of": the second line splits it, read and write
+                                // A rate has no "of"; the tooltip splits it into read and write
                                 used: root.formatRate((diskRead.value ?? 0) + (diskWrite.value ?? 0))
-                                of: "R" + root.formatRate(diskRead.value ?? 0) + " W" + root.formatRate(diskWrite.value ?? 0)
                                 tip: "Disk: read " + root.formatRate(diskRead.value ?? 0) + "/s · write "
                                      + root.formatRate(diskWrite.value ?? 0) + "/s"
                             }
