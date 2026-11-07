@@ -67,7 +67,7 @@ PlasmoidItem {
     readonly property int taskCellWidth: 96   // room for "used / available" on one line
     // GPU's total names both cards ("N 88% · I 0%"), so its column is wider
     function columnWidth(key) { return key === "gpu" ? 124 : taskCellWidth }
-    readonly property int columnGap: 40       // each side of the rules between the areas
+    readonly property int columnGap: 24       // each side of the rules between the areas
     readonly property string mono: Theme.typeFamilyMono
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
@@ -839,8 +839,8 @@ PlasmoidItem {
         id: launcher
         visible: false
         // Layer surfaces need a real size up front (0 is a protocol error).
-        // Tasks (750), search (~540), session (210), with 40px gaps around the rules
-        width: 1694
+        // Tasks (750), search (~540), session (210), with 24px gaps around the rules
+        width: 1630
         height: 660
         LayerShell.Window.scope: "leaves-launcher"
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone
