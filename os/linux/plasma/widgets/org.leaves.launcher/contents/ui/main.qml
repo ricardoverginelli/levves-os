@@ -2,12 +2,12 @@
 // centered on the active screen (layer shell, no anchors).
 //
 //   ┌ Tasks CPU GPU VRAM RAM Disk ┬ search ─────────────────┬ Lock ──────────┐
-//   │ apps with a window      │ pinned apps (pin at end)│ Power Off      │
-//   │ Background              │ ───                     │ Restart        │
-//   │ tray apps, helpers      │ recent apps, newest     │ Sleep          │
-//   │                         │ first — or search       │ Log Out        │
-//   │                         │ results while typing,   │ ───            │
-//   │                         │ grouped (Apps, Files…)  │ System Settings│
+//   │ System totals, used / of│ pinned apps (pin at end)│ Power Off      │
+//   │ ───                     │ ───                     │ Restart        │
+//   │ every running app, one  │ recent apps, newest     │ Sleep          │
+//   │ flat list, highest load │ first — or search       │ Log Out        │
+//   │ first (no window: muted │ results while typing,   │ ───            │
+//   │ name)                   │ grouped (Apps, Files…)  │ System Settings│
 //   │                         │                         │ (user)         │
 //   └─────────────────────────┴─────────────────────────┴────────────────┘
 //
@@ -21,7 +21,8 @@
 // (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
 // Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
 // closes the app's windows (SIGTERM if it has none), and doing it again within
-// 5s force-quits it. Click a column header to sort by it (again for by name).
+// 5s force-quits it. Rows are sorted by load; click a column header to sort by
+// it (again for load), or "Tasks" for by name.
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects as GE
@@ -36,6 +37,7 @@ import org.kde.kcmutils as KCMUtils
 import org.kde.plasma.private.kicker as Kicker
 import org.kde.plasma.private.sessions as Sessions
 import org.kde.ksysguard.process as Process
+import org.kde.ksysguard.sensors as Sensors
 import org.kde.taskmanager as TaskManager
 import Levves
 import "../../../../../leaves"
@@ -334,7 +336,7 @@ PlasmoidItem {
     })
     Process.ProcessController { id: processes }
 
-    // Open windows: an app with one is listed first, the rest under "Background"
+    // Open windows: Enter switches to one, and apps without one get a muted name
     TaskManager.TasksModel {
         id: windows
         groupMode: TaskManager.TasksModel.GroupDisabled
@@ -366,8 +368,33 @@ PlasmoidItem {
         { key: "ram",  short: "RAM",  label: "Memory" },
         { key: "disk", short: "Disk", label: "Disk read + write" },
     ]
-    property string sortKey: "name"   // "name" or a column key (highest first)
-    onSortKeyChanged: rebuildTasks()
+    // "load" (default), "name", or a column key (highest first). Load is an app's
+    // largest share of the machine: CPU or GPU %, VRAM or RAM as % of the total, or
+    // disk against diskCeiling. Its column (the lead) is the row's one bright cell.
+    property string sortKey: "load"
+    onSortKeyChanged: { sortNow = true; rebuildTasks() }
+    readonly property real diskCeiling: 100 * 1024 * 1024   // 100 MiB/s counts as 100%
+    // Load is smoothed over a few samples (per row key) so the order settles
+    property var taskLoads: ({})
+    // While the pointer or the keyboard is in the list the rows keep their order
+    // (new apps go to the end); it re-sorts on the next sample after that
+    readonly property bool tasksFrozen: area === "tasks" || taskHover.hovered
+    property bool sortNow: false
+
+    // The machine's totals, shown under the column headers. From the system sensors,
+    // not the rows' sum: the kernel, KWin and anything outside an app cgroup count too.
+    // gpu0 is the NVIDIA card, gpu1 Intel's (its memory is RAM, so VRAM is NVIDIA's).
+    component Total: Sensors.Sensor { updateRateLimit: 2000; enabled: launcher.visible }
+    Total { id: cpuTotal;     sensorId: "cpu/all/usage" }
+    Total { id: cpuThreads;   sensorId: "cpu/all/coreCount" }
+    Total { id: nvidiaTotal;  sensorId: "gpu/gpu0/usage" }
+    Total { id: intelTotal;   sensorId: "gpu/gpu1/usage" }
+    Total { id: vramUsed;     sensorId: "gpu/gpu0/usedVram" }
+    Total { id: vramTotal;    sensorId: "gpu/gpu0/totalVram" }
+    Total { id: ramUsed;      sensorId: "memory/physical/used" }
+    Total { id: ramTotal;     sensorId: "memory/physical/total" }
+    Total { id: diskRead;     sensorId: "disk/all/read" }
+    Total { id: diskWrite;    sensorId: "disk/all/write" }
     property int taskIndex: 0
     // Pids and window rows per row key, kept out of the ListModel (it would turn arrays into models)
     property var taskPids: ({})
@@ -445,13 +472,33 @@ PlasmoidItem {
         }
         list = list.filter(t => !t.merged)
 
+        // Load and its lead column, smoothed per key
+        const loads = {}
+        for (const t of list) {
+            t.vramPercent = vramMax ? t.vram / vramMax * 100 : 0
+            t.ramPercent = ramMax ? t.ram / ramMax * 100 : 0
+            const shares = { cpu: t.cpu, gpu: t.gpu, vram: t.vramPercent, ram: t.ramPercent,
+                             disk: t.disk / diskCeiling * 100 }
+            t.lead = Object.keys(shares).reduce((a, b) => shares[b] > shares[a] ? b : a)
+            const previous = taskLoads[t.key]
+            t.load = previous === undefined ? shares[t.lead] : previous * 0.6 + shares[t.lead] * 0.4
+            loads[t.key] = t.load
+        }
+        taskLoads = loads
+
+        // One flat list; apps without a window have their name muted
         const byName = (a, b) => a.name.localeCompare(b.name)
         const order = sortKey === "name" ? byName : (a, b) => (b[sortKey] - a[sortKey]) || byName(a, b)
-        const background = list.filter(t => t.windowRow < 0 && !t.service).sort(order)
-        const services = list.filter(t => t.windowRow < 0 && t.service).sort(order)
-        const rows = list.filter(t => t.windowRow >= 0).sort(order).concat(background, services)
-        if (background.length) background[0].above = "Background"
-        if (services.length) services[0].above = "Services"
+        let rows
+        if (tasksFrozen && !sortNow && taskRows.count) {
+            const was = {}
+            for (let i = 0; i < taskRows.count; i++) was[taskRows.get(i).key] = i
+            const known = list.filter(t => t.key in was).sort((a, b) => was[a.key] - was[b.key])
+            rows = known.concat(list.filter(t => !(t.key in was)).sort(order))
+        } else {
+            rows = list.sort(order)
+        }
+        sortNow = false
 
         const current = taskIndex < taskRows.count ? taskRows.get(taskIndex) : null
         const currentKey = current ? current.key : ""
@@ -462,23 +509,19 @@ PlasmoidItem {
             pids[t.key] = t.pids
             windowRows[t.key] = allWindows.filter(w => (t.menuId && w.appId === t.menuId) || t.pids.includes(w.pid))
                                           .map(w => w.row)
+            // The lead is only drawn when sorting by load and something is happening
             const row = { key: t.key, name: t.name, icon: t.icon, cpu: t.cpu, gpu: t.gpu,
-                          vram: t.vram, vramPercent: vramMax ? t.vram / vramMax * 100 : 0, ram: t.ram,
-                          ramPercent: ramMax ? t.ram / ramMax * 100 : 0, disk: t.disk,
-                          windowRow: t.windowRow, above: t.above ?? "" }
+                          vram: t.vram, vramPercent: t.vramPercent, ram: t.ram,
+                          ramPercent: t.ramPercent, disk: t.disk, windowRow: t.windowRow,
+                          lead: sortKey === "load" && t.load >= 1 ? t.lead : "" }
             if (sameRows) taskRows.set(i, row)
             else taskRows.append(row)
         })
         taskPids = pids
         taskWindows = windowRows
-        // Keep the highlight on the same app as rows come, go and re-sort, except
-        // when its last window closes: it stays among the windowed apps, on the
-        // one that took its place (or the one above, if it was the last)
+        // Keep the highlight on the same app as rows come, go and re-sort
         const i = rows.findIndex(t => t.key === currentKey)
-        const windowed = rows.length - background.length - services.length
-        const leftForBackground = i >= windowed && current.windowRow >= 0 && windowed > 0
-        taskIndex = i >= 0 && !leftForBackground ? i
-                  : Math.max(0, Math.min(taskIndex, (leftForBackground ? windowed : rows.length) - 1))
+        taskIndex = i >= 0 ? i : Math.max(0, Math.min(taskIndex, rows.length - 1))
     }
 
     function switchToTask(index) {
@@ -653,13 +696,18 @@ PlasmoidItem {
                         height: Theme.sizeGroupHeader
 
                         Dither { anchors.fill: parent }
+                        // "Tasks" sorts by name, and again back to load
                         Caps {
                             x: 8
                             height: parent.height
-                            text: "Tasks"
-                            color: root.sortKey === "name" ? Theme.text : Theme.textMuted
-                            TapHandler { onTapped: root.sortKey = "name" }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            text: root.sortKey === "load" ? "Tasks · by load" : "Tasks"
+                            color: root.sortKey === "name" || tasksTitleHover.hovered ? Theme.text : Theme.textMuted
+                            TapHandler { onTapped: root.sortKey = root.sortKey === "name" ? "load" : "name" }
+                            HoverHandler { id: tasksTitleHover; cursorShape: Qt.PointingHandCursor }
+                            PlasmaComponents.ToolTip {
+                                text: "Load: each app's largest share of CPU, GPU, memory or disk"
+                                visible: tasksTitleHover.hovered && root.sortKey === "load"
+                            }
                         }
                         RowLayout {
                             spacing: 0
@@ -673,10 +721,60 @@ PlasmoidItem {
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
                     }
 
+                    // The machine's totals: used over available, per column
+                    Item {
+                        id: taskTotals
+                        x: 1
+                        y: taskHeader.y + taskHeader.height
+                        width: parent.width - 2
+                        height: 40
+
+                        Caps { x: 8; height: parent.height; text: "System" }
+                        RowLayout {
+                            spacing: 0
+                            height: parent.height
+                            anchors { right: parent.right; rightMargin: 8 }
+                            TotalCell {
+                                used: Math.round(cpuTotal.value ?? 0) + "%"
+                                of: (cpuThreads.value ?? "") + " thr"
+                                level: cpuTotal.value ?? 0
+                                tip: "CPU: " + used + " of " + (cpuThreads.value ?? "?") + " threads"
+                            }
+                            TotalCell {
+                                used: "N " + Math.round(nvidiaTotal.value ?? 0) + "%"
+                                of: "I " + Math.round(intelTotal.value ?? 0) + "%"
+                                level: Math.max(nvidiaTotal.value ?? 0, intelTotal.value ?? 0)
+                                tip: "NVIDIA " + Math.round(nvidiaTotal.value ?? 0) + "% · Intel " + Math.round(intelTotal.value ?? 0) + "%"
+                            }
+                            TotalCell {
+                                used: root.formatMemory((vramUsed.value ?? 0) / 1024)
+                                of: "/ " + root.formatMemory((vramTotal.value ?? 0) / 1024)
+                                level: vramTotal.value ? vramUsed.value / vramTotal.value * 100 : 0
+                                tip: "NVIDIA video memory: " + used + " of " + root.formatMemory((vramTotal.value ?? 0) / 1024)
+                            }
+                            TotalCell {
+                                used: root.formatMemory((ramUsed.value ?? 0) / 1024)
+                                of: "/ " + root.formatMemory((ramTotal.value ?? 0) / 1024)
+                                level: ramTotal.value ? ramUsed.value / ramTotal.value * 100 : 0
+                                tip: "Memory: " + used + " of " + root.formatMemory((ramTotal.value ?? 0) / 1024)
+                            }
+                            TotalCell {
+                                // A rate has no "of": the second line splits it, read and write
+                                used: root.formatRate((diskRead.value ?? 0) + (diskWrite.value ?? 0))
+                                of: "R" + root.formatRate(diskRead.value ?? 0) + " W" + root.formatRate(diskWrite.value ?? 0)
+                                tip: "Disk: read " + root.formatRate(diskRead.value ?? 0) + "/s · write "
+                                     + root.formatRate(diskWrite.value ?? 0) + "/s"
+                            }
+                        }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+                    }
+
+                    HoverHandler { id: taskHover }
+
                     ListView {
                         id: taskList
                         x: 1
-                        y: taskHeader.y + taskHeader.height
+                        y: taskTotals.y + taskTotals.height
                         width: parent.width - 2
                         height: parent.height - y - 1
                         clip: true
@@ -927,7 +1025,7 @@ PlasmoidItem {
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.rowLine }
     }
 
-    // A group's name over its rows ("Apps", "Background"): a caps label on the dither
+    // A group's name over its rows ("Apps", "Files"): a caps label on the dither
     component GroupHeader: Item {
         property alias text: groupLabel.text
         height: Theme.sizeGroupHeader
@@ -1057,21 +1155,55 @@ PlasmoidItem {
             }
         }
         HoverHandler { id: headerHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: root.sortKey = header.active ? "name" : header.modelData.key }
+        TapHandler { onTapped: root.sortKey = header.active ? "load" : header.modelData.key }
         PlasmaComponents.ToolTip {
             text: header.modelData.label
             visible: headerHover.hovered
         }
     }
 
-    // A right-aligned reading; idle ones (nothing happening) are muted
+    // A right-aligned reading; idle ones (nothing happening) are faint, and when sorting
+    // by load the cells other than the row's lead are muted
     component TaskCell: Num {
+        property string column
+        property string lead
         property real level
         property bool idle
         Layout.preferredWidth: root.taskCellWidth
         horizontalAlignment: Text.AlignRight
         font.pixelSize: Theme.typeSizeBar
-        color: idle ? Theme.textFaint : root.levelColor(level)
+        color: idle ? Theme.textFaint
+             : level >= 70 || lead === "" || lead === column ? root.levelColor(level)
+             : Theme.textMuted
+    }
+
+    // A total: used on top, what there is below (muted); the tooltip spells it out
+    component TotalCell: Item {
+        id: totalCell
+        property string used
+        property string of
+        property real level
+        property string tip
+        Layout.preferredWidth: root.taskCellWidth
+        Layout.fillHeight: true
+
+        Column {
+            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            Num {
+                anchors.right: parent.right
+                font.pixelSize: Theme.typeSizeBar
+                color: root.levelColor(totalCell.level)
+                text: totalCell.used
+            }
+            Num {
+                anchors.right: parent.right
+                font.pixelSize: Theme.typeSizeLabel
+                color: Theme.textMuted
+                text: totalCell.of
+            }
+        }
+        HoverHandler { id: totalHover }
+        PlasmaComponents.ToolTip { text: totalCell.tip; visible: totalHover.hovered }
     }
 
     component TaskRow: Item {
@@ -1088,23 +1220,15 @@ PlasmoidItem {
         required property real ramPercent
         required property real disk
         required property int windowRow
-        required property string above
+        required property string lead
         readonly property bool ending: root.endingKey === key
         readonly property bool hovered: taskMouse.containsMouse || endMouse.containsMouse
-        readonly property int aboveHeight: above !== "" ? Theme.sizeGroupHeader : 0
 
         width: ListView.view.width
-        height: aboveHeight + root.taskRowHeight
-
-        GroupHeader {
-            visible: taskRow.above !== ""
-            width: parent.width
-            text: taskRow.above
-        }
+        height: root.taskRowHeight
 
         RowBackground {
             id: taskBackground
-            y: taskRow.aboveHeight
             width: parent.width
             height: root.taskRowHeight
             hovered: taskRow.hovered
@@ -1152,11 +1276,11 @@ PlasmoidItem {
                 spacing: 0
                 id: cells
                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                TaskCell { text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
-                TaskCell { text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
-                TaskCell { text: root.formatMemory(taskRow.vram); level: taskRow.vramPercent; idle: taskRow.vram < 512 }
-                TaskCell { text: root.formatMemory(taskRow.ram); level: taskRow.ramPercent }
-                TaskCell { text: root.formatRate(taskRow.disk); idle: taskRow.disk < 512 }
+                TaskCell { column: "cpu"; lead: taskRow.lead; text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
+                TaskCell { column: "gpu"; lead: taskRow.lead; text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
+                TaskCell { column: "vram"; lead: taskRow.lead; text: root.formatMemory(taskRow.vram); level: taskRow.vramPercent; idle: taskRow.vram < 512 }
+                TaskCell { column: "ram"; lead: taskRow.lead; text: root.formatMemory(taskRow.ram); level: taskRow.ramPercent }
+                TaskCell { column: "disk"; lead: taskRow.lead; text: root.formatRate(taskRow.disk); idle: taskRow.disk < 512 }
             }
 
             MouseArea {
