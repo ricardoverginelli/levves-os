@@ -1,6 +1,8 @@
 #!/usr/bin/bash
 # What a new Yakuake tab runs (its Konsole profile's command, set by
-# plasma/yakuake/build.py): Claude Code in ~/system, a plain shell when the
+# plasma/yakuake/build.py): the terminal launcher (agents/launcher: a prompt,
+# the provider and folder, every session; it becomes what it starts), or Claude
+# Code in ~/system where the launcher isn't installed; a plain shell when the
 # tab was opened with --shell (Meta+Shift+N), or the given command with
 # --run COMMAND (e.g. yakuake-business-tab, machine-only).
 # Yakuake can't pick a profile per tab, so --shell and --run leave the command
@@ -24,4 +26,6 @@ if [ -n "$(find "$flag" -newermt '-10 seconds' 2>/dev/null)" ]; then
 fi
 rm -f "$flag"
 [ -n "${next:-}" ] && exec bash -c "$next"
+launcher=$HOME/.local/bin/levves-launcher
+[ -x "$launcher" ] && exec "$launcher"
 cd ~/system && exec claude
