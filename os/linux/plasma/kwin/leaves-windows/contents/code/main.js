@@ -59,6 +59,8 @@
 // place it left, and the main window it pushed out of a column gets that
 // column back. Meta+Down on main keeps it there. Meanwhile its old column goes
 // to the most recent window behind, which steps back when it returns.
+// Moves KWin makes itself don't count: placing a window that just opened, or
+// putting windows back on a monitor that was just plugged in.
 //
 //   ┌─────────┬─────────┬─────────┐
 //   │ 3rd     │ 1st     │ 2nd     │  columns: the 3 most recent windows
@@ -98,6 +100,7 @@ const WIDEN_SLACK = 2;       // px: tile widths round, so don't chase single pix
 const growth = {};
 const ARM_MS = 1500;         // Meta+M to Meta+1/2/3, renewed by each layout picked
 const EARLY_MS = 400;        // a digit landing just before the M (all three pressed together)
+const SETTLE_MS = 2000;      // KWin's own moves: a window just opened, a monitor just plugged in
 
 // ── Windows ───────────────────────────────────────────────────────────────
 
@@ -911,6 +914,16 @@ const borrowed = {};
 const outputOf = {};
 // key → {output (name), geometry}: where it last sat still, off the main monitor
 const placeOf = {};
+// key → when it opened; when the monitors last changed. Moves onto main in the
+// next SETTLE_MS are KWin's (placing a new window, restoring windows to a
+// monitor that came back), not borrowing
+const addedAt = {};
+let screensAt = 0;
+
+function settling(k) {
+    const now = Date.now();
+    return now - screensAt < SETTLE_MS || now - (addedAt[k] || 0) < SETTLE_MS;
+}
 
 function notePlace(w) {
     if (w.move || w.deleted || !w.output || w.output == mainOutput())
@@ -956,11 +969,12 @@ function outputMoved(w) {
         return;
     }
     if (sending || !was || was == w.output.name || w.output != main || workspace.screens.length < 2
-        || !isTileable(w))
+        || !isTileable(w) || settling(k))
         return;
     const s = slots[was], place = placeOf[k];
     borrowed[k] = {window: w, from: was, column: s ? s.indexOf(w) : -1, floated: !!floating[k],
-                   geometry: place && place.output == was ? place.geometry : null, displaced: null};
+                   geometry: place && place.output == was ? place.geometry : null, displaced: null,
+                   at: Date.now()};
 }
 
 // Back to the column (or place) it left; that column's stand-in goes behind
@@ -1139,6 +1153,7 @@ function watch(w) {
 workspace.windowList().forEach(watch);
 
 workspace.windowAdded.connect(w => {
+    addedAt[key(w)] = Date.now();
     watch(w);
     if (isTileable(w)) {
         // Opened during a game: straight to the other monitor
@@ -1161,6 +1176,7 @@ workspace.windowRemoved.connect(w => {
     delete borrowed[key(w)];
     delete outputOf[key(w)];
     delete placeOf[key(w)];
+    delete addedAt[key(w)];
     schedule();
 });
 
@@ -1189,6 +1205,12 @@ function watchTiles(output) {
 
 workspace.screens.forEach(watchTiles);
 workspace.screensChanged.connect(() => {
+    // KWin may move windows back just before telling us: those weren't borrowed either
+    screensAt = Date.now();
+    Object.keys(borrowed).forEach(k => {
+        if (screensAt - borrowed[k].at < SETTLE_MS)
+            delete borrowed[k];
+    });
     workspace.screens.forEach(watchTiles);
     registerStripShortcuts();
     schedule();
