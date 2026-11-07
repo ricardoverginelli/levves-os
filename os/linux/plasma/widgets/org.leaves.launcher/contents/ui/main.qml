@@ -17,6 +17,10 @@
 // start), Left/Right from a side area = back, Tab/Shift+Tab = next/previous
 // area, Enter = run, Esc = close. Power Off, Restart and Log Out ask for a
 // second Enter/click.
+// Folders: "/" in the empty field lists the home folder ("~/"); the text after
+// the last "/" filters it. Enter opens a folder (or a file, in its app), Backspace
+// past a "/" goes up, Shift+Enter shows the highlighted folder (or the one being
+// listed) in Dolphin. Folders pin like apps; Enter on a pinned one lists it.
 // Pins: Alt+Right pins, Alt+Left unpins, Alt+Up/Down reorders pinned apps
 // (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
 // Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
@@ -25,6 +29,8 @@
 // it (again for load), or "Tasks" for by name.
 import QtQuick
 import QtQuick.Layouts
+import QtCore
+import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
@@ -84,7 +90,10 @@ PlasmoidItem {
     property string areaBeforeSide: "search"
     property string areaBeforeTasks: "search"
     readonly property bool searching: search.text.length > 0
-    readonly property var entries: searching ? searchEntries : homeEntries
+    readonly property var entries: navigating ? navEntries : searching ? searchEntries : homeEntries
+    // While typing, the first row is highlighted so Enter runs it; not in a folder
+    // with nothing typed yet, where Enter would open whatever happens to be first
+    readonly property bool autoHighlight: searching && !(navigating && navFilter === "")
     property var homeEntries: []
     property var searchEntries: []
 
@@ -153,7 +162,7 @@ PlasmoidItem {
         // Grouped mode needs the runners named; this order is the group order
         runners: ["krunner_services", "baloosearch", "krunner_recentdocuments", "krunner_systemsettings",
                   "calculator", "unitconverter", "locations", "krunner_placesrunner"]
-        query: search.text
+        query: root.navigating ? "" : search.text
     }
 
     // Instantiators turn each model's rows into plain objects we can merge
@@ -272,7 +281,7 @@ PlasmoidItem {
             }
         }
         searchEntries = out
-        list.currentIndex = 0
+        if (!navigating) list.currentIndex = 0
     }
 
     // isFavorite() isn't a binding, so rows re-check it when this changes
@@ -304,8 +313,136 @@ PlasmoidItem {
 
     function run(entry) {
         if (!entry) return
+        if (entry.isDir !== undefined) {
+            if (entry.isDir) search.text = navTyped + entry.name + "/"
+            else { Qt.openUrlExternally(entry.path); close() }
+            return
+        }
+        if (entry.favoriteId.startsWith("file://")) { openPinnedPath(entry); return }
         entry.source.trigger(entry.row, "", null)
         close()
+    }
+
+    // ── Folder navigator ──────────────────────────────────────────────────
+
+    readonly property string homePath: decodeURIComponent(
+        StandardPaths.writableLocation(StandardPaths.HomeLocation).toString().replace(/^file:\/\//, ""))
+    // The field is the path: "~/repos/lev" lists ~/repos filtered by "lev"
+    readonly property bool navigating: search.text.startsWith("/") || search.text.startsWith("~/")
+    readonly property string navTyped: navigating ? search.text.slice(0, search.text.lastIndexOf("/") + 1) : ""
+    readonly property string navFilter: navigating ? search.text.slice(search.text.lastIndexOf("/") + 1) : ""
+    readonly property string navFolder: navTyped.startsWith("~") ? homePath + navTyped.slice(1) : navTyped
+    property var navEntries: []
+    onNavFilterChanged: Qt.callLater(rebuildNav)
+
+    FolderListModel {
+        id: folder
+        folder: root.navigating ? "file://" + root.navFolder : ""
+        showDirsFirst: true
+        showDotAndDotDot: false
+        showHidden: root.navFilter.startsWith(".")   // dotfiles once a "." is typed, like a shell
+        sortCaseSensitive: false
+        onFolderChanged: Qt.callLater(root.rebuildNav)
+        onStatusChanged: Qt.callLater(root.rebuildNav)
+        onCountChanged: Qt.callLater(root.rebuildNav)
+    }
+
+    // The home folder's own folders get their themed icons
+    readonly property var homeFolderIcons: ({
+        "Desktop": "folder-desktop", "Documents": "folder-documents", "Downloads": "folder-download",
+        "Music": "folder-music", "Pictures": "folder-pictures", "Videos": "folder-videos",
+        "Public": "folder-public", "Templates": "folder-templates",
+    })
+    // No QML module maps a file to its type's icon, so the common extensions are listed
+    readonly property var extensionIcons: ({
+        pdf: "application-pdf", txt: "text-plain", md: "text-markdown", log: "text-x-log",
+        json: "application-json", xml: "application-xml", yaml: "application-x-yaml", yml: "application-x-yaml",
+        toml: "text-plain", ini: "text-plain", conf: "text-plain",
+        qml: "text-x-qml", js: "text-javascript", mjs: "text-javascript", ts: "text-x-typescript",
+        tsx: "text-x-typescript", jsx: "text-javascript", py: "text-x-python", sh: "application-x-shellscript",
+        c: "text-x-csrc", h: "text-x-chdr", cpp: "text-x-c++src", rs: "text-rust", go: "text-x-go",
+        html: "text-html", css: "text-css", svg: "image-svg+xml",
+        png: "image-png", jpg: "image-jpeg", jpeg: "image-jpeg", gif: "image-gif", webp: "image-x-generic",
+        mp3: "audio-x-generic", flac: "audio-x-generic", wav: "audio-x-generic", ogg: "audio-x-generic",
+        mp4: "video-x-generic", mkv: "video-x-generic", webm: "video-x-generic", mov: "video-x-generic",
+        zip: "application-zip", gz: "application-x-compressed-tar", xz: "application-x-compressed-tar",
+        tar: "application-x-tar", "7z": "application-x-7z-compressed", rar: "application-x-rar",
+        doc: "x-office-document", docx: "x-office-document", odt: "x-office-document",
+        xls: "x-office-spreadsheet", xlsx: "x-office-spreadsheet", ods: "x-office-spreadsheet", csv: "text-csv",
+        ppt: "x-office-presentation", pptx: "x-office-presentation", odp: "x-office-presentation",
+        rpm: "application-x-rpm", iso: "application-x-cd-image", desktop: "application-x-desktop",
+    })
+    function fileIcon(name) {
+        const dot = name.lastIndexOf(".")
+        return (dot > 0 && extensionIcons[name.slice(dot + 1).toLowerCase()]) || "text-x-generic"
+    }
+
+    // Folders first, then files; in each, an exact match, then names starting with
+    // the filter, then names containing it. Going up ("~/repos" after "~/repos/")
+    // so lands on the folder just left.
+    function rebuildNav() {
+        if (!navigating) return
+        const f = navFilter.toLowerCase()
+        const inHome = navFolder === homePath + "/"
+        const out = []
+        for (let i = 0; i < folder.count; i++) {
+            const name = folder.get(i, "fileName")
+            const lower = name.toLowerCase()
+            const at = f ? lower.indexOf(f) : 0
+            if (at < 0) continue
+            const isDir = folder.get(i, "fileIsDir")
+            const path = folder.get(i, "fileUrl").toString()
+            out.push({ source: null, row: i, name: name, description: "", subtitle: "", above: "",
+                       icon: isDir ? (inHome && homeFolderIcons[name]) || "folder" : fileIcon(name),
+                       favoriteId: path, path: path, isDir: isDir,
+                       rank: !f || lower === f ? 0 : at === 0 ? 1 : 2 })
+        }
+        out.sort((a, b) => (b.isDir - a.isDir) || (a.rank - b.rank) || (a.row - b.row))
+        const folders = out.findIndex(e => e.isDir), files = out.findIndex(e => !e.isDir)
+        if (folders >= 0) out[folders].above = "Folders"
+        if (files >= 0) out[files].above = "Files"
+        navEntries = out
+        list.currentIndex = 0
+        list.positionViewAtBeginning()
+    }
+
+    // Shift+Enter: the highlighted folder, or the one being listed, in the file manager
+    function showInFileManager() {
+        const highlighted = area === "list" || (area === "search" && autoHighlight)
+        const entry = highlighted ? entries[list.currentIndex] : null
+        if (navigating) Qt.openUrlExternally(entry && entry.isDir ? entry.path : "file://" + navFolder)
+        else if (entry && entry.favoriteId.startsWith("file://")) Qt.openUrlExternally(entry.favoriteId)
+        else return
+        close()
+    }
+
+    // A pinned folder is listed in the navigator, a pinned file opens. The pin is
+    // only a URL, so its parent folder is looked up to tell which it is.
+    property var pendingPin: null
+    function openPinnedPath(entry) {
+        const path = decodeURIComponent(entry.favoriteId.replace(/^file:\/\//, "")).replace(/\/$/, "")
+        pendingPin = { path: path, url: entry.favoriteId, name: path.slice(path.lastIndexOf("/") + 1) }
+        const parent = "file://" + path.slice(0, path.lastIndexOf("/") + 1)
+        if (pinProbe.folder.toString() === parent && pinProbe.status === FolderListModel.Ready) resolvePin()
+        else pinProbe.folder = parent
+    }
+    function resolvePin() {
+        const pin = pendingPin
+        if (!pin || pinProbe.status !== FolderListModel.Ready) return
+        pendingPin = null
+        const i = pinProbe.indexOf("file://" + pin.path)
+        if (i >= 0 && pinProbe.get(i, "fileIsDir")) {
+            search.text = (pin.path === homePath || pin.path.startsWith(homePath + "/")
+                           ? "~" + pin.path.slice(homePath.length) : pin.path) + "/"
+        } else {
+            Qt.openUrlExternally(pin.url)
+            close()
+        }
+    }
+    FolderListModel {
+        id: pinProbe
+        showHidden: true
+        onStatusChanged: root.resolvePin()
     }
 
     // ── Task manager ──────────────────────────────────────────────────────
@@ -829,13 +966,20 @@ PlasmoidItem {
                             font.family: Theme.typeFamilySans
                             font.pixelSize: Theme.typeSizeBody
                             clip: true
-                            onTextChanged: root.area = "search"
+                            property string lastText: ""
+                            onTextChanged: {
+                                root.area = "search"
+                                const was = lastText
+                                lastText = text
+                                if (text === "/" && was === "") text = "~/"
+                                else if (text === "~" && was === "~/") text = root.homePath
+                            }
 
                             Text {
                                 anchors.fill: parent
                                 visible: !search.text
                                 verticalAlignment: Text.AlignVCenter
-                                text: "Search apps and files"
+                                text: "Search apps and files, or / for folders"
                                 color: Theme.textFaint
                                 font: search.font
                             }
@@ -867,7 +1011,9 @@ PlasmoidItem {
                             Quiet {
                                 anchors.centerIn: parent
                                 visible: list.count === 0
-                                text: root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
+                                text: root.navigating ? (folder.status !== FolderListModel.Ready ? ""
+                                                         : root.navFilter ? "No matches" : "Empty folder")
+                                    : root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
                             }
                         }
                     }
@@ -903,6 +1049,7 @@ PlasmoidItem {
     function handleKey(event) {
         const ctrl = event.modifiers & Qt.ControlModifier
         const alt = event.modifiers & Qt.AltModifier
+        const shift = event.modifiers & Qt.ShiftModifier
         const arrows = [Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down]
         if (alt && area === "tasks" && arrows.includes(event.key)) {
             if (event.key === Qt.Key_Left) endTask(taskIndex)
@@ -924,7 +1071,7 @@ PlasmoidItem {
             else if (area === "side") sideIndex = Math.min(sideIndex + 1, sideActions.length - 1)
             else if (area === "search") {
                 // While typing, row 0 is already highlighted, so Down goes to row 1
-                if (list.count) { area = "list"; list.currentIndex = searching ? Math.min(1, list.count - 1) : 0 }
+                if (list.count) { area = "list"; list.currentIndex = autoHighlight ? Math.min(1, list.count - 1) : 0 }
             }
             else list.currentIndex = Math.min(list.currentIndex + 1, list.count - 1)
             break
@@ -932,7 +1079,7 @@ PlasmoidItem {
             if (area === "tasks") taskIndex = Math.max(taskIndex - 1, 0)
             else if (area === "side") sideIndex = Math.max(sideIndex - 1, 0)
             else if (area === "list") {
-                if (list.currentIndex <= (searching ? 1 : 0)) { area = "search"; list.currentIndex = 0 }
+                if (list.currentIndex <= (autoHighlight ? 1 : 0)) { area = "search"; list.currentIndex = 0 }
                 else list.currentIndex--
             }
             break
@@ -957,7 +1104,8 @@ PlasmoidItem {
         case Qt.Key_Enter:
             if (area === "side") runSide(sideIndex)
             else if (area === "tasks") switchToTask(taskIndex)
-            else run(entries[list.currentIndex])
+            else if (shift) showInFileManager()
+            else if (area === "list" || !(navigating && navFilter === "")) run(entries[list.currentIndex])
             break
         case Qt.Key_P:
             if (!ctrl || area === "side" || area === "tasks") { event.accepted = false; return }
@@ -996,7 +1144,7 @@ PlasmoidItem {
 
     // Alt+arrows act on the highlighted row: the list's, or the first result while typing
     function handlePinKey(key) {
-        const highlighted = area === "list" || (area === "search" && searching)
+        const highlighted = area === "list" || (area === "search" && autoHighlight)
         const entry = highlighted ? entries[list.currentIndex] : null
         switch (key) {
         case Qt.Key_Right: setPinned(entry, true); return true
@@ -1068,7 +1216,7 @@ PlasmoidItem {
             hovered: mouse.containsMouse
             // While typing, the first result is highlighted so Enter runs it
             selected: entryRow.index === list.currentIndex
-                      && (root.area === "list" || (root.area === "search" && root.searching))
+                      && (root.area === "list" || (root.area === "search" && root.autoHighlight))
 
             Kirigami.Icon {
                 id: appIcon
