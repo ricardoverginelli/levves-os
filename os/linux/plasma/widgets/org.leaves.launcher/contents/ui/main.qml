@@ -1,7 +1,7 @@
 // Centered launcher. Subtle icon in the bar; Super or a click opens a window
 // centered on the active screen (layer shell, no anchors).
 //
-//   ┌ Tasks  CPU GPU RAM Disk ┬ search ─────────────────┬ Lock ──────────┐
+//   ┌ Tasks CPU GPU VRAM RAM Disk ┬ search ─────────────────┬ Lock ──────────┐
 //   │ apps with a window      │ pinned apps (pin at end)│ Power Off      │
 //   │ Background              │ ───                     │ Restart        │
 //   │ tray apps, helpers      │ recent apps, newest     │ Sleep          │
@@ -51,7 +51,7 @@ PlasmoidItem {
     readonly property int rowHeight: Theme.sizeRow
     readonly property int twoLineRowHeight: 44
     readonly property int sideWidth: 200
-    readonly property int taskWidth: 360
+    readonly property int taskWidth: 402
     readonly property int taskRowHeight: 32
     readonly property int taskCellWidth: 42
 
@@ -311,7 +311,7 @@ PlasmoidItem {
     // One row per running app: systemd's app cgroups, like System Monitor's
     // Applications page. Sampled (every 2s) only while the launcher is open and
     // for a minute after, so reopening it shows live numbers right away.
-    readonly property var taskAttributes: ["appName", "iconName", "menuId", "usage", "gpu_usage", "memory",
+    readonly property var taskAttributes: ["appName", "iconName", "menuId", "usage", "gpu_usage", "gpu_memory", "memory",
                                            "ioCharactersActuallyReadRate", "ioCharactersActuallyWrittenRate"]
     Process.ApplicationDataModel {
         id: apps
@@ -358,10 +358,11 @@ PlasmoidItem {
     }
 
     // Header icons are the perf meter's (DESIGN.md Icons); cpu/gpu are % of the
-    // whole CPU/GPU, ram KiB, disk read + write in bytes per second
+    // whole CPU/GPU, vram and ram KiB, disk read + write in bytes per second
     readonly property var taskColumns: [
         { key: "cpu",  short: "CPU",  label: "CPU" },
         { key: "gpu",  short: "GPU",  label: "GPU" },
+        { key: "vram", short: "VRAM", label: "Video memory" },
         { key: "ram",  short: "RAM",  label: "Memory" },
         { key: "disk", short: "Disk", label: "Disk read + write" },
     ]
@@ -382,6 +383,7 @@ PlasmoidItem {
             ? apps.data(apps.index(0, taskAttributes.indexOf(name)), Process.ProcessDataModel.Maximum) || 0 : 0
         const cpuMax = maximum("usage") || 100   // 100 per core
         const ramMax = maximum("memory")
+        const vramMax = maximum("gpu_memory")
 
         // Windows by desktop file and by pid
         const W = TaskManager.AbstractTasksModel
@@ -400,7 +402,7 @@ PlasmoidItem {
         // Adds a row's pids and readings to another's
         const merge = (into, t) => {
             into.pids = into.pids.concat(t.pids)
-            for (const k of ["cpu", "gpu", "ram", "disk"]) into[k] += t[k]
+            for (const k of ["cpu", "gpu", "vram", "ram", "disk"]) into[k] += t[k]
             into.windowRow = Math.max(into.windowRow, t.windowRow)
             t.merged = true
         }
@@ -420,6 +422,7 @@ PlasmoidItem {
                 pids: Array.from(pids),
                 cpu: (value(r, "usage") || 0) / cpuMax * 100,
                 gpu: value(r, "gpu_usage") || 0,
+                vram: value(r, "gpu_memory") || 0,
                 ram: value(r, "memory") || 0,
                 disk: (value(r, "ioCharactersActuallyReadRate") || 0) + (value(r, "ioCharactersActuallyWrittenRate") || 0),
                 windowRow: menuId in windowById ? windowById[menuId] : -1,
@@ -459,7 +462,8 @@ PlasmoidItem {
             pids[t.key] = t.pids
             windowRows[t.key] = allWindows.filter(w => (t.menuId && w.appId === t.menuId) || t.pids.includes(w.pid))
                                           .map(w => w.row)
-            const row = { key: t.key, name: t.name, icon: t.icon, cpu: t.cpu, gpu: t.gpu, ram: t.ram,
+            const row = { key: t.key, name: t.name, icon: t.icon, cpu: t.cpu, gpu: t.gpu,
+                          vram: t.vram, vramPercent: vramMax ? t.vram / vramMax * 100 : 0, ram: t.ram,
                           ramPercent: ramMax ? t.ram / ramMax * 100 : 0, disk: t.disk,
                           windowRow: t.windowRow, above: t.above ?? "" }
             if (sameRows) taskRows.set(i, row)
@@ -1078,6 +1082,8 @@ PlasmoidItem {
         required property string icon
         required property real cpu
         required property real gpu
+        required property real vram
+        required property real vramPercent
         required property real ram
         required property real ramPercent
         required property real disk
@@ -1148,6 +1154,7 @@ PlasmoidItem {
                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 TaskCell { text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
                 TaskCell { text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
+                TaskCell { text: root.formatMemory(taskRow.vram); level: taskRow.vramPercent; idle: taskRow.vram < 512 }
                 TaskCell { text: root.formatMemory(taskRow.ram); level: taskRow.ramPercent }
                 TaskCell { text: root.formatRate(taskRow.disk); idle: taskRow.disk < 512 }
             }
