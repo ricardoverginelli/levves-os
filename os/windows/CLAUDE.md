@@ -16,6 +16,9 @@ os/windows/
   ahk/
     install.py          ← Installs AutoHotkey v2 and registers gmk104.ahk on startup
     gmk104.ahk          ← AHK v2 keyboard remap, Windows port of os/linux/keyd/gmk104.conf
+  monitor/              ← Win+Shift+M turns the main monitor off/on, port of os/linux/monitor (this PC only)
+    install.py          ← Registers main-monitor.ahk on startup
+    main-monitor.ps1    ← toggle|off|on|status; main-monitor.ahk binds the hotkey
   theme/install.py      ← Applies the Leaves look (from os/linux/plasma/) to Windows
   updates/
     install.py          ← Turns Windows Update off and keeps it off at every boot (admin)
@@ -50,6 +53,7 @@ Prompts y/n for each component, confirms selection, then runs chosen scripts in 
 python os/windows/vscode/install.py
 python os/windows/sharex/install.py
 python os/windows/ahk/install.py
+python os/windows/monitor/install.py
 python os/windows/theme/install.py
 python os/windows/updates/install.py
 python os/windows/debloat/install.py
@@ -76,6 +80,21 @@ python os/windows/debloat/install.py
 - Starts the script right away; `#SingleInstance Force` replaces a running copy
 - Uses the absolute resolved path at time of running — if the repo moves, re-run the script
 - The startup entry needs no admin rights (HKCU scope); installing AHK may show a UAC prompt
+
+### monitor/
+- Port of `os/linux/monitor`: `Win+Shift+M` turns the Asus XG27ACS off and back on, to hand it
+  to another device on another input. Replaces Windows' own Win+Shift+M (restore minimized)
+- `main-monitor.ps1 [toggle|off|on|status]`, through `ChangeDisplaySettingsEx`: **off** saves
+  the Asus's mode and every screen's position to `%LOCALAPPDATA%\levves\main-monitor.json`,
+  makes the next screen primary (Windows keeps the primary at 0,0, so the layout shifts) and
+  detaches the Asus (Display settings' "Disconnect this display"); won't turn off the only
+  screen. **on** re-attaches it with that mode, makes it primary and puts the others back
+- Found by hardware ID (`-MonitorId`, default `AUS27FE`), not by being primary as on Linux,
+  since primary moves to the other screen while it's off. Only an attached output's first
+  monitor counts: once detached, Windows lists the Asus under every output, the LG's included
+- `install.py` refuses where the Asus isn't connected, needs AHK (`ahk/install.py`), and
+  registers `main-monitor.ahk` as the `main-monitor-ahk` startup entry (HKCU, no admin);
+  `--uninstall` removes it and stops the running copy. Machine-only: `.only-on`
 
 ### theme/install.py
 - Windows take on the Plasma "Leaves" theme: reads colors from `design/dist/levves_tokens.py` and
