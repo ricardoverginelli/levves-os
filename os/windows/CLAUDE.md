@@ -16,6 +16,9 @@ os/windows/
   ahk/
     install.py          ← Installs AutoHotkey v2 and registers gmk104.ahk on startup
     gmk104.ahk          ← AHK v2 keyboard remap, Windows port of os/linux/keyd/gmk104.conf
+  dropdown/             ← Yakuake on Windows: Windows Terminal docked left, slid in on Win+/
+    install.py          ← Installs portable Windows Terminal, writes its settings, registers dropdown.ahk
+    dropdown.ahk        ← The hotkeys, docking, slide and fullscreen avoidance
   monitor/              ← Win+Shift+M turns the main monitor off/on, port of os/linux/monitor (this PC only)
     install.py          ← Registers main-monitor.ahk on startup
     main-monitor.ps1    ← toggle|off|on|status; main-monitor.ahk binds the hotkey
@@ -53,6 +56,7 @@ Prompts y/n for each component, confirms selection, then runs chosen scripts in 
 python os/windows/vscode/install.py
 python os/windows/sharex/install.py
 python os/windows/ahk/install.py
+python os/windows/dropdown/install.py
 python os/windows/monitor/install.py
 python os/windows/theme/install.py
 python os/windows/updates/install.py
@@ -80,6 +84,38 @@ python os/windows/debloat/install.py
 - Starts the script right away; `#SingleInstance Force` replaces a running copy
 - Uses the absolute resolved path at time of running — if the repo moves, re-run the script
 - The startup entry needs no admin rights (HKCU scope); installing AHK may show a UAC prompt
+
+### dropdown/
+- Yakuake on Windows (the Linux side is `os/linux/kwin/yakuake-*` and `plasma/yakuake/`).
+  `Win+/` opens and retracts it, or focuses it when it's open behind another window; `Win+N`
+  adds a PowerShell tab, `Win+Shift+N` a Claude Code tab. `Win+/` is the key right of `.`
+  (`SC035`, the GMK104's `/` through `gmk104.ahk`) or ABNT2's own `/` (`SC073`). These replace
+  Windows' Win+N (notifications) and Win+Shift+N
+- `install.py` downloads the portable Windows Terminal zip from the latest GitHub release
+  (LTSC has no Store), checks its sha256 against the release digest, and unpacks it to
+  `%LOCALAPPDATA%\levves\terminal\` with a `.portable` file, so its settings live in
+  `settings\settings.json` there. Skips the download when that version is installed; refuses
+  to update while the terminal runs (its files are locked)
+- Settings are rewritten on every run (edit `install.py`, not the file): one window for every
+  launch (`windowingBehavior: useExisting`), always on top, the Yakuake scheme from
+  `design/dist` (bright 25% toward white), title-bar tokens for the tab row, JetBrains Mono 12pt
+  (installed by `theme/`), PowerShell (Windows PowerShell 5.1) as the default profile and
+  Claude Code when `claude` is on the PATH; cmd and the generated WSL/Azure/VS profiles hidden.
+  `Shift+Left/Right` move between split panes; tabs stay on Ctrl+Tab / Ctrl+Shift+Tab, since
+  Windows Terminal can't fall through from the last pane to the next tab like `yakuake-panes`
+- `dropdown.ahk` docks it on the left of the focused window's monitor (30% of the work area,
+  full height; Windows' invisible resize borders measured with DWM so the visible edges land
+  on the work area), slides it in and out with `SetWindowPos` on the out-quint curve, one step
+  per DWM frame, then hides it (no taskbar button while open either, `ITaskbarList::DeleteTab`).
+  Focus goes back to the previous window on retract. A fullscreen window (a game) on that
+  monitor sends it to the next monitor. The durations come from `design/dist`
+  (`duration.panel-open/close`) as arguments in the startup entry, not copied into the script
+- Known gaps: a fresh launch shows Windows Terminal's first frame for ~150ms before it's
+  docked; the slide isn't clipped, so with a monitor to the left it passes over that one; the
+  tab row keeps Windows' minimize/maximize/close buttons; new tabs open PowerShell or Claude
+  Code, not `agents/launcher` (it needs `wl-copy` and `os.execvp` ported first)
+- Startup entry `dropdown-ahk` (HKCU, no admin); needs AHK (`ahk/install.py`). `--uninstall`
+  removes it, stops the script and deletes the terminal folder (when it isn't running)
 
 ### monitor/
 - Port of `os/linux/monitor`: `Win+Shift+M` turns the Asus XG27ACS off and back on, to hand it
