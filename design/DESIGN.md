@@ -73,7 +73,11 @@ Neutrals, from darkest: `bg-deep` (desktop), `bg` (top bar, lists), `surface` (w
 - **Caps labels**: Source Sans 3 semibold, uppercase, `type.tracking.label` letter spacing. For
   group headers, column headers, keys, tabs and status bars. The canvas has a switch to try Barlow
   Semi Condensed for them; Source Sans 3 is the default.
-- **JetBrains Mono** stays for terminals and code only.
+- **JetBrains Mono** stays for terminals and code only. One exception: the Leaves launcher is
+  drawn like the terminal launcher (`agents/launcher`): all mono, one flat surface, no wells or
+  keys, and lines only between its areas and inside its task table.
+  - Under consideration (2026-11-07), not a rule yet: the same terminal style for the other bar
+    popups (clock, tray).
 - Sizes are in `type.size`: 11px labels, 14px body on the desktop and 16px on the phone, 15px
   serif titles and inline numbers, 24-28px readouts.
 

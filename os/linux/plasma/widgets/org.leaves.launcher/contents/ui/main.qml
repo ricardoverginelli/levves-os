@@ -1,15 +1,16 @@
 // Centered launcher. Subtle icon in the bar; Super or a click opens a window
-// centered on the active screen (layer shell, no anchors).
+// centered on the active screen (layer shell, no anchors). Drawn like the terminal
+// launcher (agents/launcher): flat, all mono, lines only between the areas and in
+// the task table.
 //
-//   ┌ Tasks CPU GPU VRAM RAM Disk ┬ search ─────────────────┬ Lock ──────────┐
-//   │ apps with a window      │ pinned apps (pin at end)│ Power Off      │
-//   │ Background              │ ───                     │ Restart        │
-//   │ tray apps, helpers      │ recent apps, newest     │ Sleep          │
-//   │                         │ first — or search       │ Log Out        │
-//   │                         │ results while typing,   │ ───            │
-//   │                         │ grouped (Apps, Files…)  │ System Settings│
-//   │                         │                         │ (user)         │
-//   └─────────────────────────┴─────────────────────────┴────────────────┘
+//   TASKS · BY LOAD  CPU GPU VRAM RAM DISK │ › search ───────────── │ Lock
+//   ───────────────────────────────────────│ pinned apps (pin icon) │ Power Off
+//   SYSTEM  used / available, and the last │ then recent apps, one  │ Restart
+//           two minutes under each         │ list; or search        │ Sleep
+//   ───────────────────────────────────────│ results grouped (APPS, │ Log Out
+//   every running app, one flat list,      │ FILES…), or a folder   │
+//   highest load first (no window: muted)  │ (FOLDERS, FILES)       │ System Settings
+//                                          │                        │ (user)
 //
 // Keys: focus stays in the search field; arrows move a highlight between
 // areas. Down = list, Right = side panel (from search only when the cursor is
@@ -17,13 +18,21 @@
 // start), Left/Right from a side area = back, Tab/Shift+Tab = next/previous
 // area, Enter = run, Esc = close. Power Off, Restart and Log Out ask for a
 // second Enter/click.
+// Folders: "/" in the empty field lists the home folder ("~/"); the text after
+// the last "/" filters it. Enter opens a folder (or a file, in its app), Backspace
+// past a "/" goes up, Shift+Enter shows the highlighted folder (or the one being
+// listed) in Dolphin. Folders pin like apps; Enter on a pinned one lists it.
 // Pins: Alt+Right pins, Alt+Left unpins, Alt+Up/Down reorders pinned apps
 // (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
 // Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
 // closes the app's windows (SIGTERM if it has none), and doing it again within
-// 5s force-quits it. Click a column header to sort by it (again for by name).
+// 5s force-quits it. Rows are sorted by load; click a column header to sort by
+// it (again for load), or "Tasks" for by name. Alt+1-5 do the same as the
+// column headers, from anywhere in the launcher.
 import QtQuick
 import QtQuick.Layouts
+import QtCore
+import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
@@ -36,6 +45,7 @@ import org.kde.kcmutils as KCMUtils
 import org.kde.plasma.private.kicker as Kicker
 import org.kde.plasma.private.sessions as Sessions
 import org.kde.ksysguard.process as Process
+import org.kde.ksysguard.sensors as Sensors
 import org.kde.taskmanager as TaskManager
 import Levves
 import "../../../../../leaves"
@@ -48,12 +58,18 @@ PlasmoidItem {
     readonly property int hoverDuration: Theme.durationHover
     readonly property int edgeMargin: Theme.space12   // same as the perf meter's
     readonly property int pad: Theme.space12
-    readonly property int rowHeight: Theme.sizeRow
-    readonly property int twoLineRowHeight: 44
-    readonly property int sideWidth: 200
-    readonly property int taskWidth: 402
-    readonly property int taskRowHeight: 32
-    readonly property int taskCellWidth: 42
+    readonly property int rowHeight: 30
+    readonly property int twoLineRowHeight: 46
+    readonly property int sideWidth: 210
+    readonly property int taskWidth: 750
+    readonly property int taskRowHeight: 30
+    readonly property int taskCellWidth: 96   // room for "used / available" on one line
+    // GPU's total names both cards ("N 88% · I 0%"), so its column is wider
+    function columnWidth(key) { return key === "gpu" ? 124 : taskCellWidth }
+    readonly property int columnGap: 24       // each side of the rules between the areas
+    readonly property string mono: Theme.typeFamilyMono
+    readonly property int iconX: 8                        // a row's icon
+    readonly property int nameX: iconX + 20 + 12          // a row's name, and the prompt's text
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
     readonly property string pinsClient: "org.leaves.launcher.favorites"
@@ -82,7 +98,10 @@ PlasmoidItem {
     property string areaBeforeSide: "search"
     property string areaBeforeTasks: "search"
     readonly property bool searching: search.text.length > 0
-    readonly property var entries: searching ? searchEntries : homeEntries
+    readonly property var entries: navigating ? navEntries : searching ? searchEntries : homeEntries
+    // While typing, the first row is highlighted so Enter runs it; not in a folder
+    // with nothing typed yet, where Enter would open whatever happens to be first
+    readonly property bool autoHighlight: searching && !(navigating && navFilter === "")
     property var homeEntries: []
     property var searchEntries: []
 
@@ -151,11 +170,11 @@ PlasmoidItem {
         // Grouped mode needs the runners named; this order is the group order
         runners: ["krunner_services", "baloosearch", "krunner_recentdocuments", "krunner_systemsettings",
                   "calculator", "unitconverter", "locations", "krunner_placesrunner"]
-        query: search.text
+        query: root.navigating ? "" : search.text
     }
 
     // Instantiators turn each model's rows into plain objects we can merge
-    component Row: QtObject {
+    component RowData: QtObject {
         required property int index
         required property var model
         readonly property string name: model.display ?? ""
@@ -167,14 +186,14 @@ PlasmoidItem {
     Instantiator {
         id: pinRows
         model: pins
-        delegate: Row {}
+        delegate: RowData {}
         onObjectAdded: Qt.callLater(root.rebuildHome)
         onObjectRemoved: Qt.callLater(root.rebuildHome)
     }
     Instantiator {
         id: recentRows
         model: recents
-        delegate: Row {}
+        delegate: RowData {}
         onObjectAdded: Qt.callLater(root.rebuildHome)
         onObjectRemoved: Qt.callLater(root.rebuildHome)
     }
@@ -188,7 +207,7 @@ PlasmoidItem {
             readonly property string name: source ? source.description : ""
             readonly property Instantiator rows: Instantiator {
                 model: group.source
-                delegate: Row {}
+                delegate: RowData {}
                 onObjectAdded: Qt.callLater(root.rebuildSearch)
                 onObjectRemoved: Qt.callLater(root.rebuildSearch)
             }
@@ -203,11 +222,21 @@ PlasmoidItem {
         function onModelReset() { Qt.callLater(root.rebuildHome) }
     }
 
-    // above: "" | "divider" | a group header; subtitle: a second, muted line
+    // above: "" or a group's heading; count: its rows (set by countGroups); subtitle: a
+    // second, muted line
     function entryFrom(row, source, i) {
         return { source: source, row: i, name: row.name, icon: row.icon,
                  description: row.description, favoriteId: row.favoriteId,
-                 above: "", subtitle: "" }
+                 above: "", count: 0, subtitle: "" }
+    }
+
+    function countGroups(out) {
+        let head = null
+        for (const e of out) {
+            if (e.above) { head = e; e.count = 0 }
+            if (head) head.count++
+        }
+        return out
     }
 
     function rebuildHome() {
@@ -224,14 +253,11 @@ PlasmoidItem {
             const r = pinRows.objectAt(i)
             if (r) add(r, pins, i)
         }
-        const pinCount = out.length
         for (let i = 0; i < recentRows.count; i++) {
             const r = recentRows.objectAt(i)
             if (r && !pinned.has(r.favoriteId) && !pinned.has(r.name) && !isHidden(r.favoriteId)) add(r, recents, i)
         }
-        if (pinCount > 0 && out.length > pinCount)
-            out[pinCount].above = "divider"  // thin line between pinned and recent
-        homeEntries = out
+        homeEntries = out   // one list: pinned apps first (they show their pin), then recent
         pinsVersion++
 
         // Keep the highlight on the app that was just pinned, unpinned or moved
@@ -269,8 +295,8 @@ PlasmoidItem {
                 out.push(e)
             }
         }
-        searchEntries = out
-        list.currentIndex = 0
+        searchEntries = countGroups(out)
+        if (!navigating) list.currentIndex = 0
     }
 
     // isFavorite() isn't a binding, so rows re-check it when this changes
@@ -302,8 +328,140 @@ PlasmoidItem {
 
     function run(entry) {
         if (!entry) return
+        if (entry.isDir !== undefined) {
+            if (entry.isDir) search.text = navTyped + entry.name + "/"
+            else { Qt.openUrlExternally(entry.path); close() }
+            return
+        }
+        if (entry.favoriteId.startsWith("file://")) { openPinnedPath(entry); return }
         entry.source.trigger(entry.row, "", null)
         close()
+    }
+
+    // ── Folder navigator ──────────────────────────────────────────────────
+
+    readonly property string homePath: decodeURIComponent(
+        StandardPaths.writableLocation(StandardPaths.HomeLocation).toString().replace(/^file:\/\//, ""))
+    // The field is the path: "~/repos/lev" lists ~/repos filtered by "lev"
+    readonly property bool navigating: search.text.startsWith("/") || search.text.startsWith("~/")
+    readonly property string navTyped: navigating ? search.text.slice(0, search.text.lastIndexOf("/") + 1) : ""
+    readonly property string navFilter: navigating ? search.text.slice(search.text.lastIndexOf("/") + 1) : ""
+    readonly property string navFolder: navTyped.startsWith("~") ? homePath + navTyped.slice(1) : navTyped
+    property var navEntries: []
+    readonly property var navCrumbs: {
+        const parts = navTyped.split("/").slice(0, -1)
+        return parts.map((part, i) => ({ name: part === "" ? "/" : part, path: parts.slice(0, i + 1).join("/") + "/" }))
+    }
+    onNavFilterChanged: Qt.callLater(rebuildNav)
+
+    FolderListModel {
+        id: folder
+        folder: root.navigating ? "file://" + root.navFolder : ""
+        showDirsFirst: true
+        showDotAndDotDot: false
+        showHidden: root.navFilter.startsWith(".")   // dotfiles once a "." is typed, like a shell
+        sortCaseSensitive: false
+        onFolderChanged: Qt.callLater(root.rebuildNav)
+        onStatusChanged: Qt.callLater(root.rebuildNav)
+        onCountChanged: Qt.callLater(root.rebuildNav)
+    }
+
+    // The home folder's own folders get their themed icons
+    readonly property var homeFolderIcons: ({
+        "Desktop": "folder-desktop", "Documents": "folder-documents", "Downloads": "folder-download",
+        "Music": "folder-music", "Pictures": "folder-pictures", "Videos": "folder-videos",
+        "Public": "folder-public", "Templates": "folder-templates",
+    })
+    // No QML module maps a file to its type's icon, so the common extensions are listed
+    readonly property var extensionIcons: ({
+        pdf: "application-pdf", txt: "text-plain", md: "text-markdown", log: "text-x-log",
+        json: "application-json", xml: "application-xml", yaml: "application-x-yaml", yml: "application-x-yaml",
+        toml: "text-plain", ini: "text-plain", conf: "text-plain",
+        qml: "text-x-qml", js: "text-javascript", mjs: "text-javascript", ts: "text-x-typescript",
+        tsx: "text-x-typescript", jsx: "text-javascript", py: "text-x-python", sh: "application-x-shellscript",
+        c: "text-x-csrc", h: "text-x-chdr", cpp: "text-x-c++src", rs: "text-rust", go: "text-x-go",
+        html: "text-html", css: "text-css", svg: "image-svg+xml",
+        png: "image-png", jpg: "image-jpeg", jpeg: "image-jpeg", gif: "image-gif", webp: "image-x-generic",
+        mp3: "audio-x-generic", flac: "audio-x-generic", wav: "audio-x-generic", ogg: "audio-x-generic",
+        mp4: "video-x-generic", mkv: "video-x-generic", webm: "video-x-generic", mov: "video-x-generic",
+        zip: "application-zip", gz: "application-x-compressed-tar", xz: "application-x-compressed-tar",
+        tar: "application-x-tar", "7z": "application-x-7z-compressed", rar: "application-x-rar",
+        doc: "x-office-document", docx: "x-office-document", odt: "x-office-document",
+        xls: "x-office-spreadsheet", xlsx: "x-office-spreadsheet", ods: "x-office-spreadsheet", csv: "text-csv",
+        ppt: "x-office-presentation", pptx: "x-office-presentation", odp: "x-office-presentation",
+        rpm: "application-x-rpm", iso: "application-x-cd-image", desktop: "application-x-desktop",
+    })
+    function fileIcon(name) {
+        const dot = name.lastIndexOf(".")
+        return (dot > 0 && extensionIcons[name.slice(dot + 1).toLowerCase()]) || "text-x-generic"
+    }
+
+    // Folders first, then files; in each, an exact match, then names starting with
+    // the filter, then names containing it. Going up ("~/repos" after "~/repos/")
+    // so lands on the folder just left.
+    function rebuildNav() {
+        if (!navigating) return
+        const f = navFilter.toLowerCase()
+        const inHome = navFolder === homePath + "/"
+        const out = []
+        for (let i = 0; i < folder.count; i++) {
+            const name = folder.get(i, "fileName")
+            const lower = name.toLowerCase()
+            const at = f ? lower.indexOf(f) : 0
+            if (at < 0) continue
+            const isDir = folder.get(i, "fileIsDir")
+            const path = folder.get(i, "fileUrl").toString()
+            out.push({ source: null, row: i, name: name, description: "", subtitle: "", above: "",
+                       icon: isDir ? (inHome && homeFolderIcons[name]) || "folder" : fileIcon(name),
+                       favoriteId: path, path: path, isDir: isDir,
+                       rank: !f || lower === f ? 0 : at === 0 ? 1 : 2 })
+        }
+        out.sort((a, b) => (b.isDir - a.isDir) || (a.rank - b.rank) || (a.row - b.row))
+        const folders = out.findIndex(e => e.isDir), files = out.findIndex(e => !e.isDir)
+        if (folders >= 0) out[folders].above = "Folders"
+        if (files >= 0) out[files].above = "Files"
+        navEntries = countGroups(out)
+        list.currentIndex = 0
+        list.positionViewAtBeginning()
+    }
+
+    // Shift+Enter: the highlighted folder, or the one being listed, in the file manager
+    function showInFileManager() {
+        const highlighted = area === "list" || (area === "search" && autoHighlight)
+        const entry = highlighted ? entries[list.currentIndex] : null
+        if (navigating) Qt.openUrlExternally(entry && entry.isDir ? entry.path : "file://" + navFolder)
+        else if (entry && entry.favoriteId.startsWith("file://")) Qt.openUrlExternally(entry.favoriteId)
+        else return
+        close()
+    }
+
+    // A pinned folder is listed in the navigator, a pinned file opens. The pin is
+    // only a URL, so its parent folder is looked up to tell which it is.
+    property var pendingPin: null
+    function openPinnedPath(entry) {
+        const path = decodeURIComponent(entry.favoriteId.replace(/^file:\/\//, "")).replace(/\/$/, "")
+        pendingPin = { path: path, url: entry.favoriteId, name: path.slice(path.lastIndexOf("/") + 1) }
+        const parent = "file://" + path.slice(0, path.lastIndexOf("/") + 1)
+        if (pinProbe.folder.toString() === parent && pinProbe.status === FolderListModel.Ready) resolvePin()
+        else pinProbe.folder = parent
+    }
+    function resolvePin() {
+        const pin = pendingPin
+        if (!pin || pinProbe.status !== FolderListModel.Ready) return
+        pendingPin = null
+        const i = pinProbe.indexOf("file://" + pin.path)
+        if (i >= 0 && pinProbe.get(i, "fileIsDir")) {
+            search.text = (pin.path === homePath || pin.path.startsWith(homePath + "/")
+                           ? "~" + pin.path.slice(homePath.length) : pin.path) + "/"
+        } else {
+            Qt.openUrlExternally(pin.url)
+            close()
+        }
+    }
+    FolderListModel {
+        id: pinProbe
+        showHidden: true
+        onStatusChanged: root.resolvePin()
     }
 
     // ── Task manager ──────────────────────────────────────────────────────
@@ -334,7 +492,7 @@ PlasmoidItem {
     })
     Process.ProcessController { id: processes }
 
-    // Open windows: an app with one is listed first, the rest under "Background"
+    // Open windows: Enter switches to one, and apps without one get a muted name
     TaskManager.TasksModel {
         id: windows
         groupMode: TaskManager.TasksModel.GroupDisabled
@@ -366,8 +524,54 @@ PlasmoidItem {
         { key: "ram",  short: "RAM",  label: "Memory" },
         { key: "disk", short: "Disk", label: "Disk read + write" },
     ]
-    property string sortKey: "name"   // "name" or a column key (highest first)
-    onSortKeyChanged: rebuildTasks()
+    // "load" (default), "name", or a column key (highest first). Load is an app's
+    // largest share of the machine: CPU or GPU %, VRAM or RAM as % of the total, or
+    // disk against diskCeiling. Its column (the lead) is the row's one bright cell.
+    property string sortKey: "load"
+    onSortKeyChanged: { sortNow = true; rebuildTasks() }
+    function sortBy(column) { sortKey = sortKey === column ? "load" : column }
+    readonly property real diskCeiling: 100 * 1024 * 1024   // 100 MiB/s counts as 100%
+    // Load is smoothed over a few samples (per row key) so the order settles
+    property var taskLoads: ({})
+    // While the pointer or the keyboard is in the list the rows keep their order
+    // (new apps go to the end); it re-sorts on the next sample after that
+    readonly property bool tasksFrozen: area === "tasks" || taskHover.hovered
+    property bool sortNow: false
+
+    // The machine's totals, shown under the column headers. From the system sensors,
+    // not the rows' sum: the kernel, KWin and anything outside an app cgroup count too.
+    // gpu0 is the NVIDIA card, gpu1 Intel's (its memory is RAM, so VRAM is NVIDIA's).
+    // They're read all the time (five cheap reads every 2s) so the history is there on opening.
+    component Total: Sensors.Sensor { updateRateLimit: 2000 }
+    Total { id: cpuTotal;     sensorId: "cpu/all/usage" }
+    Total { id: cpuThreads;   sensorId: "cpu/all/coreCount" }
+    Total { id: nvidiaTotal;  sensorId: "gpu/gpu0/usage" }
+    Total { id: intelTotal;   sensorId: "gpu/gpu1/usage" }
+    Total { id: vramUsed;     sensorId: "gpu/gpu0/usedVram" }
+    Total { id: vramTotal;    sensorId: "gpu/gpu0/totalVram" }
+    Total { id: ramUsed;      sensorId: "memory/physical/used" }
+    Total { id: ramTotal;     sensorId: "memory/physical/total" }
+    Total { id: diskRead;     sensorId: "disk/all/read" }
+    Total { id: diskWrite;    sensorId: "disk/all/write" }
+
+    // The totals' last two minutes, one sample every 2s: percent of what's available
+    // (GPU: the busier of the two), disk in bytes per second
+    readonly property int historyLength: 60
+    property var history: ({ cpu: [], gpu: [], vram: [], ram: [], disk: [] })
+    Timer { interval: 2000; running: true; repeat: true; onTriggered: root.sampleTotals() }
+    function sampleTotals() {
+        const percent = (used, total) => total ? (used ?? 0) / total * 100 : 0
+        const now = {
+            cpu: cpuTotal.value ?? 0,
+            gpu: Math.max(nvidiaTotal.value ?? 0, intelTotal.value ?? 0),
+            vram: percent(vramUsed.value, vramTotal.value),
+            ram: percent(ramUsed.value, ramTotal.value),
+            disk: (diskRead.value ?? 0) + (diskWrite.value ?? 0),
+        }
+        const next = {}
+        for (const key in now) next[key] = history[key].concat([now[key]]).slice(-historyLength)
+        history = next
+    }
     property int taskIndex: 0
     // Pids and window rows per row key, kept out of the ListModel (it would turn arrays into models)
     property var taskPids: ({})
@@ -445,13 +649,33 @@ PlasmoidItem {
         }
         list = list.filter(t => !t.merged)
 
+        // Load and its lead column, smoothed per key
+        const loads = {}
+        for (const t of list) {
+            t.vramPercent = vramMax ? t.vram / vramMax * 100 : 0
+            t.ramPercent = ramMax ? t.ram / ramMax * 100 : 0
+            const shares = { cpu: t.cpu, gpu: t.gpu, vram: t.vramPercent, ram: t.ramPercent,
+                             disk: t.disk / diskCeiling * 100 }
+            t.lead = Object.keys(shares).reduce((a, b) => shares[b] > shares[a] ? b : a)
+            const previous = taskLoads[t.key]
+            t.load = previous === undefined ? shares[t.lead] : previous * 0.6 + shares[t.lead] * 0.4
+            loads[t.key] = t.load
+        }
+        taskLoads = loads
+
+        // One flat list; apps without a window have their name muted
         const byName = (a, b) => a.name.localeCompare(b.name)
         const order = sortKey === "name" ? byName : (a, b) => (b[sortKey] - a[sortKey]) || byName(a, b)
-        const background = list.filter(t => t.windowRow < 0 && !t.service).sort(order)
-        const services = list.filter(t => t.windowRow < 0 && t.service).sort(order)
-        const rows = list.filter(t => t.windowRow >= 0).sort(order).concat(background, services)
-        if (background.length) background[0].above = "Background"
-        if (services.length) services[0].above = "Services"
+        let rows
+        if (tasksFrozen && !sortNow && taskRows.count) {
+            const was = {}
+            for (let i = 0; i < taskRows.count; i++) was[taskRows.get(i).key] = i
+            const known = list.filter(t => t.key in was).sort((a, b) => was[a.key] - was[b.key])
+            rows = known.concat(list.filter(t => !(t.key in was)).sort(order))
+        } else {
+            rows = list.sort(order)
+        }
+        sortNow = false
 
         const current = taskIndex < taskRows.count ? taskRows.get(taskIndex) : null
         const currentKey = current ? current.key : ""
@@ -462,23 +686,19 @@ PlasmoidItem {
             pids[t.key] = t.pids
             windowRows[t.key] = allWindows.filter(w => (t.menuId && w.appId === t.menuId) || t.pids.includes(w.pid))
                                           .map(w => w.row)
+            // The lead is only drawn when sorting by load and something is happening
             const row = { key: t.key, name: t.name, icon: t.icon, cpu: t.cpu, gpu: t.gpu,
-                          vram: t.vram, vramPercent: vramMax ? t.vram / vramMax * 100 : 0, ram: t.ram,
-                          ramPercent: ramMax ? t.ram / ramMax * 100 : 0, disk: t.disk,
-                          windowRow: t.windowRow, above: t.above ?? "" }
+                          vram: t.vram, vramPercent: t.vramPercent, ram: t.ram,
+                          ramPercent: t.ramPercent, disk: t.disk, windowRow: t.windowRow,
+                          lead: sortKey === "load" && t.load >= 1 ? t.lead : "" }
             if (sameRows) taskRows.set(i, row)
             else taskRows.append(row)
         })
         taskPids = pids
         taskWindows = windowRows
-        // Keep the highlight on the same app as rows come, go and re-sort, except
-        // when its last window closes: it stays among the windowed apps, on the
-        // one that took its place (or the one above, if it was the last)
+        // Keep the highlight on the same app as rows come, go and re-sort
         const i = rows.findIndex(t => t.key === currentKey)
-        const windowed = rows.length - background.length - services.length
-        const leftForBackground = i >= windowed && current.windowRow >= 0 && windowed > 0
-        taskIndex = i >= 0 && !leftForBackground ? i
-                  : Math.max(0, Math.min(taskIndex, (leftForBackground ? windowed : rows.length) - 1))
+        taskIndex = i >= 0 ? i : Math.max(0, Math.min(taskIndex, rows.length - 1))
     }
 
     function switchToTask(index) {
@@ -611,13 +831,15 @@ PlasmoidItem {
 
     // ── Window ────────────────────────────────────────────────────────────
 
+    // Drawn like the terminal launcher (agents/launcher): one flat surface, everything in
+    // mono, lines only between the three areas and inside the task table
     PlasmaCore.Window {
         id: launcher
         visible: false
-        // Layer surfaces need a real size up front (0 is a protocol error)
-        // The task manager widens it; the search column keeps its 680px-window width
-        width: 680 + root.taskWidth + root.pad + 1
-        height: 460
+        // Layer surfaces need a real size up front (0 is a protocol error).
+        // Tasks (750), search (~540), session (210), with 24px gaps around the rules
+        width: 1630
+        height: 660
         LayerShell.Window.scope: "leaves-launcher"
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone
         LayerShell.Window.layer: LayerShell.Window.LayerTop
@@ -630,36 +852,51 @@ PlasmoidItem {
             width: launcher.width - launcher.leftPadding - launcher.rightPadding
             height: launcher.height - launcher.topPadding - launcher.bottomPadding
 
+            // The terminal launcher's background (bg) over the whole window, frame padding
+            // included: PlasmaCore.Window can't drop the Plasma style's frame (surface)
+            Rectangle {
+                x: -launcher.leftPadding
+                y: -launcher.topPadding
+                width: launcher.width
+                height: launcher.height
+                radius: 12   // the popups' corners (Plasma style)
+                color: Theme.bg
+                border.width: 1
+                border.color: Theme.border
+            }
+
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: root.pad - 4   // the dialog frame already pads a little
-                anchors.topMargin: root.pad     // 4px more breathing room top and bottom
-                anchors.bottomMargin: root.pad
-                spacing: root.pad
+                anchors.margins: 16
+                anchors.topMargin: 18
+                spacing: root.columnGap
 
-                // Left: task manager, a sunk list under a dithered row of column headers
-                Well {
-                    // Fixed width, like the side panel
-                    Layout.preferredWidth: root.taskWidth - root.pad
-                    Layout.maximumWidth: root.taskWidth - root.pad
-                    Layout.fillWidth: false
+                // Left: task manager. Column names, the machine's totals, then the apps
+                ColumnLayout {
+                    Layout.preferredWidth: root.taskWidth
+                    Layout.maximumWidth: root.taskWidth
                     Layout.fillHeight: true
+                    spacing: 0
 
-                    // Column headers; click one to sort by it
+                    HoverHandler { id: taskHover }
+
+                    // Column names; click one to sort by it. "Tasks" sorts by name, and again back to load
                     Item {
                         id: taskHeader
-                        x: 1; y: 1
-                        width: parent.width - 2
-                        height: Theme.sizeGroupHeader
+                        Layout.fillWidth: true
+                        implicitHeight: 30
 
-                        Dither { anchors.fill: parent }
-                        Caps {
-                            x: 8
+                        MonoCaps {
                             height: parent.height
-                            text: "Tasks"
-                            color: root.sortKey === "name" ? Theme.text : Theme.textMuted
-                            TapHandler { onTapped: root.sortKey = "name" }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            text: root.sortKey === "load" ? "Tasks · by load" : "Tasks"
+                            color: root.area === "tasks" || root.sortKey === "name" || tasksTitleHover.hovered
+                                   ? Theme.text : Theme.textMuted
+                            TapHandler { onTapped: root.sortKey = root.sortKey === "name" ? "load" : "name" }
+                            HoverHandler { id: tasksTitleHover; cursorShape: Qt.PointingHandCursor }
+                            PlasmaComponents.ToolTip {
+                                text: "Load: each app's largest share of CPU, GPU, memory or disk"
+                                visible: tasksTitleHover.hovered && root.sortKey === "load"
+                            }
                         }
                         RowLayout {
                             spacing: 0
@@ -670,15 +907,72 @@ PlasmoidItem {
                                 TaskHeader {}
                             }
                         }
-                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+                        Rule { anchors.bottom: parent.bottom; width: parent.width }
+                    }
+
+                    // The machine's totals: used / available on one line, the last two minutes under it
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: totalsRow.implicitHeight + 26
+
+                        MonoCaps { y: 13; text: "System" }
+                        RowLayout {
+                            id: totalsRow
+                            y: 12
+                            spacing: 0
+                            anchors { right: parent.right; rightMargin: 8 }
+                            TotalCell {
+                                column: "cpu"
+                                used: Math.round(cpuTotal.value ?? 0) + "%"
+                                of: " of " + (cpuThreads.value ?? "")
+                                level: cpuTotal.value ?? 0
+                                values: root.history.cpu
+                                tip: "CPU: " + used + " of " + (cpuThreads.value ?? "?") + " threads"
+                            }
+                            TotalCell {
+                                column: "gpu"
+                                used: "N " + Math.round(nvidiaTotal.value ?? 0) + "%"
+                                of: " · I " + Math.round(intelTotal.value ?? 0) + "%"
+                                level: Math.max(nvidiaTotal.value ?? 0, intelTotal.value ?? 0)
+                                values: root.history.gpu
+                                tip: "GPU: NVIDIA " + Math.round(nvidiaTotal.value ?? 0) + "% · Intel "
+                                     + Math.round(intelTotal.value ?? 0) + "% (history: the busier one)"
+                            }
+                            TotalCell {
+                                column: "vram"
+                                used: root.formatMemory((vramUsed.value ?? 0) / 1024)
+                                of: " / " + root.formatMemory((vramTotal.value ?? 0) / 1024)
+                                level: vramTotal.value ? vramUsed.value / vramTotal.value * 100 : 0
+                                values: root.history.vram
+                                tip: "NVIDIA video memory: " + used + of
+                            }
+                            TotalCell {
+                                column: "ram"
+                                used: root.formatMemory((ramUsed.value ?? 0) / 1024)
+                                of: " / " + root.formatMemory((ramTotal.value ?? 0) / 1024)
+                                level: ramTotal.value ? ramUsed.value / ramTotal.value * 100 : 0
+                                values: root.history.ram
+                                tip: "Memory: " + used + of
+                            }
+                            TotalCell {
+                                column: "disk"
+                                // A rate has no "available": its history scales to its own peak
+                                used: root.formatRate((diskRead.value ?? 0) + (diskWrite.value ?? 0))
+                                of: "/s"
+                                values: root.history.disk
+                                percent: false
+                                tip: "Disk: read " + root.formatRate(diskRead.value ?? 0) + "/s · write "
+                                     + root.formatRate(diskWrite.value ?? 0) + "/s"
+                            }
+                        }
+                        Rule { anchors.bottom: parent.bottom; width: parent.width }
                     }
 
                     ListView {
                         id: taskList
-                        x: 1
-                        y: taskHeader.y + taskHeader.height
-                        width: parent.width - 2
-                        height: parent.height - y - 1
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        topMargin: 6
                         clip: true
                         model: taskRows
                         currentIndex: root.taskIndex
@@ -690,106 +984,187 @@ PlasmoidItem {
                         layer.enabled: !atYBeginning || !atYEnd
                         layer.effect: GE.OpacityMask { maskSource: taskFadeMask }
 
-                        Quiet {
+                        Mono {
                             anchors.centerIn: parent
                             visible: taskList.count === 0
+                            color: Theme.textMuted
                             text: apps.available ? "" : "Needs systemd app cgroups"
                         }
                     }
                 }
 
-                // Middle: search + list
+                Rule { vertical: true }
+
+                // Middle: the prompt, the folder path while navigating, and the list
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: Theme.space8
+                    spacing: 0
 
-                    Field {
+                    Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: root.rowHeight
-                        // Neutral focus: the accent is kept for the highlighted row
-                        border.color: root.area === "search" ? Theme.textFaint : Theme.fieldEdge
+                        implicitHeight: 42
+                        color: "transparent"
+                        radius: 3
+                        border.width: 1
+                        border.color: root.area === "search" ? Theme.accent : Theme.border
                         Behavior on border.color {
                             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
 
-                        Kirigami.Icon {
-                            id: searchIcon
-                            x: 10
+                        Mono {
+                            id: caret
+                            x: root.iconX + 10 - width / 2   // centered over the icons below
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 16; height: 16
-                            source: "mingcute-search-fill"
-                            isMask: true
-                            color: Theme.textMuted
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                            color: Theme.accent
+                            text: "›"
                         }
 
                         TextInput {
                             id: search
-                            anchors { left: searchIcon.right; right: parent.right; leftMargin: 8; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                            anchors {
+                                left: parent.left; leftMargin: root.nameX
+                                right: modeTag.visible ? modeTag.left : parent.right; rightMargin: 12
+                                verticalCenter: parent.verticalCenter
+                            }
                             color: Theme.text
                             selectionColor: Theme.accent
                             selectedTextColor: Theme.textOnAccent
-                            font.family: Theme.typeFamilySans
-                            font.pixelSize: Theme.typeSizeBody
+                            font.family: root.mono
+                            font.pixelSize: 14
                             clip: true
-                            onTextChanged: root.area = "search"
+                            // A block at the end of the text, a bar inside it (so it hides no letter)
+                            cursorDelegate: Rectangle {
+                                width: search.cursorPosition < search.text.length ? 2 : 8
+                                height: search.cursorRectangle.height
+                                color: Theme.accent
+                                visible: search.cursorVisible
+                            }
+                            property string lastText: ""
+                            onTextChanged: {
+                                root.area = "search"
+                                const was = lastText
+                                lastText = text
+                                if (text === "/" && was === "") text = "~/"
+                                else if (text === "~" && was === "~/") text = root.homePath
+                            }
 
                             Text {
                                 anchors.fill: parent
+                                anchors.leftMargin: 12   // after the block cursor
                                 visible: !search.text
                                 verticalAlignment: Text.AlignVCenter
-                                text: "Search apps and files"
+                                text: "search apps and files, or / for folders"
                                 color: Theme.textFaint
                                 font: search.font
                             }
 
                             Keys.onPressed: event => root.handleKey(event)
                         }
+
+                        // The mode, inverted like the terminal launcher's provider chip
+                        Rectangle {
+                            id: modeTag
+                            visible: root.navigating
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            width: modeLabel.implicitWidth + 16
+                            height: 22
+                            radius: 2
+                            color: Theme.accent
+                            Mono {
+                                id: modeLabel
+                                anchors.centerIn: parent
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                color: Theme.textOnAccent
+                                text: "folders"
+                            }
+                        }
                     }
 
-                    Well {
+                    // The folder being listed, one crumb per folder (click one to go there)
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: root.navigating ? 36 : 10
+
+                        Row {
+                            visible: root.navigating
+                            x: root.nameX
+                            anchors.verticalCenter: parent.verticalCenter
+                            Repeater {
+                                model: root.navCrumbs
+                                Row {
+                                    required property var modelData
+                                    Mono {
+                                        font.pixelSize: 12
+                                        color: crumbHover.hovered ? Theme.accent : Theme.textSoft
+                                        text: modelData.name
+                                        HoverHandler { id: crumbHover; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: search.text = modelData.path }
+                                    }
+                                    Mono {
+                                        visible: modelData.name !== "/"
+                                        font.pixelSize: 12
+                                        color: Theme.textFaint
+                                        text: "/"
+                                    }
+                                }
+                            }
+                        }
+                        Mono {
+                            visible: root.navigating && folder.status === FolderListModel.Ready
+                            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                            font.pixelSize: 12
+                            color: Theme.textFaint
+                            text: root.navFilter ? root.navEntries.length + " of " + folder.count + " match “" + root.navFilter + "”"
+                                                 : folder.count + (folder.count === 1 ? " item" : " items")
+                        }
+                    }
+
+                    ListView {
+                        id: list
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: true
+                        model: root.entries
+                        currentIndex: 0
+                        boundsBehavior: Flickable.StopAtBounds
+                        highlightMoveDuration: 0
+                        keyNavigationEnabled: false
+                        delegate: EntryRow {}
 
-                        ListView {
-                            id: list
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            clip: true
-                            model: root.entries
-                            currentIndex: 0
-                            boundsBehavior: Flickable.StopAtBounds
-                            highlightMoveDuration: 0
-                            keyNavigationEnabled: false
-                            delegate: EntryRow {}
+                        // Scroll hint: rows fade out at an edge with more content past it
+                        layer.enabled: !atYBeginning || !atYEnd
+                        layer.effect: GE.OpacityMask { maskSource: fadeMask }
 
-                            // Scroll hint: rows fade out at an edge with more content past it
-                            layer.enabled: !atYBeginning || !atYEnd
-                            layer.effect: GE.OpacityMask { maskSource: fadeMask }
-
-                            Quiet {
-                                anchors.centerIn: parent
-                                visible: list.count === 0
-                                text: root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
-                            }
+                        Mono {
+                            anchors.centerIn: parent
+                            visible: list.count === 0
+                            color: Theme.textMuted
+                            text: root.navigating ? (folder.status !== FolderListModel.Ready ? ""
+                                                     : root.navFilter ? "No matches" : "Empty folder")
+                                : root.searching ? (runner.querying ? "" : "No results") : "No recent apps yet"
                         }
                     }
                 }
 
-                // Right: power & session as keys, then settings and the user
-                ColumnLayout {
-                    // Fixed width; without the max it inherits fillWidth from its rows
-                    Layout.preferredWidth: root.sideWidth - root.pad
-                    Layout.maximumWidth: root.sideWidth - root.pad
-                    Layout.fillWidth: false
-                    Layout.fillHeight: true
-                    spacing: Theme.space4
+                Rule { vertical: true }
 
+                // Right: power & session, then settings and the user
+                ColumnLayout {
+                    Layout.preferredWidth: root.sideWidth
+                    Layout.maximumWidth: root.sideWidth
+                    Layout.fillHeight: true
+                    spacing: 0
+
+                    Item { implicitHeight: 6 }   // first row's middle level with the prompt's
                     Repeater {
                         model: root.dividerAfter + 1
                         SideRow { required property int index; actionIndex: index }
                     }
-                    Item { implicitHeight: Theme.space8 }
+                    Item { implicitHeight: 16 }
                     SideRow { actionIndex: root.dividerAfter + 1 }
                     Item { Layout.fillHeight: true }
                     SideRow { actionIndex: root.sideActions.length - 1 }
@@ -806,7 +1181,14 @@ PlasmoidItem {
     function handleKey(event) {
         const ctrl = event.modifiers & Qt.ControlModifier
         const alt = event.modifiers & Qt.AltModifier
+        const shift = event.modifiers & Qt.ShiftModifier
         const arrows = [Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down]
+        // Alt+1-5 sort the tasks by a column (again: back to load), from any area
+        if (alt && event.key >= Qt.Key_1 && event.key <= Qt.Key_5) {
+            sortBy(taskColumns[event.key - Qt.Key_1].key)
+            event.accepted = true
+            return
+        }
         if (alt && area === "tasks" && arrows.includes(event.key)) {
             if (event.key === Qt.Key_Left) endTask(taskIndex)
             event.accepted = true
@@ -827,7 +1209,7 @@ PlasmoidItem {
             else if (area === "side") sideIndex = Math.min(sideIndex + 1, sideActions.length - 1)
             else if (area === "search") {
                 // While typing, row 0 is already highlighted, so Down goes to row 1
-                if (list.count) { area = "list"; list.currentIndex = searching ? Math.min(1, list.count - 1) : 0 }
+                if (list.count) { area = "list"; list.currentIndex = autoHighlight ? Math.min(1, list.count - 1) : 0 }
             }
             else list.currentIndex = Math.min(list.currentIndex + 1, list.count - 1)
             break
@@ -835,7 +1217,7 @@ PlasmoidItem {
             if (area === "tasks") taskIndex = Math.max(taskIndex - 1, 0)
             else if (area === "side") sideIndex = Math.max(sideIndex - 1, 0)
             else if (area === "list") {
-                if (list.currentIndex <= (searching ? 1 : 0)) { area = "search"; list.currentIndex = 0 }
+                if (list.currentIndex <= (autoHighlight ? 1 : 0)) { area = "search"; list.currentIndex = 0 }
                 else list.currentIndex--
             }
             break
@@ -860,7 +1242,8 @@ PlasmoidItem {
         case Qt.Key_Enter:
             if (area === "side") runSide(sideIndex)
             else if (area === "tasks") switchToTask(taskIndex)
-            else run(entries[list.currentIndex])
+            else if (shift) showInFileManager()
+            else if (area === "list" || !(navigating && navFilter === "")) run(entries[list.currentIndex])
             break
         case Qt.Key_P:
             if (!ctrl || area === "side" || area === "tasks") { event.accepted = false; return }
@@ -899,7 +1282,7 @@ PlasmoidItem {
 
     // Alt+arrows act on the highlighted row: the list's, or the first result while typing
     function handlePinKey(key) {
-        const highlighted = area === "list" || (area === "search" && searching)
+        const highlighted = area === "list" || (area === "search" && autoHighlight)
         const entry = highlighted ? entries[list.currentIndex] : null
         switch (key) {
         case Qt.Key_Right: setPinned(entry, true); return true
@@ -912,29 +1295,83 @@ PlasmoidItem {
 
     // ── Rows ──────────────────────────────────────────────────────────────
 
-    // A row in a sunk list: the keyboard highlight is the one accented thing (amber at
-    // opacity.selection), hover a neutral tint; a row-line under each
+    // Mono text, the launcher's one face (JetBrains Mono, as in the terminal launcher)
+    component Mono: Text {
+        font.family: root.mono
+        font.pixelSize: 13
+        color: Theme.text
+        verticalAlignment: Text.AlignVCenter
+    }
+
+    // A caps label in mono: headings and column names
+    component MonoCaps: Mono {
+        font.pixelSize: 11
+        font.weight: Font.DemiBold
+        font.capitalization: Font.AllUppercase
+        font.letterSpacing: 0.9
+        color: Theme.textMuted
+    }
+
+    // A 1px line: between the three areas (vertical) and inside the task table
+    component Rule: Rectangle {
+        property bool vertical
+        color: Theme.border
+        implicitWidth: 1
+        implicitHeight: 1
+        Layout.fillHeight: vertical
+        Layout.preferredWidth: vertical ? 1 : -1
+    }
+
+    // A row: the keyboard highlight is the one accented thing (amber at opacity.selection),
+    // hover a neutral tint; no line under it
     component RowBackground: Rectangle {
         property bool selected
         property bool hovered
         property color tint: Theme.accent
+        radius: 3
         color: selected ? Qt.rgba(tint.r, tint.g, tint.b, Theme.opacitySelection)
              : hovered ? Theme.hoverTint
              : "transparent"
         Behavior on color {
             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
         }
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.rowLine }
     }
 
-    // A group's name over its rows ("Apps", "Background"): a caps label on the dither
-    component GroupHeader: Item {
-        property alias text: groupLabel.text
-        height: Theme.sizeGroupHeader
-        Dither { anchors.fill: parent }
-        Caps { id: groupLabel; x: 8; height: parent.height }
-        Rectangle { width: parent.width; height: 1; color: Theme.edge; visible: parent.y > 0 }
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+    // The last two minutes of a total: a thin line over a faint fill, newest at the right.
+    // Percentages are drawn 0-100; a rate (disk) against its own peak
+    component History: Canvas {
+        property var values: []
+        property bool percent: true
+        property color tone: Theme.text
+        implicitWidth: root.taskCellWidth - 12
+        implicitHeight: 22
+        onValuesChanged: requestPaint()
+        onToneChanged: requestPaint()
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            const v = values
+            if (!v || v.length < 2) return
+            const max = percent ? 100 : Math.max(1024, ...v) * 1.15
+            const n = root.historyLength
+            const x = i => (n - v.length + i) / (n - 1) * width
+            const y = value => height - 1 - Math.min(value, max) / max * (height - 2)
+            ctx.beginPath()
+            ctx.moveTo(x(0), height)
+            v.forEach((value, i) => ctx.lineTo(x(i), y(value)))
+            ctx.lineTo(x(v.length - 1), height)
+            ctx.closePath()
+            ctx.globalAlpha = 0.12
+            ctx.fillStyle = tone
+            ctx.fill()
+            ctx.globalAlpha = 1
+            ctx.beginPath()
+            v.forEach((value, i) => i ? ctx.lineTo(x(i), y(value)) : ctx.moveTo(x(i), y(value)))
+            ctx.strokeStyle = tone
+            ctx.lineWidth = 1.2
+            ctx.lineJoin = "round"
+            ctx.stroke()
+        }
     }
 
     component EntryRow: Item {
@@ -942,25 +1379,27 @@ PlasmoidItem {
         required property var modelData
         required property int index
         readonly property bool pinned: root.isPinned(modelData)
-        readonly property bool hasDivider: modelData.above === "divider"
-        readonly property bool hasHeader: modelData.above !== "" && !hasDivider
-        // Space above the row: a 2px divider (pinned / recent) or a group header strip
-        readonly property int aboveHeight: hasDivider ? 2 : hasHeader ? Theme.sizeGroupHeader : 0
+        readonly property bool hasHeader: modelData.above !== ""
+        // A group's heading ("Pinned 6", "Files 3"): a caps label and a faint count, with
+        // space above it when it isn't the first
+        readonly property int aboveHeight: !hasHeader ? 0 : index > 0 ? 38 : 28
 
         width: ListView.view.width
         height: aboveHeight + rowBackground.height
 
-        Rectangle {
-            visible: entryRow.hasDivider
-            width: parent.width
-            height: 2
-            color: Theme.edge
-        }
-
-        GroupHeader {
+        Row {
             visible: entryRow.hasHeader
-            width: parent.width
-            text: entryRow.modelData.above
+            x: root.nameX
+            y: entryRow.aboveHeight - 28
+            height: 28
+            spacing: 10
+            MonoCaps { height: parent.height; text: entryRow.modelData.above }
+            Mono {
+                height: parent.height
+                font.pixelSize: 11
+                color: Theme.textFaint
+                text: entryRow.modelData.count ?? ""
+            }
         }
 
         RowBackground {
@@ -971,33 +1410,29 @@ PlasmoidItem {
             hovered: mouse.containsMouse
             // While typing, the first result is highlighted so Enter runs it
             selected: entryRow.index === list.currentIndex
-                      && (root.area === "list" || (root.area === "search" && root.searching))
+                      && (root.area === "list" || (root.area === "search" && root.autoHighlight))
 
             Kirigami.Icon {
                 id: appIcon
-                x: 8
+                x: root.iconX
                 anchors.verticalCenter: parent.verticalCenter
-                width: 24; height: 24
+                width: 20; height: 20
                 source: entryRow.modelData.icon
             }
 
             Column {
-                anchors { left: appIcon.right; leftMargin: 12; right: pinIcon.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                spacing: 0
-                Text {
+                anchors { left: parent.left; leftMargin: root.nameX; right: pinIcon.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                spacing: 3
+                Mono {
                     width: parent.width
                     elide: Text.ElideRight
-                    font.family: Theme.typeFamilySans
-                    font.pixelSize: Theme.typeSizeBody
-                    color: Theme.text
                     text: entryRow.modelData.name
                 }
-                Text {
+                Mono {
                     visible: text !== ""
                     width: parent.width
                     elide: Text.ElideMiddle  // paths: keep the start and the file's folder
-                    font.family: Theme.typeFamilySans
-                    font.pixelSize: Theme.typeSizeSmall
+                    font.pixelSize: 11
                     color: Theme.textMuted
                     text: entryRow.modelData.subtitle
                 }
@@ -1006,13 +1441,13 @@ PlasmoidItem {
             // Pin indicator at the end: always shown when pinned, faint on hover otherwise
             Kirigami.Icon {
                 id: pinIcon
-                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                width: 16; height: 16
+                anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                width: 14; height: 14
                 source: "mingcute-pin-fill"
                 isMask: true
                 visible: entryRow.modelData.favoriteId !== ""
                 color: Theme.text
-                opacity: entryRow.pinned || pinMouse.containsMouse ? 0.7 : mouse.containsMouse ? 0.25 : 0
+                opacity: entryRow.pinned || pinMouse.containsMouse ? 0.6 : mouse.containsMouse ? 0.25 : 0
                 Behavior on opacity {
                     NumberAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                 }
@@ -1039,15 +1474,16 @@ PlasmoidItem {
         }
     }
 
-    // A column header, a caps label; the sorted column is drawn in the text color
+    // A column name; the sorted column is drawn in the text color
     component TaskHeader: Item {
         id: header
         required property var modelData
+        required property int index
         readonly property bool active: root.sortKey === modelData.key
-        Layout.preferredWidth: root.taskCellWidth
+        Layout.preferredWidth: root.columnWidth(modelData.key)
         Layout.fillHeight: true
 
-        Caps {
+        MonoCaps {
             anchors.right: parent.right
             height: parent.height
             text: header.modelData.short
@@ -1057,21 +1493,59 @@ PlasmoidItem {
             }
         }
         HoverHandler { id: headerHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: root.sortKey = header.active ? "name" : header.modelData.key }
+        TapHandler { onTapped: root.sortBy(header.modelData.key) }
         PlasmaComponents.ToolTip {
-            text: header.modelData.label
+            text: header.modelData.label + " (Alt+" + (header.index + 1) + ")"
             visible: headerHover.hovered
         }
     }
 
-    // A right-aligned reading; idle ones (nothing happening) are muted
-    component TaskCell: Num {
+    // A right-aligned reading; idle ones (nothing happening) are faint, and when sorting
+    // by load the cells other than the row's lead are muted
+    component TaskCell: Mono {
+        property string column
+        property string lead
         property real level
         property bool idle
-        Layout.preferredWidth: root.taskCellWidth
+        Layout.preferredWidth: root.columnWidth(column)
         horizontalAlignment: Text.AlignRight
-        font.pixelSize: Theme.typeSizeBar
-        color: idle ? Theme.textFaint : root.levelColor(level)
+        font.pixelSize: 12
+        color: idle ? Theme.textFaint
+             : level >= 70 || lead === "" || lead === column ? root.levelColor(level)
+             : Theme.textMuted
+    }
+
+    // A total: used / available on one line (available faint), its history under it
+    component TotalCell: Item {
+        id: totalCell
+        property string used
+        property string of
+        property real level
+        property string tip
+        property var values: []
+        property bool percent: true
+        property string column
+        Layout.preferredWidth: root.columnWidth(column)
+        implicitHeight: totalColumn.implicitHeight
+
+        Column {
+            id: totalColumn
+            anchors.right: parent.right
+            spacing: 8
+            Row {
+                anchors.right: parent.right
+                Mono { font.pixelSize: 12; color: root.levelColor(totalCell.level); text: totalCell.used }
+                Mono { font.pixelSize: 12; color: Theme.textFaint; text: totalCell.of }
+            }
+            History {
+                anchors.right: parent.right
+                values: totalCell.values
+                percent: totalCell.percent
+                tone: root.levelColor(totalCell.level)
+            }
+        }
+        HoverHandler { id: totalHover }
+        PlasmaComponents.ToolTip { text: totalCell.tip; visible: totalHover.hovered }
     }
 
     component TaskRow: Item {
@@ -1088,23 +1562,14 @@ PlasmoidItem {
         required property real ramPercent
         required property real disk
         required property int windowRow
-        required property string above
+        required property string lead
         readonly property bool ending: root.endingKey === key
         readonly property bool hovered: taskMouse.containsMouse || endMouse.containsMouse
-        readonly property int aboveHeight: above !== "" ? Theme.sizeGroupHeader : 0
 
         width: ListView.view.width
-        height: aboveHeight + root.taskRowHeight
-
-        GroupHeader {
-            visible: taskRow.above !== ""
-            width: parent.width
-            text: taskRow.above
-        }
+        height: root.taskRowHeight
 
         RowBackground {
-            id: taskBackground
-            y: taskRow.aboveHeight
             width: parent.width
             height: root.taskRowHeight
             hovered: taskRow.hovered
@@ -1115,20 +1580,18 @@ PlasmoidItem {
                 id: taskIcon
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
-                width: 24; height: 24
+                width: 20; height: 20
                 source: taskRow.icon || "application-x-executable"
             }
 
             // Background apps (no window) in the muted color
-            Text {
+            Mono {
                 anchors {
-                    left: taskIcon.right; leftMargin: 8
+                    left: taskIcon.right; leftMargin: 12
                     right: cells.left; rightMargin: taskRow.hovered ? 28 : 4
                     verticalCenter: parent.verticalCenter
                 }
                 elide: Text.ElideRight
-                font.family: Theme.typeFamilySans
-                font.pixelSize: Theme.typeSizeBody
                 color: taskRow.ending ? Theme.critical
                      : taskRow.windowRow >= 0 ? Theme.text : Theme.textMuted
                 text: taskRow.ending ? "Again to force quit" : taskRow.name
@@ -1138,7 +1601,7 @@ PlasmoidItem {
             Kirigami.Icon {
                 id: endIcon
                 anchors { right: cells.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                width: 16; height: 16
+                width: 14; height: 14
                 source: "mingcute-close-fill"
                 isMask: true
                 color: endMouse.containsMouse ? Theme.critical : Theme.text
@@ -1149,14 +1612,14 @@ PlasmoidItem {
             }
 
             RowLayout {
-                spacing: 0
                 id: cells
+                spacing: 0
                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                TaskCell { text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
-                TaskCell { text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
-                TaskCell { text: root.formatMemory(taskRow.vram); level: taskRow.vramPercent; idle: taskRow.vram < 512 }
-                TaskCell { text: root.formatMemory(taskRow.ram); level: taskRow.ramPercent }
-                TaskCell { text: root.formatRate(taskRow.disk); idle: taskRow.disk < 512 }
+                TaskCell { column: "cpu"; lead: taskRow.lead; text: Math.round(taskRow.cpu) + "%"; level: taskRow.cpu; idle: taskRow.cpu < 0.5 }
+                TaskCell { column: "gpu"; lead: taskRow.lead; text: Math.round(taskRow.gpu) + "%"; level: taskRow.gpu; idle: taskRow.gpu < 0.5 }
+                TaskCell { column: "vram"; lead: taskRow.lead; text: root.formatMemory(taskRow.vram); level: taskRow.vramPercent; idle: taskRow.vram < 512 }
+                TaskCell { column: "ram"; lead: taskRow.lead; text: root.formatMemory(taskRow.ram); level: taskRow.ramPercent }
+                TaskCell { column: "disk"; lead: taskRow.lead; text: root.formatRate(taskRow.disk); idle: taskRow.disk < 512 }
             }
 
             MouseArea {
@@ -1176,30 +1639,28 @@ PlasmoidItem {
         }
     }
 
-    // Power and session as keys; the keyboard's place is highlighted, and a key that asks to be
-    // pressed again turns critical
-    component SideRow: Key {
+    // Power and session as rows with their icons; the keyboard's place is highlighted,
+    // and a row that asks to be pressed again turns critical
+    component SideRow: RowBackground {
         id: sideRow
         property int actionIndex
-        readonly property var sideAction: root.sideActions[actionIndex]  // Button's own action is FINAL
+        readonly property var sideAction: root.sideActions[actionIndex]
         readonly property bool confirming: root.confirmIndex === actionIndex
 
         Layout.fillWidth: true
-        implicitHeight: sideAction.user ? 40 : Theme.sizeKey
-        flat: !!sideAction.user
-        focusPolicy: Qt.NoFocus
-        leftPadding: 8
-        highlighted: (root.area === "side" && root.sideIndex === actionIndex) || confirming
-        tone: confirming ? Theme.critical : Theme.accent
-        onClicked: root.runSide(sideRow.actionIndex)
+        implicitHeight: sideAction.user ? 40 : root.rowHeight
+        selected: (root.area === "side" && root.sideIndex === actionIndex) || confirming
+        hovered: sideMouse.containsMouse
+        tint: confirming ? Theme.critical : Theme.accent
 
-        contentItem: RowLayout {
-            spacing: Theme.space8
+        RowLayout {
+            anchors { fill: parent; leftMargin: root.iconX; rightMargin: 8 }
+            spacing: 12
 
             KirigamiComponents.Avatar {
                 visible: !!sideRow.sideAction.user
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
                 name: sideRow.sideAction.label
                 source: user.faceIconUrl
                 cache: false
@@ -1212,24 +1673,18 @@ PlasmoidItem {
                 isMask: true
                 color: sideRow.confirming ? Theme.critical : Theme.text
             }
-            // Session actions are caps like any key; the user's name stays as written
-            Caps {
-                visible: !sideRow.sideAction.user
+            Mono {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                size: Theme.typeSizeSmall
-                color: sideRow.confirming ? Theme.critical : Theme.text
+                color: sideRow.confirming ? Theme.critical : sideRow.sideAction.user ? Theme.textMuted : Theme.text
                 text: sideRow.confirming ? sideRow.sideAction.confirm : sideRow.sideAction.label
             }
-            Text {
-                visible: !!sideRow.sideAction.user
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-                font.family: Theme.typeFamilySans
-                font.pixelSize: Theme.typeSizeBody
-                color: Theme.text
-                text: sideRow.sideAction.label
-            }
+        }
+        MouseArea {
+            id: sideMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: root.runSide(sideRow.actionIndex)
         }
     }
 }
