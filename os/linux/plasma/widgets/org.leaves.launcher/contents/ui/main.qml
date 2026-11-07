@@ -68,7 +68,7 @@ PlasmoidItem {
     function columnWidth(key) { return key === "gpu" ? 124 : taskCellWidth }
     readonly property int columnGap: 24       // each side of the rules between the areas
     readonly property string mono: Theme.typeFamilyMono
-    readonly property int iconX: 14                       // a row's icon
+    readonly property int iconX: 8                        // a row's icon
     readonly property int nameX: iconX + 20 + 12          // a row's name, and the prompt's text
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
