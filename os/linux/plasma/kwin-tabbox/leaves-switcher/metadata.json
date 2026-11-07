@@ -2,7 +2,7 @@
     "KPlugin": {
         "Id": "leaves-switcher",
         "Name": "Leaves: switcher",
-        "Description": "A row of window thumbnails: the windows on the monitor under the mouse first, then the rest, each group by last use",
+        "Description": "A row of thumbnails of one monitor's windows by last use, opening on the focused window's monitor; Up/Down switch monitors",
         "Icon": "preferences-system-windows-switcher-thumbnail-grid",
         "Authors": [{ "Name": "Ricardo Verginelli" }],
         "License": "MIT",

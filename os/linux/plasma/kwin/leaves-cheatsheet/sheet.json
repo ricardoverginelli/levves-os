@@ -45,7 +45,8 @@
                 ["Meta+PgDown", "Minimize"],
                 ["Meta+Backspace", "Restore"],
                 ["Meta+Alt+Left / Meta+Alt+Right", "Focus the window in that direction"],
-                ["Alt+Tab", "Switch windows"],
+                ["Alt+Tab", "Switch windows on this monitor"],
+                ["Alt+Tab, then Up / Down", "The monitor above / below"],
                 ["Alt+F3", "Window menu"],
                 ["Alt+F4", "Close"],
                 ["Meta+Ctrl+Esc", "Kill a window (click it)"]
