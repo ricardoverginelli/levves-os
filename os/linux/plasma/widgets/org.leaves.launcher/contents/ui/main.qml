@@ -62,9 +62,11 @@ PlasmoidItem {
     readonly property int rowHeight: 30
     readonly property int twoLineRowHeight: 46
     readonly property int sideWidth: 210
-    readonly property int taskWidth: 720
+    readonly property int taskWidth: 750
     readonly property int taskRowHeight: 30
     readonly property int taskCellWidth: 96   // room for "used / available" on one line
+    // GPU's total names both cards ("N 88% · I 0%"), so its column is wider
+    function columnWidth(key) { return key === "gpu" ? 124 : taskCellWidth }
     readonly property int columnGap: 40       // each side of the rules between the areas
     readonly property string mono: Theme.typeFamilyMono
 
@@ -837,8 +839,8 @@ PlasmoidItem {
         id: launcher
         visible: false
         // Layer surfaces need a real size up front (0 is a protocol error).
-        // Tasks (720), search (~540), session (210), with 40px gaps around the rules
-        width: 1664
+        // Tasks (750), search (~540), session (210), with 40px gaps around the rules
+        width: 1694
         height: 660
         LayerShell.Window.scope: "leaves-launcher"
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone
@@ -909,6 +911,7 @@ PlasmoidItem {
                             spacing: 0
                             anchors { right: parent.right; rightMargin: 8 }
                             TotalCell {
+                                column: "cpu"
                                 used: Math.round(cpuTotal.value ?? 0) + "%"
                                 of: " of " + (cpuThreads.value ?? "")
                                 level: cpuTotal.value ?? 0
@@ -916,6 +919,7 @@ PlasmoidItem {
                                 tip: "CPU: " + used + " of " + (cpuThreads.value ?? "?") + " threads"
                             }
                             TotalCell {
+                                column: "gpu"
                                 used: "N " + Math.round(nvidiaTotal.value ?? 0) + "%"
                                 of: " · I " + Math.round(intelTotal.value ?? 0) + "%"
                                 level: Math.max(nvidiaTotal.value ?? 0, intelTotal.value ?? 0)
@@ -924,6 +928,7 @@ PlasmoidItem {
                                      + Math.round(intelTotal.value ?? 0) + "% (history: the busier one)"
                             }
                             TotalCell {
+                                column: "vram"
                                 used: root.formatMemory((vramUsed.value ?? 0) / 1024)
                                 of: " / " + root.formatMemory((vramTotal.value ?? 0) / 1024)
                                 level: vramTotal.value ? vramUsed.value / vramTotal.value * 100 : 0
@@ -931,6 +936,7 @@ PlasmoidItem {
                                 tip: "NVIDIA video memory: " + used + of
                             }
                             TotalCell {
+                                column: "ram"
                                 used: root.formatMemory((ramUsed.value ?? 0) / 1024)
                                 of: " / " + root.formatMemory((ramTotal.value ?? 0) / 1024)
                                 level: ramTotal.value ? ramUsed.value / ramTotal.value * 100 : 0
@@ -938,6 +944,7 @@ PlasmoidItem {
                                 tip: "Memory: " + used + of
                             }
                             TotalCell {
+                                column: "disk"
                                 // A rate has no "available": its history scales to its own peak
                                 used: root.formatRate((diskRead.value ?? 0) + (diskWrite.value ?? 0))
                                 of: "/s"
@@ -1464,7 +1471,7 @@ PlasmoidItem {
         required property var modelData
         required property int index
         readonly property bool active: root.sortKey === modelData.key
-        Layout.preferredWidth: root.taskCellWidth
+        Layout.preferredWidth: root.columnWidth(modelData.key)
         Layout.fillHeight: true
 
         MonoCaps {
@@ -1491,7 +1498,7 @@ PlasmoidItem {
         property string lead
         property real level
         property bool idle
-        Layout.preferredWidth: root.taskCellWidth
+        Layout.preferredWidth: root.columnWidth(column)
         horizontalAlignment: Text.AlignRight
         font.pixelSize: 12
         color: idle ? Theme.textFaint
@@ -1508,7 +1515,8 @@ PlasmoidItem {
         property string tip
         property var values: []
         property bool percent: true
-        Layout.preferredWidth: root.taskCellWidth
+        property string column
+        Layout.preferredWidth: root.columnWidth(column)
         implicitHeight: totalColumn.implicitHeight
 
         Column {
