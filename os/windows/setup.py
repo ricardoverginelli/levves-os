@@ -31,6 +31,12 @@ SCRIPTS = [
         "script": "ahk/install.py",
     },
     {
+        "key": "monitor",
+        "label": "Main monitor toggle",
+        "description": "Win+Shift+M turns the Asus off and on (this PC only; needs AHK)",
+        "script": "monitor/install.py",
+    },
+    {
         "key": "theme",
         "label": "Leaves theme",
         "description": "Dark mode, amber accent, leaves wallpaper and a minimal taskbar",
