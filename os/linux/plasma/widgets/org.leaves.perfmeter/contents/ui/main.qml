@@ -1,4 +1,4 @@
-// Compact perf meter: CPU 31 69°  GPU 99 79°  RAM 78  SSD 9  NET ↓2.4M ↑96K
+// Compact perf meter: CPU 31 69°  GPU 99 79°  VRAM 14  RAM 78  SSD 9  NET ↓2.4M ↑96K
 // The Levves top bar (design/DESIGN.md): caps labels in text-muted, serif readings in text,
 // warning from 70 and critical from 85.
 import QtQuick
@@ -45,6 +45,7 @@ PlasmoidItem {
 
             Metric { label: "CPU"; usageId: "cpu/all/usage"; tempId: "cpu/all/maximumTemperature" }
             Metric { label: "GPU"; usageId: "gpu/all/usage"; tempId: "gpu/gpu0/temperature" }
+            Metric { label: "VRAM"; usageId: "gpu/all/usedVram"; ofMaximum: true }
             Metric { label: "RAM"; usageId: "memory/physical/usedPercent" }
             Metric { label: "SSD"; usageId: "disk/all/usedPercent" }
             NetworkMetric { id: network }
@@ -77,6 +78,8 @@ PlasmoidItem {
         property string label
         property string usageId
         property string tempId
+        // The sensor is an amount (VRAM in bytes): shown as a percentage of its maximum
+        property bool ofMaximum: false
 
         spacing: root.innerGap
 
@@ -84,7 +87,11 @@ PlasmoidItem {
         Sensors.Sensor { id: temp; sensorId: tempId; updateRateLimit: 2000 }
 
         Caps { text: label; Layout.alignment: Qt.AlignBaseline }
-        Reading { value: usage.value ?? NaN; widest: "00" }
+        Reading {
+            value: !ofMaximum ? (usage.value ?? NaN)
+                 : usage.maximum > 0 ? (usage.value ?? NaN) / usage.maximum * 100 : NaN
+            widest: "00"
+        }
         Reading { value: tempId ? (temp.value ?? NaN) : NaN; suffix: "°"; widest: "00°" }
     }
 
