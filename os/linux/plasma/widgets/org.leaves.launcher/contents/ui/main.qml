@@ -26,7 +26,8 @@
 // Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
 // closes the app's windows (SIGTERM if it has none), and doing it again within
 // 5s force-quits it. Rows are sorted by load; click a column header to sort by
-// it (again for load), or "Tasks" for by name.
+// it (again for load), or "Tasks" for by name. Alt+1-5 do the same as the
+// column headers, from anywhere in the launcher.
 import QtQuick
 import QtQuick.Layouts
 import QtCore
@@ -510,6 +511,7 @@ PlasmoidItem {
     // disk against diskCeiling. Its column (the lead) is the row's one bright cell.
     property string sortKey: "load"
     onSortKeyChanged: { sortNow = true; rebuildTasks() }
+    function sortBy(column) { sortKey = sortKey === column ? "load" : column }
     readonly property real diskCeiling: 100 * 1024 * 1024   // 100 MiB/s counts as 100%
     // Load is smoothed over a few samples (per row key) so the order settles
     property var taskLoads: ({})
@@ -1051,6 +1053,12 @@ PlasmoidItem {
         const alt = event.modifiers & Qt.AltModifier
         const shift = event.modifiers & Qt.ShiftModifier
         const arrows = [Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down]
+        // Alt+1-5 sort the tasks by a column (again: back to load), from any area
+        if (alt && event.key >= Qt.Key_1 && event.key <= Qt.Key_5) {
+            sortBy(taskColumns[event.key - Qt.Key_1].key)
+            event.accepted = true
+            return
+        }
         if (alt && area === "tasks" && arrows.includes(event.key)) {
             if (event.key === Qt.Key_Left) endTask(taskIndex)
             event.accepted = true
@@ -1288,6 +1296,7 @@ PlasmoidItem {
     component TaskHeader: Item {
         id: header
         required property var modelData
+        required property int index
         readonly property bool active: root.sortKey === modelData.key
         Layout.preferredWidth: root.taskCellWidth
         Layout.fillHeight: true
@@ -1302,9 +1311,9 @@ PlasmoidItem {
             }
         }
         HoverHandler { id: headerHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: root.sortKey = header.active ? "load" : header.modelData.key }
+        TapHandler { onTapped: root.sortBy(header.modelData.key) }
         PlasmaComponents.ToolTip {
-            text: header.modelData.label
+            text: header.modelData.label + " (Alt+" + (header.index + 1) + ")"
             visible: headerHover.hovered
         }
     }
