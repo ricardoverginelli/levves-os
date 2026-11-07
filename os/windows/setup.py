@@ -31,6 +31,12 @@ SCRIPTS = [
         "script": "ahk/install.py",
     },
     {
+        "key": "dropdown",
+        "label": "Drop-down terminal",
+        "description": "Yakuake on Windows: portable Windows Terminal on Win+/ (needs AHK)",
+        "script": "dropdown/install.py",
+    },
+    {
         "key": "monitor",
         "label": "Main monitor toggle",
         "description": "Win+Shift+M turns the Asus off and on (this PC only; needs AHK)",
