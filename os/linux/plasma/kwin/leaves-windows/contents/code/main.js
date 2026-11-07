@@ -53,6 +53,13 @@
 // they're ignored) and live in this machine's kwinrc, [Script-leaves-windows]
 // homes, written through plasmashell's scripting (scripts can't write config).
 //
+// Borrowing: a window moved onto the main monitor from another one (dragged,
+// Meta+Down) is borrowed. When another window on main gets focus (its own
+// dialogs, Yakuake and the bars don't count), it goes back to the column or
+// place it left, and the main window it pushed out of a column gets that
+// column back. Meta+Down on main keeps it there. Meanwhile its old column goes
+// to the most recent window behind, which steps back when it returns.
+//
 //   ┌─────────┬─────────┬─────────┐
 //   │ 3rd     │ 1st     │ 2nd     │  columns: the 3 most recent windows
 //   │ recent  │ recent  │ recent  │  (the others wait behind them)
@@ -401,8 +408,10 @@ function reconcile(output) {
         }
         if (!fits(w, tiles))
             return;
-        if (s[i])
+        if (s[i]) {
+            noteDisplaced(w, s[i], i);
             untile(s[i]);
+        }
         s[i] = w;
     });
     claims = claims.filter(c => c.window.output != output);
@@ -566,8 +575,8 @@ function saveHomes() {
              script.replace("HOMES", JSON.stringify(JSON.stringify(homes))));
 }
 
-function osd(text) {
-    callDBus("org.kde.plasmashell", "/org/kde/osdService", "org.kde.osdService", "showText", "go-home", text);
+function osd(text, icon) {
+    callDBus("org.kde.plasmashell", "/org/kde/osdService", "org.kde.osdService", "showText", icon || "go-home", text);
 }
 
 // Meta+H: the focused window's column becomes its app's home; again clears it
@@ -726,10 +735,12 @@ function yakuakeFocused() {
 }
 
 // Meta+Down: KWin's move one screen down (its key is ours, apply.sh), but
-// Yakuake closes its terminal instead
+// Yakuake closes its terminal instead, and a borrowed window on main stays
 function down() {
     if (yakuakeFocused())
         closeYakuakeTerminal();
+    else if (keepBorrowed(workspace.activeWindow))
+        return;
     else
         callDBus("org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component", "invokeShortcut",
                  "Window One Screen Down");
@@ -892,6 +903,123 @@ function updateGame() {
     gaming = now;
 }
 
+// ── Borrowing ─────────────────────────────────────────────────────────────
+
+// key → {window, from (monitor name), column (-1: none), floated, geometry, displaced: {window, column}}
+const borrowed = {};
+// key → the window's monitor (name) as last seen, to tell where it came from
+const outputOf = {};
+// key → {output (name), geometry}: where it last sat still, off the main monitor
+const placeOf = {};
+
+function notePlace(w) {
+    if (w.move || w.deleted || !w.output || w.output == mainOutput())
+        return;
+    const g = w.frameGeometry;
+    if (!contains(w.output.geometry, {x: g.x + g.width / 2, y: g.y + g.height / 2}))
+        return;  // mid-move to another monitor
+    placeOf[key(w)] = {output: w.output.name, geometry: {x: g.x, y: g.y, width: g.width, height: g.height}};
+}
+
+// The main window a borrowed one pushed out of a column: the first one, as it lands
+function noteDisplaced(w, other, column) {
+    const b = borrowed[key(w)];
+    if (b && other && other != w && !b.displaced)
+        b.displaced = {window: other, column: column};
+}
+
+// The displaced main window back into its column (tiled right away, or the
+// next reconcile would take it for dragged out)
+function giveBack(b) {
+    const d = b.displaced;
+    if (!d || d.window.deleted || d.window.minimized || d.window.output != mainOutput())
+        return;
+    const s = slots[d.window.output.name], tiles = columns(d.window.output);
+    if (!s || s.length != tiles.length || d.column >= s.length || s.indexOf(d.window) != -1)
+        return;
+    if (s[d.column] && s[d.column] != b.window)
+        return;
+    s[d.column] = d.window;
+    delete floating[key(d.window)];
+    d.window.tile = tiles[d.column];
+}
+
+function outputMoved(w) {
+    const k = key(w), was = outputOf[k];
+    outputOf[k] = w.output.name;
+    const main = mainOutput();
+    if (borrowed[k] && w.output != main) {
+        // Taken back by hand (or sent off for a game)
+        const b = borrowed[k];
+        delete borrowed[k];
+        giveBack(b);
+        return;
+    }
+    if (sending || !was || was == w.output.name || w.output != main || workspace.screens.length < 2
+        || !isTileable(w))
+        return;
+    const s = slots[was], place = placeOf[k];
+    borrowed[k] = {window: w, from: was, column: s ? s.indexOf(w) : -1, floated: !!floating[k],
+                   geometry: place && place.output == was ? place.geometry : null, displaced: null};
+}
+
+// Back to the column (or place) it left; that column's stand-in goes behind
+function sendBack(b) {
+    const w = b.window, k = key(w);
+    delete borrowed[k];
+    const target = workspace.screens.find(o => o.name == b.from);
+    if (!target)
+        return;
+    const here = slots[w.output.name];
+    if (here)
+        here.forEach((x, i) => { if (x == w) here[i] = null; });
+    giveBack(b);
+    if (w.maximizeMode != 0)
+        w.setMaximize(false, false);
+    sendAway(w, target);
+    const s = slots[target.name], tiles = columns(target);
+    if (s && s.length == tiles.length && b.column >= 0 && b.column < s.length) {
+        const occ = s[b.column];
+        if (occ) {
+            s.forEach((x, i) => { if (x == occ) s[i] = null; });
+            untile(occ);
+        }
+        s[b.column] = w;
+        delete floating[k];
+        w.tile = tiles[b.column];
+    } else if (b.geometry) {
+        w.frameGeometry = b.geometry;
+        if (b.floated)
+            floating[k] = true;
+    }
+    schedule();
+}
+
+// Another window on main got focus: the borrowed ones go back
+function returnBorrowed(x) {
+    const main = mainOutput();
+    if (!x || x.output != main || !(isTileable(x) || isGame(x)))
+        return;
+    Object.keys(borrowed).forEach(k => {
+        const b = borrowed[k];
+        if (b.window == x)
+            return;
+        if (b.window.deleted || b.window.output != main)
+            delete borrowed[k];
+        else
+            sendBack(b);
+    });
+}
+
+// Meta+Down on main: a borrowed window stays
+function keepBorrowed(w) {
+    if (!w || !borrowed[key(w)] || w.output != mainOutput())
+        return false;
+    delete borrowed[key(w)];
+    osd("Stays on this monitor", "window-pin");
+    return true;
+}
+
 // ── Events ────────────────────────────────────────────────────────────────
 
 const reconcileTimer = new QTimer();
@@ -972,8 +1100,10 @@ function dragFinished(w) {
     const other = s[j];
     delete floating[key(w)];
     release(old, w, from.index, sameOutput ? other : null);
-    if (!sameOutput && other)
+    if (!sameOutput && other) {
+        noteDisplaced(w, other, j);
         untile(other);
+    }
     if (other && spanned(s, other))
         s.forEach((x, k) => { if (x == other && k != from.index) s[k] = null; });
     s[j] = w;
@@ -993,6 +1123,10 @@ function watch(w) {
     };
     w.maximizedChanged.connect(back);
     w.fullScreenChanged.connect(back);
+    outputOf[key(w)] = w.output ? w.output.name : null;
+    notePlace(w);
+    w.frameGeometryChanged.connect(() => notePlace(w));
+    w.outputChanged.connect(() => outputMoved(w));
     // Moved to another monitor (Meta+Up/Down): it takes a column there like a picked window
     w.outputChanged.connect(() => {
         if (!sending && !w.move && isTileable(w))
@@ -1024,6 +1158,9 @@ workspace.windowRemoved.connect(w => {
     delete floating[key(w)];
     delete returning[key(w)];
     delete dragFrom[key(w)];
+    delete borrowed[key(w)];
+    delete outputOf[key(w)];
+    delete placeOf[key(w)];
     schedule();
 });
 
@@ -1031,6 +1168,7 @@ workspace.windowActivated.connect(w => {
     if (!w)
         return;
     mru = [w].concat(mru.filter(x => x != w));
+    returnBorrowed(w);
     const s = slots[w.output.name];
     if (s && s.indexOf(w) == -1 && isTileable(w))
         claim(w, "pick");
