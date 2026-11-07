@@ -51,9 +51,9 @@ PlasmoidItem {
     readonly property int rowHeight: Theme.sizeRow
     readonly property int twoLineRowHeight: 44
     readonly property int sideWidth: 200
-    readonly property int taskWidth: 402
+    readonly property int taskWidth: 480
     readonly property int taskRowHeight: 32
-    readonly property int taskCellWidth: 42
+    readonly property int taskCellWidth: 50
 
     // Pins survive the bar being rebuilt (new applet id), so the client id is fixed
     readonly property string pinsClient: "org.leaves.launcher.favorites"
@@ -615,9 +615,9 @@ PlasmoidItem {
         id: launcher
         visible: false
         // Layer surfaces need a real size up front (0 is a protocol error)
-        // The task manager widens it; the search column keeps its 680px-window width
-        width: 680 + root.taskWidth + root.pad + 1
-        height: 460
+        // Tasks, then search (~600px wide: room for paths), then the side panel
+        width: 820 + root.taskWidth + root.pad + 1
+        height: 620
         LayerShell.Window.scope: "leaves-launcher"
         LayerShell.Window.anchors: LayerShell.Window.AnchorNone
         LayerShell.Window.layer: LayerShell.Window.LayerTop
