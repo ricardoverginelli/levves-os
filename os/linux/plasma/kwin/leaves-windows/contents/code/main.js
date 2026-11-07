@@ -43,6 +43,23 @@
 // A column too narrow for its window's minimum width grows to it, taking the
 // room from the others; if the minimums can't all fit, the widest one floats.
 //
+// Homes: Meta+H on a window in a column makes that column its app's home (again
+// clears it). The app then always opens there, on that monitor (main or
+// secondary), never where it was closed; it can be moved freely afterwards.
+// The window in the way moves to a free column; with none free the layout
+// grows by one (no layout counts as one column), and at three the rightmost
+// window without a home goes behind (all homes: the least recent one). A home
+// past the layout's columns is its last one. Homes need two monitors (with one,
+// they're ignored) and live in this machine's kwinrc, [Script-leaves-windows]
+// homes, written through plasmashell's scripting (scripts can't write config).
+//
+// Borrowing: a window moved onto the main monitor from another one (dragged,
+// Meta+Down) is borrowed. When another window on main gets focus (its own
+// dialogs, Yakuake and the bars don't count), it goes back to the column or
+// place it left, and the main window it pushed out of a column gets that
+// column back. Meta+Down on main keeps it there. Meanwhile its old column goes
+// to the most recent window behind, which steps back when it returns.
+//
 //   ┌─────────┬─────────┬─────────┐
 //   │ 3rd     │ 1st     │ 2nd     │  columns: the 3 most recent windows
 //   │ recent  │ recent  │ recent  │  (the others wait behind them)
@@ -287,8 +304,21 @@ function widen(tiles, s) {
     }
 }
 
+// A new window of an app whose home is this monitor
+function homeClaim(c, output) {
+    if (c.kind != "new" || c.window.output != output)
+        return null;
+    const h = homeOf(c.window);
+    return h && h.output == output ? h : null;
+}
+
 function reconcile(output) {
-    const tiles = columns(output);
+    let tiles = columns(output);
+    // No layout counts as one column: a home app opening here makes it two
+    if (!tiles.length && rootTile(output).tiles.length == 0 && claims.some(c => homeClaim(c, output))) {
+        resplit(output, 2);
+        tiles = columns(output);
+    }
     if (!tiles.length) {
         delete slots[output.name];
         claims = claims.filter(c => c.window.output != output);
@@ -352,6 +382,12 @@ function reconcile(output) {
     // New and picked windows take a column
     claims.filter(c => c.window.output == output).forEach(c => {
         const w = c.window;
+        const home = homeClaim(c, output);
+        if (home && here.indexOf(w) != -1) {
+            delete floating[key(w)];
+            tiles = placeHome(output, tiles, s, w, home.column);
+            return;
+        }
         if (s.indexOf(w) != -1 || here.indexOf(w) == -1 || floating[key(w)])
             return;
         let i = s.indexOf(null);
@@ -372,8 +408,10 @@ function reconcile(output) {
         }
         if (!fits(w, tiles))
             return;
-        if (s[i])
+        if (s[i]) {
+            noteDisplaced(w, s[i], i);
             untile(s[i]);
+        }
         s[i] = w;
     });
     claims = claims.filter(c => c.window.output != output);
@@ -404,24 +442,12 @@ function reconcileAll() {
 // Split the monitor into `count` equal columns (1 = no layout) and fill them
 // with its most recent windows, keeping their left-to-right order
 function applyLayout(output, count) {
-    const root = rootTile(output);
     const old = slots[output.name] || [];
     old.forEach(w => { if (w) untile(w); });
     delete slots[output.name];
-    while (root.tiles.length)
-        root.tiles[root.tiles.length - 1].remove();
     candidates(output).forEach(w => delete floating[key(w)]);
-
-    if (count < 2) {
-        root.padding = KWIN_PADDING;
+    if (!resplit(output, count))
         return;
-    }
-    root.split(1);  // horizontal
-    if (count == 3)
-        root.tiles[1].split(1);
-    root.padding = 0;
-    for (let i = 0; i < count - 1; i++)
-        root.tiles[i].relativeGeometry = {x: i / count, y: 0, width: 1 / count, height: 1};
 
     const tiles = columns(output);
     const s = slotsFor(output, tiles.length);
@@ -440,6 +466,66 @@ function applyLayout(output, count) {
     commit(output, tiles, s);
 }
 
+// The monitor's tiles as `count` equal columns (1 = none); false for none
+function resplit(output, count) {
+    const root = rootTile(output);
+    while (root.tiles.length)
+        root.tiles[root.tiles.length - 1].remove();
+    if (count < 2) {
+        root.padding = KWIN_PADDING;
+        return false;
+    }
+    root.split(1);  // horizontal
+    if (count == 3)
+        root.tiles[1].split(1);
+    root.padding = 0;
+    for (let i = 0; i < count - 1; i++)
+        root.tiles[i].relativeGeometry = {x: i / count, y: 0, width: 1 / count, height: 1};
+    return true;
+}
+
+// One more column on the right, the others keeping their windows; the new
+// tiles (s grows in place)
+function grow(output, s) {
+    s.forEach(w => { if (w) untile(w); });
+    resplit(output, s.length + 1);
+    s.push(null);
+    return columns(output);
+}
+
+// A new window of an app with a home here takes its home column; the window
+// in the way moves to a free column, one grown for it, or (at three) into the
+// column of the rightmost window without a home, which goes behind. Returns
+// the tiles (new ones if the layout grew).
+function placeHome(output, tiles, s, w, column) {
+    s.forEach((x, k) => { if (x == w) s[k] = null; });
+    if (w.maximizeMode != 0)
+        w.setMaximize(false, false);  // apps reopening maximized: into the column all the same
+    const i = Math.min(column, s.length - 1);
+    const occ = s[i];
+    s[i] = w;
+    if (!occ)
+        return tiles;
+    s.forEach((x, k) => { if (x == occ) s[k] = null; });  // a spanned one gives its columns back
+    let f = s.findIndex(x => !x);
+    if (f == -1 && s.length < MAX_COLUMNS) {
+        tiles = grow(output, s);
+        f = s.length - 1;
+    }
+    if (f != -1) {
+        s[f] = occ;
+        return tiles;
+    }
+    // Full: the rightmost window without a home goes behind (all homes: the least recent)
+    const held = s.map((x, k) => ({w: k == i ? occ : x, k: k}));
+    const loose = held.filter(x => !hasHome(x.w));
+    const out = loose.length ? loose[loose.length - 1] : held.slice().sort((a, b) => byRecency(b.w, a.w))[0];
+    untile(out.w);
+    if (out.w != occ)
+        s[out.k] = occ;
+    return tiles;
+}
+
 let armedUntil = 0;
 let early = null;  // {count, at}: a digit pressed before Meta+M
 
@@ -454,6 +540,73 @@ function arm() {
     if (early && Date.now() - early.at < EARLY_MS)
         applyToFocused(early.count);
     early = null;
+}
+
+// ── Homes ─────────────────────────────────────────────────────────────────
+
+// {app: {role: "main" | "secondary", column: 0-based}}
+let homes = {};
+try {
+    homes = JSON.parse(readConfig("homes", "{}")) || {};
+} catch (e) {
+    homes = {};
+}
+
+function appId(w) {
+    return (w.desktopFileName || w.resourceClass || "").toLowerCase();
+}
+
+function hasHome(w) {
+    return !!w && !!homes[appId(w)];
+}
+
+// The window's home: {output, column}, or null (none, or only one monitor)
+function homeOf(w) {
+    const h = homes[appId(w)];
+    if (!h || workspace.screens.length < 2)
+        return null;
+    const output = h.role == "main" ? mainOutput() : secondOutput();
+    return output ? {output: output, column: h.column} : null;
+}
+
+function saveHomes() {
+    const script = 'const c = ConfigFile("kwinrc", "Script-leaves-windows"); c.writeEntry("homes", HOMES);';
+    callDBus("org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell", "evaluateScript",
+             script.replace("HOMES", JSON.stringify(JSON.stringify(homes))));
+}
+
+function osd(text, icon) {
+    callDBus("org.kde.plasmashell", "/org/kde/osdService", "org.kde.osdService", "showText", icon || "go-home", text);
+}
+
+// Meta+H: the focused window's column becomes its app's home; again clears it
+function toggleHome() {
+    const w = workspace.activeWindow;
+    if (!w || !isTileable(w))
+        return;
+    const id = appId(w);
+    const name = id.split(".").pop();
+    if (workspace.screens.length < 2) {
+        osd("Homes need two monitors");
+        return;
+    }
+    const role = w.output == mainOutput() ? "main" : "secondary";
+    const s = slots[w.output.name];
+    const i = s ? s.indexOf(w) : -1;
+    const h = homes[id];
+    if (h && (i == -1 || (h.role == role && h.column == i))) {
+        delete homes[id];
+        saveHomes();
+        osd(name + ": no home");
+        return;
+    }
+    if (i == -1) {
+        osd("Put " + name + " in a column first");
+        return;
+    }
+    homes[id] = {role: role, column: i};
+    saveHomes();
+    osd(name + " opens here (" + role + ", column " + (i + 1) + ")");
 }
 
 // ── The bar's window strip ────────────────────────────────────────────────
@@ -582,10 +735,12 @@ function yakuakeFocused() {
 }
 
 // Meta+Down: KWin's move one screen down (its key is ours, apply.sh), but
-// Yakuake closes its terminal instead
+// Yakuake closes its terminal instead, and a borrowed window on main stays
 function down() {
     if (yakuakeFocused())
         closeYakuakeTerminal();
+    else if (keepBorrowed(workspace.activeWindow))
+        return;
     else
         callDBus("org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component", "invokeShortcut",
                  "Window One Screen Down");
@@ -748,6 +903,123 @@ function updateGame() {
     gaming = now;
 }
 
+// ── Borrowing ─────────────────────────────────────────────────────────────
+
+// key → {window, from (monitor name), column (-1: none), floated, geometry, displaced: {window, column}}
+const borrowed = {};
+// key → the window's monitor (name) as last seen, to tell where it came from
+const outputOf = {};
+// key → {output (name), geometry}: where it last sat still, off the main monitor
+const placeOf = {};
+
+function notePlace(w) {
+    if (w.move || w.deleted || !w.output || w.output == mainOutput())
+        return;
+    const g = w.frameGeometry;
+    if (!contains(w.output.geometry, {x: g.x + g.width / 2, y: g.y + g.height / 2}))
+        return;  // mid-move to another monitor
+    placeOf[key(w)] = {output: w.output.name, geometry: {x: g.x, y: g.y, width: g.width, height: g.height}};
+}
+
+// The main window a borrowed one pushed out of a column: the first one, as it lands
+function noteDisplaced(w, other, column) {
+    const b = borrowed[key(w)];
+    if (b && other && other != w && !b.displaced)
+        b.displaced = {window: other, column: column};
+}
+
+// The displaced main window back into its column (tiled right away, or the
+// next reconcile would take it for dragged out)
+function giveBack(b) {
+    const d = b.displaced;
+    if (!d || d.window.deleted || d.window.minimized || d.window.output != mainOutput())
+        return;
+    const s = slots[d.window.output.name], tiles = columns(d.window.output);
+    if (!s || s.length != tiles.length || d.column >= s.length || s.indexOf(d.window) != -1)
+        return;
+    if (s[d.column] && s[d.column] != b.window)
+        return;
+    s[d.column] = d.window;
+    delete floating[key(d.window)];
+    d.window.tile = tiles[d.column];
+}
+
+function outputMoved(w) {
+    const k = key(w), was = outputOf[k];
+    outputOf[k] = w.output.name;
+    const main = mainOutput();
+    if (borrowed[k] && w.output != main) {
+        // Taken back by hand (or sent off for a game)
+        const b = borrowed[k];
+        delete borrowed[k];
+        giveBack(b);
+        return;
+    }
+    if (sending || !was || was == w.output.name || w.output != main || workspace.screens.length < 2
+        || !isTileable(w))
+        return;
+    const s = slots[was], place = placeOf[k];
+    borrowed[k] = {window: w, from: was, column: s ? s.indexOf(w) : -1, floated: !!floating[k],
+                   geometry: place && place.output == was ? place.geometry : null, displaced: null};
+}
+
+// Back to the column (or place) it left; that column's stand-in goes behind
+function sendBack(b) {
+    const w = b.window, k = key(w);
+    delete borrowed[k];
+    const target = workspace.screens.find(o => o.name == b.from);
+    if (!target)
+        return;
+    const here = slots[w.output.name];
+    if (here)
+        here.forEach((x, i) => { if (x == w) here[i] = null; });
+    giveBack(b);
+    if (w.maximizeMode != 0)
+        w.setMaximize(false, false);
+    sendAway(w, target);
+    const s = slots[target.name], tiles = columns(target);
+    if (s && s.length == tiles.length && b.column >= 0 && b.column < s.length) {
+        const occ = s[b.column];
+        if (occ) {
+            s.forEach((x, i) => { if (x == occ) s[i] = null; });
+            untile(occ);
+        }
+        s[b.column] = w;
+        delete floating[k];
+        w.tile = tiles[b.column];
+    } else if (b.geometry) {
+        w.frameGeometry = b.geometry;
+        if (b.floated)
+            floating[k] = true;
+    }
+    schedule();
+}
+
+// Another window on main got focus: the borrowed ones go back
+function returnBorrowed(x) {
+    const main = mainOutput();
+    if (!x || x.output != main || !(isTileable(x) || isGame(x)))
+        return;
+    Object.keys(borrowed).forEach(k => {
+        const b = borrowed[k];
+        if (b.window == x)
+            return;
+        if (b.window.deleted || b.window.output != main)
+            delete borrowed[k];
+        else
+            sendBack(b);
+    });
+}
+
+// Meta+Down on main: a borrowed window stays
+function keepBorrowed(w) {
+    if (!w || !borrowed[key(w)] || w.output != mainOutput())
+        return false;
+    delete borrowed[key(w)];
+    osd("Stays on this monitor", "window-pin");
+    return true;
+}
+
 // ── Events ────────────────────────────────────────────────────────────────
 
 const reconcileTimer = new QTimer();
@@ -828,8 +1100,10 @@ function dragFinished(w) {
     const other = s[j];
     delete floating[key(w)];
     release(old, w, from.index, sameOutput ? other : null);
-    if (!sameOutput && other)
+    if (!sameOutput && other) {
+        noteDisplaced(w, other, j);
         untile(other);
+    }
     if (other && spanned(s, other))
         s.forEach((x, k) => { if (x == other && k != from.index) s[k] = null; });
     s[j] = w;
@@ -849,6 +1123,10 @@ function watch(w) {
     };
     w.maximizedChanged.connect(back);
     w.fullScreenChanged.connect(back);
+    outputOf[key(w)] = w.output ? w.output.name : null;
+    notePlace(w);
+    w.frameGeometryChanged.connect(() => notePlace(w));
+    w.outputChanged.connect(() => outputMoved(w));
     // Moved to another monitor (Meta+Up/Down): it takes a column there like a picked window
     w.outputChanged.connect(() => {
         if (!sending && !w.move && isTileable(w))
@@ -864,8 +1142,11 @@ workspace.windowAdded.connect(w => {
     watch(w);
     if (isTileable(w)) {
         // Opened during a game: straight to the other monitor
+        const home = homeOf(w);
         if (gaming && w.output == mainOutput() && secondOutput())
             sendAway(w, secondOutput());
+        else if (home && home.output != w.output && !(gaming && home.output == mainOutput()))
+            sendAway(w, home.output);
         claim(w, "new");
     }
     schedule();
@@ -877,6 +1158,9 @@ workspace.windowRemoved.connect(w => {
     delete floating[key(w)];
     delete returning[key(w)];
     delete dragFrom[key(w)];
+    delete borrowed[key(w)];
+    delete outputOf[key(w)];
+    delete placeOf[key(w)];
     schedule();
 });
 
@@ -884,6 +1168,7 @@ workspace.windowActivated.connect(w => {
     if (!w)
         return;
     mru = [w].concat(mru.filter(x => x != w));
+    returnBorrowed(w);
     const s = slots[w.output.name];
     if (s && s.indexOf(w) == -1 && isTileable(w))
         claim(w, "pick");
@@ -931,6 +1216,8 @@ registerShortcut("Leaves Span Left", "Leaves: give back the last column spanned 
                  "Meta+Shift+Left", () => spanWindow("left"));
 registerShortcut("Leaves Restore Or Minimize", "Leaves: un-maximize the window, or minimize it if it isn't maximized",
                  "Meta+Shift+Down", restoreOrMinimize);
+registerShortcut("Leaves Home", "Leaves: the window's column becomes its app's home (again: no home)",
+                 "Meta+H", toggleHome);
 registerStripShortcuts();
 
 schedule();
