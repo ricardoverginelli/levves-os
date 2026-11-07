@@ -255,6 +255,8 @@ kwin_shortcut "Leaves Span Left" "Leaves Span Left" "[([$((0x13000012)), 0, 0, 0
 kwin_shortcut "Leaves Span Right" "Leaves Span Right" "[([$((0x13000014)), 0, 0, 0],)]"
 # Meta+Shift+Down un-maximizes first (back into the window's column), then minimizes
 kwin_shortcut "Leaves Restore Or Minimize" "Leaves Restore Or Minimize" "[([$((0x13000015)), 0, 0, 0],)]"
+# Meta+H: the focused window's column becomes its app's home (H 0x48)
+kwin_shortcut "Leaves Home" "Leaves Home" "[([$((0x10000048)), 0, 0, 0],)]"
 for n in 1 2 3; do
     gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
         --method org.kde.KGlobalAccel.setForeignShortcutKeys \
