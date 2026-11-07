@@ -45,6 +45,7 @@ KEY_GAP = 3
 KEY_MARGIN = 5                   # last key to the window's right edge, edge included
 TAB_CORNER = 10                  # a tab's ends: 2px of strip, then its key's side
 FONT = "JetBrains Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+LINE_SPACING = 1                 # px between rows: Claude Code's answers breathe a little
 
 
 def rgb(hex_color):
@@ -332,6 +333,7 @@ def style_profile(profile):
     """The Levves look on a Konsole profile, keeping its own name and command."""
     changed = False
     for group, key, value in (("Appearance", "ColorScheme", "Levves"), ("Appearance", "Font", FONT),
+                              ("Appearance", "LineSpacing", str(LINE_SPACING)),
                               ("Cursor Options", "UseCustomCursorColor", "true"),
                               ("Cursor Options", "CustomCursorColor", ini(palette("accent"))),
                               ("General", "TerminalMargin", "8")):
@@ -356,9 +358,10 @@ def main():
                        ("BackgroundColor", ini(palette("bg"))), ("BackgroundColorOpacity", "100")):
         changed |= kwrite(yakuakerc, "Appearance", key, value)
 
-    # Yakuake's profile keeps its own name and command. Every new tab starts Claude Code in
-    # ~/system, the machine's admin home base (its CLAUDE.md describes that machine), through
-    # yakuake-tab (os/linux/kwin), which gives Meta+Shift+N tabs a plain shell instead
+    # Yakuake's profile keeps its own name and command. Every new tab opens the terminal
+    # launcher (agents/launcher), defaulting to Claude Code in ~/system, the machine's admin
+    # home base (its CLAUDE.md describes that machine), through yakuake-tab (os/linux/kwin),
+    # which gives Meta+Shift+N tabs a plain shell instead
     profile, picked = default_profile(yakuakerc, "Levves Yakuake")
     changed |= picked | style_profile(profile)
     (Path.home() / "system").mkdir(exist_ok=True)
