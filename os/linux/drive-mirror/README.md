@@ -12,6 +12,9 @@ bash install.sh              # bash install.sh --uninstall to undo
 drive-mirror --dry-run       # preview; plain `drive-mirror` syncs now
 ```
 
+**Edited files on the disk from Windows?** Run `drive-push` there first
+(`os/windows/drive-mirror`), or the next sync moves those edits to `_rclone-removed/`.
+
 ## One-time setup
 - **Mount:** this line in `/etc/fstab` mounts the disk at `/mnt/drive-mirror`
   (`nofail`, so boot doesn't wait if the disk is missing):

@@ -43,6 +43,12 @@ SCRIPTS = [
         "script": "monitor/install.py",
     },
     {
+        "key": "drive-mirror",
+        "label": "Drive push",
+        "description": "rclone and drive-push: upload edits on the Drive Mirror HDD (this PC only)",
+        "script": "drive-mirror/install.py",
+    },
+    {
         "key": "theme",
         "label": "Leaves theme",
         "description": "Dark mode, amber accent, leaves wallpaper and a minimal taskbar",

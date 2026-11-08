@@ -22,6 +22,9 @@ os/windows/
   monitor/              ← Win+Shift+M turns the main monitor off/on, port of os/linux/monitor (this PC only)
     install.py          ← Registers main-monitor.ahk on startup
     main-monitor.ps1    ← toggle|off|on|status; main-monitor.ahk binds the hotkey
+  drive-mirror/         ← drive-push: uploads edits on the Drive Mirror HDD to Google Drive (this PC only)
+    install.py          ← Installs rclone, puts drive-push on the PATH, signs in gdrive-rw
+    drive-push.ps1      ← rclone copy <disk> gdrive-rw: --update
   theme/install.py      ← Applies the Leaves look (from os/linux/plasma/) to Windows
   updates/
     install.py          ← Turns Windows Update off and keeps it off at every boot (admin)
@@ -58,6 +61,7 @@ python os/windows/sharex/install.py
 python os/windows/ahk/install.py
 python os/windows/dropdown/install.py
 python os/windows/monitor/install.py
+python os/windows/drive-mirror/install.py
 python os/windows/theme/install.py
 python os/windows/updates/install.py
 python os/windows/debloat/install.py
@@ -131,6 +135,33 @@ python os/windows/debloat/install.py
 - `install.py` refuses where the Asus isn't connected, needs AHK (`ahk/install.py`), and
   registers `main-monitor.ahk` as the `main-monitor-ahk` startup entry (HKCU, no admin);
   `--uninstall` removes it and stops the running copy. Machine-only: `.only-on`
+
+### drive-mirror/
+- The Windows half of `os/linux/drive-mirror`. That one-way `rclone sync` moves files edited on
+  the disk but missing from the cloud to `_rclone-removed/`, so run `drive-push` after editing
+  on Windows (Ableton projects in `Arquivos/Ableton Project/`) and before booting Fedora
+- `drive-push [--dry-run] [rclone flags]`: `rclone copy <disk> gdrive-rw: --update`. Copy, not
+  sync, so it never deletes in the cloud, and `--update` skips files newer there. A full pass
+  over the disk (~540k files) took 10 minutes as a dry run and 75 minutes for real on
+  2026-11-08 (Drive throttling and a retried pass)
+- Finds the disk by label `Drive Mirror` and NTFS serial `C236DF7C`, not by letter (`D:`
+  today); refuses to run without it
+- Same excludes and `--drive-export-formats docx,xlsx,pptx,svg` as Linux, so the mirrored
+  `.docx/.xlsx/.pptx` match their Google Docs (checked 2026-11-08: none were queued). No
+  `--local-encoding`: rclone on Windows already uses the encoding Linux sets
+- `install.py` installs rclone from the GitHub release zip (sha256 checked against the
+  release digest) to `%LOCALAPPDATA%\Programs\rclone\`, writes the `drive-push.cmd` shim
+  to `%LOCALAPPDATA%\levves\bin\`, adds both to the user PATH, and creates the `gdrive-rw`
+  remote (`scope=drive`, browser sign-in; skipped if it exists). The Linux `gdrive` remote
+  stays read-only. Re-run after the repo moves (the shim holds its absolute path)
+- Runs on its own through the `drive-push` scheduled task (current user, no admin): 10 minutes
+  after logon and every 3 hours, through `conhost --headless` so no window shows. A run that
+  overlaps another is skipped (the task's IgnoreNew, plus a mutex in the script for manual runs)
+- Logs to `%LOCALAPPDATA%\drive-mirror\push_*.log`, kept 90 days
+- Uses rclone's shared client ID, which is being retired during 2026 (see the Linux README);
+  `rclone config update gdrive-rw client_id=... client_secret=...` once there's an own one
+- `--uninstall` removes the task, rclone, the shim and the PATH entries; the remote stays in
+  `%APPDATA%\rclone\rclone.conf`. Machine-only: `.only-on`
 
 ### theme/install.py
 - Windows take on the Plasma "Leaves" theme: reads colors from `design/dist/levves_tokens.py` and
