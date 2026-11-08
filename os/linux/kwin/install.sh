@@ -5,7 +5,7 @@
 # tabs run (Claude Code, or a plain shell for Meta+Shift+N), and yakuake-panes
 # (Shift+Left/Right through split terminals, then tabs). User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall
-# Yakuake reads its window settings on start: restart it after installing.
+# Yakuake reads its window settings on start: restart it when this says so.
 set -e
 cd "$(dirname "$(readlink -f "$0")")"
 . ../lib/install.sh
@@ -16,6 +16,13 @@ bin=$local_bin/yakuake-tab
 
 plugin() {  # id, enabled
     kwriteconfig6 --file kwinrc --group Plugins --key "${1}Enabled" "$2"
+}
+# Yakuake only reads yakuakerc on start, so note when a value actually changes
+yakuake_changed=false
+yakuake_set() {  # group, key, value
+    [ "$(kreadconfig6 --file yakuakerc --group "$1" --key "$2")" = "$3" ] && return
+    kwriteconfig6 --file yakuakerc --group "$1" --key "$2" "$3"
+    yakuake_changed=true
 }
 
 if [ "${1:-}" = --uninstall ]; then
@@ -78,13 +85,15 @@ launcher_shortcut yakuake-shell-tab "New Yakuake shell tab" "$bin --shell" utili
 
 # Docked left, full height, 30% wide (the effect slides it in from the left);
 # the right edge is the Leaves side panel's
-kwriteconfig6 --file yakuakerc --group Window --key Width 30
-kwriteconfig6 --file yakuakerc --group Window --key Height 100
-kwriteconfig6 --file yakuakerc --group Window --key Position 0
+yakuake_set Window Width 30
+yakuake_set Window Height 100
+yakuake_set Window Position 0
 # Shift+Left/Right step through a tab's split terminals (yakuake-panes takes
 # the key at the first/last one to switch tabs), so the tab keys give them up
-kwriteconfig6 --file yakuakerc --group Shortcuts --key previous-terminal "Shift+Left; Ctrl+Shift+Tab"
-kwriteconfig6 --file yakuakerc --group Shortcuts --key next-terminal "Shift+Right; Ctrl+Tab"
-kwriteconfig6 --file yakuakerc --group Shortcuts --key previous-session none
-kwriteconfig6 --file yakuakerc --group Shortcuts --key next-session none
-echo "Done; restart Yakuake to dock it on the left and pick up its keys"
+yakuake_set Shortcuts previous-terminal "Shift+Left; Ctrl+Shift+Tab"
+yakuake_set Shortcuts next-terminal "Shift+Right; Ctrl+Tab"
+yakuake_set Shortcuts previous-session none
+yakuake_set Shortcuts next-session none
+if [ "$yakuake_changed" = true ]; then
+    echo "Done; restart Yakuake to dock it on the left and pick up its keys"
+fi
