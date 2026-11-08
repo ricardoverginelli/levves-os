@@ -1,10 +1,10 @@
 #!/usr/bin/bash
 # Install the Yakuake KWin pieces: the slide-from-the-left effect (docked on
 # the left, full height) and the script that keeps it off fullscreen monitors
-# and owns its shortcuts (Meta+/, Meta+N new tab, Meta+F full screen), plus
-# yakuake-tab, which new tabs run (Claude Code, or a plain shell for
-# Meta+Shift+N), and yakuake-panes (Shift+Left/Right through split terminals,
-# then tabs). User-level, no sudo. Safe to re-run.
+# and owns its shortcuts (Meta+/, Meta+N new tab), plus yakuake-tab, which new
+# tabs run (Claude Code, or a plain shell for Meta+Shift+N), yakuake-panes
+# (Shift+Left/Right through split terminals, then tabs), and Meta+F for
+# Yakuake's own full-screen action. User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall
 # Yakuake reads its window settings on start: restart it when this says so.
 set -e
@@ -36,7 +36,7 @@ if [ "${1:-}" = --uninstall ]; then
     qdbus-qt6 org.kde.KWin /KWin reconfigure
     rm -rf "$kwin/effects/yakuake-slide" "$kwin/scripts/yakuake-avoid-fullscreen" "$kwin/scripts/yakuake-panes"
     # Yakuake's own tab and terminal keys back
-    for action in previous-session next-session previous-terminal next-terminal; do
+    for action in previous-session next-session previous-terminal next-terminal view-full-screen; do
         kwriteconfig6 --file yakuakerc --group Shortcuts --key $action --delete
     done
     remove_launcher_shortcut yakuake-shell-tab
@@ -95,6 +95,12 @@ yakuake_set Shortcuts previous-terminal "Shift+Left; Ctrl+Shift+Tab"
 yakuake_set Shortcuts next-terminal "Shift+Right; Ctrl+Tab"
 yakuake_set Shortcuts previous-session none
 yakuake_set Shortcuts next-session none
+# Full screen on Meta+F as well. It has to be Yakuake's own action: its layout
+# follows that action's checkbox, so going full screen any other way (KWin, or
+# its window over D-Bus) leaves the tabs at the docked width
+yakuake_set Shortcuts view-full-screen "Meta+F; Ctrl+Shift+F11"
+# An earlier version had Meta+F as a KWin script shortcut; it would take the key
+kga unregister kwin "Yakuake Full Screen" 2>/dev/null || true
 if [ "$yakuake_changed" = true ]; then
     echo "Done; restart Yakuake to dock it on the left and pick up its keys"
 fi
