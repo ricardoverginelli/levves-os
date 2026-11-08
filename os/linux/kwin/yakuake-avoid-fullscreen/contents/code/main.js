@@ -12,7 +12,8 @@
 // goes back to the window that had it (the game). If it still opens at the
 // wrong height, it's reopened once. If Yakuake is open but
 // another window has focus, the shortcut focuses Yakuake instead of closing it.
-// Meta+N adds a tab and shows Yakuake the same way.
+// Meta+N adds a tab and shows Yakuake the same way; Meta+F toggles it full
+// screen.
 //
 // Yakuake's own shortcut must be cleared so this one can take the key.
 // Install: bash install.sh in os/linux/kwin (plasma/apply.sh runs it too)
@@ -146,8 +147,31 @@ function newYakuakeTab() {
         toggleYakuake();
 }
 
+// Full screen and back. Yakuake's window is told over D-Bus (not by KWin),
+// because its full-screen action follows the window state and re-lays out
+// its contents, which a KWin resize wouldn't. Closed: opened (as above),
+// then made full screen once its window appears.
+var fullScreenOnOpen = false;
+
+function setYakuakeFullScreen(on) {
+    callDBus("org.kde.yakuake", "/yakuake/MainWindow_1", "org.qtproject.Qt.QWidget",
+             on ? "showFullScreen" : "showNormal");
+}
+
+function toggleYakuakeFullScreen() {
+    var yakuake = workspace.windowList().find(isYakuake);
+    if (!yakuake) {
+        fullScreenOnOpen = true;
+        toggleYakuake();
+        return;
+    }
+    setYakuakeFullScreen(!yakuake.fullScreen);
+    workspace.activeWindow = yakuake;
+}
+
 registerShortcut("Toggle Yakuake", "Open/Retract Yakuake (avoiding fullscreen monitors)", "Meta+/", toggleYakuake);
 registerShortcut("New Yakuake Tab", "Open Yakuake with a new tab", "Meta+N", newYakuakeTab);
+registerShortcut("Yakuake Full Screen", "Toggle Yakuake full screen (opening it if closed)", "Meta+F", toggleYakuakeFullScreen);
 
 workspace.cursorPosChanged.connect(holdActiveOutput);
 
@@ -155,6 +179,11 @@ workspace.windowAdded.connect(function (w) {
     if (!isYakuake(w))
         return;
     holdOutput = null;
+    if (fullScreenOnOpen) {
+        fullScreenOnOpen = false;
+        if (!w.fullScreen)
+            setYakuakeFullScreen(true);
+    }
     settling = w;
     settle.start();
     w.frameGeometryChanged.connect(function () {
