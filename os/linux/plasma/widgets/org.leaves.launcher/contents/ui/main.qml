@@ -330,7 +330,7 @@ PlasmoidItem {
         if (!entry) return
         if (entry.isDir !== undefined) {
             if (entry.isDir) search.text = navTyped + entry.name + "/"
-            else { Qt.openUrlExternally(entry.path); close() }
+            else openExternally(entry.path)
             return
         }
         if (entry.favoriteId.startsWith("file://")) { openPinnedPath(entry); return }
@@ -429,10 +429,22 @@ PlasmoidItem {
     function showInFileManager() {
         const highlighted = area === "list" || (area === "search" && autoHighlight)
         const entry = highlighted ? entries[list.currentIndex] : null
-        if (navigating) Qt.openUrlExternally(entry && entry.isDir ? entry.path : "file://" + navFolder)
-        else if (entry && entry.favoriteId.startsWith("file://")) Qt.openUrlExternally(entry.favoriteId)
-        else return
-        close()
+        if (navigating) openExternally(entry && entry.isDir ? entry.path : "file://" + navFolder)
+        else if (entry && entry.favoriteId.startsWith("file://")) openExternally(entry.favoriteId)
+    }
+
+    // Files and folders open in their app (xdg-open). Qt first asks KWin for an
+    // activation token through the launcher's layer surface, and closing destroys
+    // that surface, so a close right away drops the reply and nothing opens. The
+    // launcher stays up a moment for it.
+    function openExternally(url) {
+        Qt.openUrlExternally(url)
+        closeAfterOpen.restart()
+    }
+    Timer {
+        id: closeAfterOpen
+        interval: 150
+        onTriggered: root.close()
     }
 
     // A pinned folder is listed in the navigator, a pinned file opens. The pin is
@@ -454,8 +466,7 @@ PlasmoidItem {
             search.text = (pin.path === homePath || pin.path.startsWith(homePath + "/")
                            ? "~" + pin.path.slice(homePath.length) : pin.path) + "/"
         } else {
-            Qt.openUrlExternally(pin.url)
-            close()
+            openExternally(pin.url)
         }
     }
     FolderListModel {
