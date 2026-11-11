@@ -54,7 +54,9 @@ shortcuts stay).
   soon as the hotkey is pressed, and `magick` crops it. While the region is
   picked, `freeze` (a layer-shell overlay in `freeze.qml`, run with PySide6) shows
   that picture on every screen, so tooltips and open menus stay visible and
-  end up in the shot. Assumes 100% display scaling.
+  end up in the shot. It starts loading alongside Spectacle and is shown once
+  the picture exists, so the two startups overlap; it quits when `capture`
+  does. Assumes 100% display scaling.
 - **Recording:** `gpu-screen-recorder` records the region with NVENC (H.264,
   30 fps for MP4, 15 fps for GIF). GIFs are converted with an ffmpeg palette
   (sierra2_4a dither, as ShareX does). It needs free VRAM: a game filling the

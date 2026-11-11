@@ -75,29 +75,29 @@ deliver() {  # file, image|file
     fi
 }
 
-# Shows the desktop picture on every screen until the script exits, so the
-# region is picked on a frozen screen (freeze.qml); waits until it's drawn
-freeze() {  # desktop.png, layout left x, layout top y
-    local fd ready
-    exec {fd}< <(exec "$(dirname "$(readlink -f "$0")")/freeze" "$@" 2>&1)
-    freezer=$!
-    read -r -t 3 -u "$fd" ready || true
-}
-
 shot() {
-    local x y w h out ox oy
+    local x y w h out ox oy ready
     mkdir -p "$shots"
     tmp=$(mktemp --suffix=.png)
     freezer=''
     trap 'rm -f "$tmp"; [ -z "$freezer" ] || kill "$freezer" 2>/dev/null' EXIT
-    # Whole desktop first, while tooltips and menus are still open, then crop:
     # Spectacle's picture starts at the layout's top-left. That's the Wayland
     # layout (xdg-output, as slurp and Qt see it), not kscreen-doctor's saved
     # positions, which keep a disabled monitor's gap (eDP-1 at x=2560 alone)
-    spectacle -f -b -n -o "$tmp"
     read -r ox oy < <(wayland-info -i xdg_output | awk -F'[:,] *' '/logical_x/ {
         if (n++ == 0 || $2 < x) x = $2; if (n == 1 || $4 < y) y = $4 } END { print x, y }')
-    [ "$source" = last ] || freeze "$tmp" "$ox" "$oy"
+    # The frozen desktop (freeze.qml) starts loading now, alongside Spectacle;
+    # it's shown on every screen once the picture exists, and quits with this script
+    if [ "$source" != last ]; then
+        coproc FREEZE { exec "$(dirname "$(readlink -f "$0")")/freeze" "$tmp" "$ox" "$oy" 2>&1; }
+        freezer=$FREEZE_PID
+    fi
+    # Whole desktop first, while tooltips and menus are still open, then crop
+    spectacle -f -b -n -o "$tmp"
+    # FREEZE is unset if freeze already died (no picture shown, the shot still works)
+    if [ -n "${FREEZE[1]:-}" ] && echo show >&"${FREEZE[1]}" 2>/dev/null; then
+        read -r -t 3 -u "${FREEZE[0]}" ready || true
+    fi
     read -r x y w h < <(pick_region)
     out=$shots/$(stamp).png
     magick "$tmp" -crop "${w}x${h}+$((x - ox))+$((y - oy))" +repage "$out"

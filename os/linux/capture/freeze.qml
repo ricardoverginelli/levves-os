@@ -8,7 +8,7 @@ import org.kde.layershell as LayerShell
 Window {
     id: win
     required property var target  // QScreen
-    required property url source
+    property url source  // set by ./freeze once the picture is taken
     required property rect clip  // this screen in the picture's coordinates
     property bool shown: false
     signal drawn()

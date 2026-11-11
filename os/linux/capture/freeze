@@ -3,11 +3,15 @@
 # window per screen, each showing its part of the picture (100% scaling).
 # PySide6 instead of Qt's qml tool, which only comes with the Qt devel packages.
 # Usage: freeze <desktop.png> <layout left x> <layout top y>
-# Prints "ready" once it's on every screen.
+# Started while the picture is still being taken, so Qt's startup overlaps it:
+# the windows are made at once but shown only when "show" arrives on stdin.
+# Prints "ready" once it's on every screen. Quits when stdin closes, so it
+# never outlives the script that started it.
+import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QRectF, QUrl
+from PySide6.QtCore import QRectF, QSocketNotifier, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -30,13 +34,25 @@ def drawn():
 for screen in app.screens():
     win = component.createWithInitialProperties({
         "target": screen,
-        "source": QUrl.fromLocalFile(image),
         "clip": QRectF(screen.geometry().translated(-left, -top)),
     })
     if win is None:
         sys.exit(component.errorString())
     win.drawn.connect(drawn)
-    win.show()
     windows.append(win)
+
+
+def command():
+    data = os.read(0, 64)
+    if not data:
+        app.quit()
+    elif b"show" in data:
+        for win in windows:
+            win.setProperty("source", QUrl.fromLocalFile(image))
+            win.show()
+
+
+notifier = QSocketNotifier(0, QSocketNotifier.Type.Read)
+notifier.activated.connect(command)
 
 sys.exit(app.exec())
