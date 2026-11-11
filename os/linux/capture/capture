@@ -39,8 +39,11 @@ pick_region() {
         cat "$state/last-region"
         return
     fi
-    # Palette from plasma/DESIGN.md: bg-deep dim, amber accent outline
-    r=$(slurp -d -b '#0b101666' -c '#e9a23bff' -s '#00000000' -w 2 -f '%x %y %w %h') || exit 0
+    # Palette from plasma/DESIGN.md: bg-deep dim, amber accent outline.
+    # -o: a click without dragging takes the whole screen under the pointer
+    # (stdin from /dev/null, or slurp reads extra rectangles from it)
+    r=$(slurp -o -B '#00000000' -d -b '#0b101666' -c '#e9a23bff' -s '#00000000' -w 2 \
+        -f '%x %y %w %h' </dev/null) || exit 0
     echo "$r" > "$state/last-region"
     echo "$r"
 }

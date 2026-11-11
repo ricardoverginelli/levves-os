@@ -18,8 +18,8 @@ hotkeys from `os/windows/sharex/ShareX-*.sxb`, plus a ShadowPlay-style instant r
 | `Alt+Shift+F10` | Instant replay buffer off / on |
 | `Ctrl+Alt+F10` | Open the replay folder |
 
-Recordings stop when any GIF/MP4 hotkey is pressed again. `Esc` cancels a
-region selection.
+Recordings stop when any GIF/MP4 hotkey is pressed again. Clicking without
+dragging takes the whole screen under the pointer; `Esc` cancels.
 
 A tray icon shows the instant replay buffer: amber while it records, white while
 it's on and waiting for a game, faint when it's turned off. Clicking it opens
