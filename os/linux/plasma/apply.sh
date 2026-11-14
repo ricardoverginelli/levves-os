@@ -134,7 +134,16 @@ if ! cmp -s wallpaper/leaves.png "$wallpaper"; then
     mkdir -p "$(dirname "$wallpaper")"
     cp wallpaper/leaves.png "$wallpaper"
 fi
-if ! grep -qx "Image=file://$wallpaper" "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"; then
+# Every desktop, not just one: a screen Plasma hasn't seen before (or sees under a new
+# identity, as after a monitor is turned off and on) gets a new desktop without it
+if awk -v img="Image=file://$wallpaper" '
+    /^\[Containments\]\[[0-9]+\]$/ { split($0, k, /[][]+/); id = k[3]; sec = "top"; next }
+    /^\[Containments\]\[[0-9]+\]\[Wallpaper\]\[org.kde.image\]\[General\]$/ { sec = "wp"; next }
+    /^\[/ { sec = ""; next }
+    sec == "top" && /^plugin=org.kde.(plasma.folder|desktop)$/ { desk[id] = 1 }
+    sec == "wp" && $0 == img { has[id] = 1 }
+    END { for (d in desk) if (!(d in has)) exit 0; exit 1 }
+' "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"; then
     plasma-apply-wallpaperimage "$wallpaper" >/dev/null
 fi
 lock="--file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General"
