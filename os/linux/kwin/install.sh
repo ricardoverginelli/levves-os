@@ -40,6 +40,7 @@ if [ "${1:-}" = --uninstall ]; then
         kwriteconfig6 --file yakuakerc --group Shortcuts --key $action --delete
     done
     kwriteconfig6 --file yakuakerc --group Behavior --key RememberFullscreen --delete
+    kwriteconfig6 --file yakuakerc --group Dialogs --key ConfirmQuit --delete
     remove_launcher_shortcut yakuake-shell-tab
     # $bin stays: Yakuake's profile runs it (plasma/yakuake/build.py)
     # Yakuake's own F12 back, docked at the top again
@@ -102,6 +103,10 @@ yakuake_set Shortcuts next-session none
 yakuake_set Shortcuts view-full-screen "Meta+F; Ctrl+Shift+F11"
 # and it opens full screen again if it was when it closed
 yakuake_set Behavior RememberFullscreen true
+# No "Are you sure you want to quit?": at logout KWin asks Yakuake to close,
+# the dialog opens while Yakuake is retracted, and after 30s Plasma cancels
+# the shutdown ("KWin failed to complete logout")
+yakuake_set Dialogs ConfirmQuit false
 # An earlier version had Meta+F as a KWin script shortcut; it would take the key
 kga unregister kwin "Yakuake Full Screen" 2>/dev/null || true
 if [ "$yakuake_changed" = true ]; then
