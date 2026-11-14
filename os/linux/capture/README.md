@@ -76,7 +76,10 @@ shortcuts stay).
   buffer stops and waits, it never records another screen. `Alt+F10` saves to
   `~/Videos/Replays/YYYY-MM/` (kept, never auto-deleted), and clicking the
   "Replay saved" notification shows the file in Dolphin. `Alt+Shift+F10` stops
-  the buffer until the next login, to free VRAM for a game. Failures notify
+  the buffer until the next login, to free VRAM for a game. Where
+  `~/.config/capture/replay-off-by-default` exists (set by `capture-replay-off/`,
+  for machines that rarely game), `install.sh` leaves the service disabled, so
+  the buffer is off at login and `Alt+Shift+F10` turns it on until logout. Failures notify
   once; the log is `~/.local/state/capture/replay.log`. `Ctrl+Alt+F10` is a VT
   switch in xkb, so keyd turns it into `Ctrl+Alt+F19` (`keyd/gmk104.conf`).
 - **Tray:** `replay-tray` (PySide6, `capture-tray.service`) checks every 2 s

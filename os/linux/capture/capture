@@ -214,10 +214,16 @@ replay_save() {
 replay_toggle() {
     if systemctl --user is-active -q capture-replay.service; then
         systemctl --user stop capture-replay.service
-        notify "Replay buffer off" "Back on at next login, or Alt+Shift+F10" media-record
+        if systemctl --user is-enabled -q capture-replay.service; then
+            notify "Replay buffer off" "Back on at next login, or Alt+Shift+F10" media-record
+        else
+            notify "Replay buffer off" "Alt+Shift+F10 turns it back on" media-record
+        fi
     else
         systemctl --user start capture-replay.service
-        notify "Replay buffer on" "While a game runs, Alt+F10 saves the last ${replay_seconds}s" media-record
+        local title="Replay buffer on"
+        systemctl --user is-enabled -q capture-replay.service || title="Replay buffer on until logout"
+        notify "$title" "While a game runs, Alt+F10 saves the last ${replay_seconds}s" media-record
     fi
 }
 

@@ -9,6 +9,7 @@ cd "$(dirname "$(readlink -f "$0")")"
 
 bin=$local_bin/capture
 tmpfiles=$config/user-tmpfiles.d
+replay_off=$config/capture/replay-off-by-default
 
 # Qt key codes: Print 0x01000009, F10 0x01000039, F19 0x01000042,
 # U 0x55; Shift 0x02000000, Ctrl 0x04000000, Alt 0x08000000. KWin drops Shift
@@ -69,10 +70,17 @@ while IFS='|' read -r id name args keys; do
     launcher_shortcut "capture-$id" "$name" "$bin $args" spectacle "$keys"
 done <<< "$hotkeys"
 
-# Instant replay buffer, started with every Plasma session (restart to pick up changes)
+# Instant replay buffer, started with every Plasma session (restart to pick up changes),
+# unless this machine has it off by default (capture-replay-off/ sets $replay_off)
 link_units capture-replay.service
-systemctl --user enable capture-replay.service
-systemctl --user restart capture-replay.service
+if [ -e "$replay_off" ]; then
+    echo "Instant replay: off by default here (Alt+Shift+F10 turns it on)"
+    systemctl --user disable --now capture-replay.service 2>/dev/null || true
+    link_units capture-replay.service  # disabling a linked unit removes its link too
+else
+    systemctl --user enable capture-replay.service
+    systemctl --user restart capture-replay.service
+fi
 
 # Tray icon (amber while the buffer records), which also swaps LosslessCut cuts in
 link_units capture-tray.service

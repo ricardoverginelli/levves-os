@@ -55,6 +55,11 @@ def service_on():
     return subprocess.run(["systemctl", "--user", "is-active", "-q", "capture-replay.service"]).returncode == 0
 
 
+def enabled():
+    """False where the buffer is off by default (capture-replay-off/), so login leaves it off."""
+    return subprocess.run(["systemctl", "--user", "is-enabled", "-q", "capture-replay.service"]).returncode == 0
+
+
 def open_by_anyone(path):
     """True while any process (LosslessCut's ffmpeg) still has the file open."""
     target = str(path)
@@ -110,7 +115,8 @@ class Tray:
         elif on:
             tip = "Instant replay: on, starts recording when a game opens"
         else:
-            tip = "Instant replay: off until next login or Alt+Shift+F10"
+            tip = ("Instant replay: off until next login or Alt+Shift+F10" if enabled()
+                   else "Instant replay: off, Alt+Shift+F10 turns it on until logout")
         self.tray.setToolTip(tip)
 
     def scan(self, _=None):
