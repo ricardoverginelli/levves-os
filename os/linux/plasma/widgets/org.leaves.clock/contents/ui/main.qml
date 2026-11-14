@@ -67,28 +67,45 @@ PlasmoidItem {
     Component.onCompleted: runAccounts("list")
     onExpandedChanged: () => {
         if (root.expanded) {
+            agenda.active = true
             runAccounts("list")
             rebuildAgenda()
         }
     }
 
     // The agenda reads events from a calendar of its own, always on today's month
-    // and long enough (9 weeks) to reach 15 days past the month's last day
-    PlasmaCalendar.EventPluginsManager {
-        id: agendaPlugins
-        enabledPlugins: ["pimevents"]
+    // and long enough (9 weeks) to reach 15 days past the month's last day.
+    // It loads on the first popup open or two minutes after the panel, not with
+    // it: at login Akonadi can hang for over a minute (the Google resource's
+    // wallet read), and the PIM events plugin then blocks all of plasmashell.
+    Loader {
+        id: agenda
+        active: false
+        onLoaded: Qt.callLater(root.rebuildAgenda)
+        sourceComponent: Item {
+            readonly property var daysModel: agendaCalendar.daysModel
+            PlasmaCalendar.EventPluginsManager {
+                id: agendaPlugins
+                enabledPlugins: ["pimevents"]
+            }
+            PlasmaCalendar.Calendar {
+                id: agendaCalendar
+                days: 7
+                weeks: 9
+                firstDayOfWeek: Qt.locale().firstDayOfWeek
+                today: root.today
+                displayedDate: root.today
+                Component.onCompleted: daysModel.setPluginsManager(agendaPlugins)
+            }
+        }
     }
-    PlasmaCalendar.Calendar {
-        id: agendaCalendar
-        days: 7
-        weeks: 9
-        firstDayOfWeek: Qt.locale().firstDayOfWeek
-        today: root.today
-        displayedDate: root.today
-        Component.onCompleted: daysModel.setPluginsManager(agendaPlugins)
+    Timer {
+        running: !agenda.active
+        interval: 120000
+        onTriggered: agenda.active = true
     }
     Connections {
-        target: agendaCalendar.daysModel
+        target: agenda.item ? agenda.item.daysModel : null
         function onAgendaUpdated() { Qt.callLater(root.rebuildAgenda) }
         function onModelReset() { Qt.callLater(root.rebuildAgenda) }
         function onDataChanged() { Qt.callLater(root.rebuildAgenda) }
@@ -98,11 +115,13 @@ PlasmoidItem {
     // today's finished events are left out
     ListModel { id: agendaModel }
     function rebuildAgenda() {
+        if (!agenda.item)
+            return
         const rightNow = new Date()
         const rows = []
         for (let i = 0; i < daysAhead; i++) {
             const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i)
-            rows.push(...eventsOn(day, agendaCalendar.daysModel)
+            rows.push(...eventsOn(day, agenda.item.daysModel)
                 .filter(e => i > 0 || e.allDay || e.end > rightNow)
                 .map(e => Object.assign(e, { dayKey: day.toISOString() })))
         }
