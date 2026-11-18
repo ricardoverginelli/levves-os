@@ -23,7 +23,7 @@ as_user() {
 case ${PAM_TYPE:-} in
 auth)
     # Normal urgency: Plasma ignores the timeout on critical notifications
-    id=$(as_user notify-send -p -a sudo -i fingerprint -t 30000 \
+    id=$(as_user notify-send -p -a sudo -i fingerprint -t 3500 \
         -h boolean:transient:true \
         "Touch the fingerprint sensor" \
         "sudo is waiting for your finger. The password dialog opens after 30 seconds." \
