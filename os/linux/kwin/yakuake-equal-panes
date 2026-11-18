@@ -1,0 +1,162 @@
+#!/usr/bin/python3
+"""Even out a Yakuake tab's split terminals after a split.
+
+Yakuake splits the focused terminal in half, so a third terminal makes the tab
+50/25/25 and a fourth 50/25/12.5/12.5. yakuake-tab runs this in the background
+in every new terminal (a split runs the same profile command as a new tab), and
+it sizes all the tab's terminals the same: widths for side-by-side terminals,
+heights for stacked ones. A tab mixing both is left as it is.
+
+Yakuake's D-Bus can only grow a terminal toward an edge (tryGrowTerminal*), and
+says nothing about sizes or order. Sizes come from each terminal's tty (Konsole
+sets its pixel size); Yakuake's terminals and Konsole's sessions are numbered
+in the order they were made, so they pair up in order. The order across the
+tab is kept in $XDG_RUNTIME_DIR: a split puts the new terminal right after
+(or below) the one split, which is the other terminal of the new one's size.
+Then each border is moved to where it belongs, left to right, a few times over
+(moving one resizes the terminals nested beside it).
+"""
+import fcntl
+import json
+import os
+import re
+import struct
+import subprocess
+import termios
+import time
+from pathlib import Path
+
+STATE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "yakuake-pane-order.json"
+SLACK = 2  # pixels: sizes this close count as equal
+PASSES = 4
+
+
+def yakuake(*args) -> str:
+    try:
+        return subprocess.run(["qdbus-qt6", "org.kde.yakuake", *map(str, args)],
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def sessions(*args) -> str:
+    return yakuake("/yakuake/sessions", *args)
+
+
+def ids(text: str) -> list[int]:
+    return sorted(int(x) for x in text.split(",") if x.strip().lstrip("-").isdigit())
+
+
+def konsole_sessions() -> dict[int, int]:
+    """Yakuake terminal id → Konsole session number, paired in the order they were made."""
+    terminals = ids(sessions("terminalIdList"))
+    numbers = sorted(int(n) for n in re.findall(r"^/Sessions/(\d+)$", yakuake(), re.M))
+    return dict(zip(terminals, numbers)) if len(terminals) == len(numbers) else {}
+
+
+def size(number: int) -> tuple[int, int] | None:
+    """A Konsole session's size in pixels, from its tty."""
+    pid = yakuake(f"/Sessions/{number}", "processId")
+    try:
+        with open(f"/proc/{pid}/fd/0", "rb", buffering=0) as tty:
+            _, _, x, y = struct.unpack("HHHH", fcntl.ioctl(tty, termios.TIOCGWINSZ, b"\0" * 8))
+    except (OSError, ValueError):
+        return None
+    return (x, y) if x and y else None
+
+
+def sizes(terminals: list[int], numbers: dict[int, int]) -> dict[int, tuple[int, int]] | None:
+    got = {t: size(numbers[t]) for t in terminals}
+    return None if None in got.values() else got
+
+
+def settled(terminals, numbers) -> dict[int, tuple[int, int]] | None:
+    """Sizes once the split's layout stops changing (the new terminal starts before it's shown)."""
+    last = None
+    for _ in range(40):
+        now = sizes(terminals, numbers)
+        if now and now == last:
+            return now
+        last = now
+        time.sleep(0.05)
+    return last
+
+
+def place(order: list[int], new: int, have: dict[int, tuple[int, int]]) -> list[int]:
+    """The order with `new` after the terminal it was split from: the other one of its size."""
+    order = [t for t in order if t != new]
+    twins = [t for t in order if all(abs(a - b) <= SLACK for a, b in zip(have[t], have[new]))]
+    at = order.index(twins[-1]) + 1 if twins else len(order)
+    return order[:at] + [new] + order[at:]
+
+
+def axis(have: dict[int, tuple[int, int]]) -> int | None:
+    """0 when the terminals sit side by side (all as tall), 1 when stacked, else None."""
+    for a in (0, 1):
+        other = [s[1 - a] for s in have.values()]
+        if max(other) - min(other) <= SLACK:
+            return a
+    return None
+
+
+def even_out(order: list[int], numbers: dict[int, int], a: int):
+    grow = ("tryGrowTerminalRight", "tryGrowTerminalLeft") if a == 0 else \
+           ("tryGrowTerminalBottom", "tryGrowTerminalTop")
+    for _ in range(PASSES):
+        have = sizes(order, numbers)
+        if not have:
+            return
+        lengths = [have[t][a] for t in order]
+        each = sum(lengths) / len(lengths)
+        if max(abs(n - each) for n in lengths) <= SLACK:
+            return
+        for i in range(len(order) - 1):
+            have = sizes(order, numbers)
+            if not have:
+                return
+            # The border after terminal i belongs at (i+1) shares of the whole
+            move = round((i + 1) * each - sum(have[t][a] for t in order[: i + 1]))
+            if move > 0:
+                sessions(grow[0], order[i], move)
+            elif move < 0:
+                sessions(grow[1], order[i + 1], -move)
+            time.sleep(0.03)
+
+
+def main():
+    me = re.fullmatch(r"/Sessions/(\d+)", os.environ.get("KONSOLE_DBUS_SESSION", ""))
+    numbers = konsole_sessions()
+    terminal = next((t for t, n in numbers.items() if me and n == int(me[1])), None)
+    if terminal is None:
+        return
+    session = sessions("sessionIdForTerminalId", terminal)
+    terminals = ids(sessions("terminalIdsForSessionId", session))
+    if len(terminals) < 2:
+        return  # a new tab, not a split
+    STATE.touch()
+    with STATE.open("r+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)  # two quick splits run two of these
+        try:
+            orders = json.loads(f.read() or "{}")
+        except json.JSONDecodeError:
+            orders = {}
+        have = settled(terminals, numbers)
+        if not have:
+            return
+        known = [t for t in orders.get(session, []) if t in terminals]
+        if sorted(known + [terminal]) != terminals or terminal in known:
+            known = [t for t in terminals if t != terminal]  # made before this ran: in id order
+        order = place(known, terminal, have)
+        live = set(ids(sessions("sessionIdList")))
+        orders = {s: o for s, o in orders.items() if s.isdigit() and int(s) in live}
+        orders[session] = order
+        f.seek(0)
+        f.truncate()
+        json.dump(orders, f)
+        a = axis(have)
+        if a is not None:
+            even_out(order, numbers, a)
+
+
+if __name__ == "__main__":
+    main()

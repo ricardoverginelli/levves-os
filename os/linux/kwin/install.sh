@@ -2,7 +2,8 @@
 # Install the Yakuake KWin pieces: the slide-from-the-left effect (docked on
 # the left, full height) and the script that keeps it off fullscreen monitors
 # and owns its shortcuts (Meta+/, Meta+N new tab), plus yakuake-tab, which new
-# tabs run (Claude Code, or a plain shell for Meta+Shift+N), yakuake-panes
+# tabs run (Claude Code, or a plain shell for Meta+Shift+N; in a split it runs
+# yakuake-equal-panes, which sizes the tab's terminals the same), yakuake-panes
 # (Shift+Left/Right through split terminals, then tabs), and Meta+F for
 # Yakuake's own full-screen action. User-level, no sudo. Safe to re-run.
 # Undo: bash install.sh --uninstall

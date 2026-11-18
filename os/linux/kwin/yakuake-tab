@@ -20,6 +20,10 @@ if [ -n "${next:-}" ]; then
         org.kde.kglobalaccel.Component.invokeShortcut "New Yakuake Tab"
 fi
 
+# A split runs this too: even out the tab's terminals once it's laid out
+equal=$(dirname "$(readlink -f "$0")")/yakuake-equal-panes
+[ -x "$equal" ] && "$equal" </dev/null >/dev/null 2>&1 &
+
 # Only a fresh flag counts: an old one is left from a tab that never opened
 if [ -n "$(find "$flag" -newermt '-10 seconds' 2>/dev/null)" ]; then
     next=$(cat "$flag")
