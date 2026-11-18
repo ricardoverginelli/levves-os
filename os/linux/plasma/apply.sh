@@ -115,6 +115,12 @@ echo "Building the Leaves tray"
 # Notification popups and history; top-bar.js swaps them in for the stock ones
 echo "Building the Leaves notifications"
 [ "$(python3 -I notifications/build.py)" = changed ] && restart=true
+# Popups close after 3.3 s, a third less than Plasma's 5 s
+kwriteconfig6 --file plasmanotifyrc --group Notifications --key PopupTimeout 3333
+# Calendar reminders come from the clock widget (30, 10, 5 and 1 minute before). Akonadi's
+# own reminder daemon is off: at login it replayed every alarm missed since the last one
+kwriteconfig6 --file kalendaracrc --group General --key Autostart false
+pkill -x kalendarac || true
 
 # Yakuake and Konsole: the Levves color scheme, font and skin (yakuake/build.py).
 # Yakuake only reloads them on restart, which would end its sessions, so just say so

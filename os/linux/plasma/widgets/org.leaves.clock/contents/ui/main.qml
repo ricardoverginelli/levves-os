@@ -1,7 +1,7 @@
 // Weekday, date and time for the top bar: "Sun 25 Oct  9:45 PM", in serif with the weekday
 // italic and muted (design/DESIGN.md Type). Hovering it
 // opens the popup (CalendarPopup.qml): a month calendar on the left and the next
-// 15 days of events on the right.
+// 15 days of events on the right. It also sends the event reminders (remind()).
 //
 // Events come from Akonadi through Plasma's PIM events plugin, the same source
 // as the stock clock, limited to Google accounts: the settings page
@@ -31,6 +31,32 @@ PlasmoidItem {
         onTriggered: root.now = new Date()
     }
     onTodayChanged: Qt.callLater(rebuildAgenda)
+    onNowChanged: remind()
+
+    // Reminders: a notification 30, 10, 5 and 1 minute before each timed event,
+    // checked on every tick. Only upcoming ones: nothing is replayed after login or
+    // a suspend (Akonadi's kalendarac, which did that, is off: apply.sh)
+    readonly property var reminderMinutes: [30, 10, 5, 1]
+    function remind() {
+        if (!agenda.item)
+            return
+        const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+        const seen = new Set()
+        for (const e of [...eventsOn(today, agenda.item.daysModel), ...eventsOn(tomorrow, agenda.item.daysModel)]) {
+            const key = e.title + "|" + e.start.getTime()
+            if (e.allDay || seen.has(key))
+                continue
+            seen.add(key)
+            const minutes = Math.round((e.start - now) / 60000)
+            if (reminderMinutes.includes(minutes))
+                notify(e.title, (minutes === 1 ? "In 1 minute" : `In ${minutes} minutes`) + " · "
+                    + Qt.formatTime(e.start, Qt.locale().timeFormat(Locale.ShortFormat)))
+        }
+    }
+    function notify(title, body) {
+        const quote = text => "'" + text.replace(/'/g, "'\\''") + "'"
+        executable.connectSource(`notify-send -a Calendar -i appointment-reminder ${quote(title)} ${quote(body)}`)
+    }
 
     // Hover popups have no tooltips (TODO.md Top bar)
     toolTipMainText: ""
