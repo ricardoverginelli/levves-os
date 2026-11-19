@@ -33,9 +33,6 @@ QtObject {
     readonly property color keyDepth: "#12292e"
     readonly property color fieldEdge: "#1e2f34"
     readonly property color rowLine: "#0d2024"
-    readonly property color ditherA: "#0e2227"
-    readonly property color ditherB: "#0e2227"
-    readonly property color desktopDither: "#02090f"
     readonly property color terminalBlack: "#12292e"
     readonly property color terminalBrightBlack: "#56716f"
     readonly property color terminalMagenta: "#b48cbf"
@@ -45,7 +42,6 @@ QtObject {
     readonly property real opacitySelection: 0.14
     readonly property real opacityHover: 0.06
     readonly property real opacityTagFill: 0.12
-    readonly property real opacityTagEdge: 0.45
     readonly property real opacityOutline: 0.2
     readonly property real opacityFieldOutline: 0.22
     readonly property real opacityPane: 0.94
@@ -54,9 +50,6 @@ QtObject {
     readonly property real opacityTerminalClear: 0.95
     readonly property real opacityLamp: 0.24
     readonly property real opacityKeyGlow: 0.4
-    readonly property real opacityEdgeLight: 0
-    readonly property real opacityEdgeShade: 0
-    readonly property real opacityEtch: 0
     readonly property var easingOutQuint: [0.22, 1, 0.36, 1, 1, 1]
     readonly property int durationHover: 150
     readonly property int durationPopupOpen: 240
@@ -80,20 +73,17 @@ QtObject {
     readonly property real sizeRow: 32
     readonly property real sizeRowTouch: 58
     readonly property real sizeTouch: 44
-    readonly property real sizeLed: 6
     readonly property real sizeDither: 2
     readonly property real sizeField: 30
     readonly property real sizeActionBar: 36
     readonly property real radiusContainer: 0
     readonly property real radiusKey: 0
     readonly property real edgeWidth: 1
-    readonly property real edgeKeyDepth: 0
     readonly property real cutWindow: 18
     readonly property real cutPane: 12
     readonly property string typeFamilyDisplay: "Bricolage Grotesque"
     readonly property string typeFamilySans: "Figtree"
     readonly property string typeFamilyMono: "JetBrains Mono"
-    readonly property string typeFamilySerif: "Bricolage Grotesque"
     readonly property int typeWeightRegular: 400
     readonly property int typeWeightSemibold: 600
     readonly property int typeWeightBody: 450
@@ -114,7 +104,4 @@ QtObject {
     // The mixes every piece uses (design/DESIGN.md Color, Edges), so none is mixed by hand
     readonly property color hoverTint: "#0fdbe9e6"
     readonly property color selectionTint: "#247fb5b8"
-    readonly property color edgeLight: "#00ffffff"
-    readonly property color edgeShade: "#00000000"
-    readonly property color etchLight: "#00ffffff"
 }

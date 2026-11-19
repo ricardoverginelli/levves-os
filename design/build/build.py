@@ -10,8 +10,7 @@ Outputs (never edit them, change the tokens and rebuild):
 
     dist/tokens.css             CSS custom properties, --lv-<path>
     dist/qml/Levves/Theme.qml   QML singleton (with qmldir): Theme.<name>
-    dist/qml/Levves/*.qml       the pieces in design/qml/ (Key, WindowFrame, Caps...), copied in, and the
-                                dither tiles they use
+    dist/qml/Levves/*.qml       the pieces in design/qml/ (Key, WindowFrame, Caps...), copied in
     dist/kotlin/Levves.kt       Compose object: Levves.<name>
     dist/levves_tokens.py       TOKENS dict and color() for Python builds
     dist/levves_qt.py           the hand-written Python pieces in design/python/ (tinted icons), copied in
@@ -173,9 +172,6 @@ def qml(tokens):
 TINTS = [
     ("hoverTint", "text", "hover"),
     ("selectionTint", "fog", "selection"),
-    ("edgeLight", "#ffffff", "edge-light"),
-    ("edgeShade", "#000000", "edge-shade"),
-    ("etchLight", "#ffffff", "etch"),
 ]
 
 
@@ -236,22 +232,9 @@ def android(tokens):
     return "\n".join(lines + ["</resources>", ""])
 
 
-def dither(base, dots):
-    """A 2x2 tile of the 1px checkerboard: dots top-right and bottom-left, as the CSS conic-gradient."""
-    return ('<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2" shape-rendering="crispEdges">'
-            f'<rect width="2" height="2" fill="{base}"/><rect x="1" width="1" height="1" fill="{dots}"/>'
-            f'<rect y="1" width="1" height="1" fill="{dots}"/></svg>\n')
-
-
 def qml_module(tokens, pieces=QML_PIECES):
-    """The Levves QML module: Theme, the hand-written pieces, their dither tiles and the qmldir."""
-    color = {path[1]: t["value"] for path, t in tokens.items() if path[0] == "color" and len(path) == 2}
-    files = {
-        "Theme.qml": qml(tokens),
-        "dither-strip.svg": dither(color["dither-a"], color["dither-b"]),
-        "dither-desktop.svg": dither(color["bg-deep"], color["desktop-dither"]),
-        "dither-well.svg": dither(color["well"], color["well"]),
-    }
+    """The Levves QML module: Theme, the hand-written pieces and the qmldir."""
+    files = {"Theme.qml": qml(tokens)}
     qmldir = ["module Levves", "singleton Theme 1.0 Theme.qml"]
     for path in sorted(pieces.glob("*.qml")):
         files[path.name] = (f"// Copied from design/qml/{path.name} by design/build/build.py. Don't edit here.\n"

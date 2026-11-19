@@ -19,7 +19,7 @@
     "accent": { "$value": "#e8a849", "$description": "A lit window: the primary key. One per view" },
     "accent-hover": { "$value": "#f2bd68", "$description": "Hover on amber" },
     "accent-pressed": { "$value": "#c98d35", "$description": "Amber held down" },
-    "accent-edge": { "$value": "{color.accent}", "$description": "Deprecated (Survey's amber key edge); flat now" },
+    "accent-edge": { "$value": "{color.accent}", "$description": "Deprecated (Survey's amber key edge); flat now. Still read by p45" },
     "on-accent": { "$value": "#1c1204", "$description": "Text and icons on amber" },
 
     "critical": { "$value": "#ec7a62", "$description": "Errors, late, usage at 85% and above" },
@@ -32,13 +32,10 @@
     "edge": { "$value": "#213a3f", "$description": "The weak border on anything that floats (windows, popups, notifications, docked panels' free side): fog at opacity.outline over surface" },
     "well": { "$value": "#061418", "$description": "A window's content area, lists, readouts" },
     "well-pressed": { "$value": "{color.bg}", "$description": "A key held down, the current tab" },
-    "key-edge": { "$value": "{color.raised}", "$description": "Deprecated (Survey's key outline); flat now" },
-    "key-depth": { "$value": "{color.raised}", "$description": "Deprecated (Survey's key bottom edge); flat now" },
+    "key-edge": { "$value": "{color.raised}", "$description": "Deprecated (Survey's key outline); flat now. Still read by p45 and s25-control" },
+    "key-depth": { "$value": "{color.raised}", "$description": "Deprecated (Survey's key bottom edge); flat now. Still read by p45" },
     "field-edge": { "$value": "#1e2f34", "$description": "A field's weak outline at rest: fog at opacity.field-outline over bg-deep. Focused, the outline is fog" },
     "row-line": { "$value": "#0d2024", "$description": "Between rows in a list" },
-    "dither-a": { "$value": "#0e2227", "$description": "Deprecated (Survey's dither): flat strip color for group headers until the pieces drop it" },
-    "dither-b": { "$value": "{color.dither-a}", "$description": "Deprecated; equal to dither-a, so the dither draws flat" },
-    "desktop-dither": { "$value": "{color.bg-deep}", "$description": "Deprecated; equal to bg-deep" },
 
     "terminal": {
       "$description": "ANSI colors not covered above; red, green, yellow, blue and white reuse critical, success, warning, info and text",
@@ -60,7 +57,6 @@
     "selection": { "$value": 0.14, "$description": "Fog behind the selected row (with a 2px fog line at its left)" },
     "hover": { "$value": 0.06, "$description": "text over a hovered row or key" },
     "tag-fill": { "$value": 0.12, "$description": "A status tag's plane, in its status color" },
-    "tag-edge": { "$value": 0.45, "$description": "Deprecated: tags have no outline now" },
     "outline": { "$value": 0.20, "$description": "Fog, the weak border on floating surfaces (the edge color)" },
     "field-outline": { "$value": 0.22, "$description": "Fog, a field's outline at rest" },
     "pane": { "$value": 0.94, "$description": "Frosted shell panes: popups, notifications, menus, the launcher" },
@@ -68,9 +64,6 @@
     "terminal": { "$value": 0.88, "$description": "The frosted terminal (Konsole)" },
     "terminal-clear": { "$value": 0.95, "$description": "Yakuake (no blur behind it) and the Leaves launcher: the terminal a step more opaque" },
     "lamp": { "$value": 0.24, "$description": "Fog at the center of a frosted pane's lamp light, pooled at its top-right" },
-    "key-glow": { "$value": 0.40, "$description": "Amber, the primary key's glow: the only glow in a view" },
-    "edge-light": { "$value": 0, "$description": "Deprecated (Survey's engraved edge); zero, so it no longer draws" },
-    "edge-shade": { "$value": 0, "$description": "Deprecated (Survey's engraved edge); zero, so it no longer draws" },
-    "etch": { "$value": 0, "$description": "Deprecated (Survey's etched group box); zero, so it no longer draws" }
+    "key-glow": { "$value": 0.40, "$description": "Amber, the primary key's glow: the only glow in a view" }
   }
 }

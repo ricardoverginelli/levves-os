@@ -25,10 +25,6 @@
           "monospace"
         ],
         "$description": "Terminals and code only"
-      },
-      "serif": {
-        "$value": "{type.family.display}",
-        "$description": "Deprecated: no serif in Urban Flora; points at display until the pieces move off it"
       }
     },
     "weight": {

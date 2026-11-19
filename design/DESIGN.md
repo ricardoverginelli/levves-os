@@ -220,18 +220,11 @@ lists.
   through a notification replaced by its result (`notify-send -p` / `-r`).
 
 ## Moving off Survey
-The tokens switched first: Survey's names that the code still reads have flat values now
-(`dither-b` equals `dither-a`, `key-depth` and `key-edge` equal `raised`, `edge-light`, `edge-shade`
-and `etch` are zero, `edge` is the weak border, `type.family.serif` points at display), so
-everything already draws flat. Marked "Deprecated" in `tokens/`, they go once nothing reads them.
-Still to redraw (order in `os/linux/plasma/TODO.md`):
-- The pieces: `GroupBox` becomes a section, `Dither` and `Led` go, `Caps` becomes the
-  sentence-case label, `WindowFrame` gains the cut, the border and the frosted `pane` mode,
-  `Meter` becomes lit cells, `web/levves.css` to match.
-- The desktop: Plasma style SVGs (frosted panes, cut, lamp), the decoration, the color scheme
-  and fonts, Yakuake/Konsole and VS Code.
-- The apps, one at a time; the TV launcher last. The suite is done: it reads none of the
-  deprecated names, and `web/levves.css` has dropped `.lv-led` and `.lv-dither`. Still reading
-  them: p45's `editor.html`, s25-control's `Main.qml`, the Plasma pieces and VS Code.
+The pieces, the desktop, VS Code, the suite and Leaves Music draw Urban Flora and read none of
+Survey's names; `Led`, `Dither`, the dither tiles and the tokens only they read are gone. What's left:
+- `key-edge`, `key-depth` and `accent-edge` (flat now, marked "Deprecated" in `tokens/`), read
+  only by p45's `editor.html` and s25-control's `Main.qml`. They go once those two are redrawn.
+- The names `Caps` and `GroupBox` are Survey's; they draw the sentence-case label and the section.
+- The TV launcher, last.
 - The suite's `packages/design-tokens/tokens.css` keeps a few names that are compositions with no
   Levves token of their own (alert tints, the overlay).

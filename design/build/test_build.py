@@ -92,7 +92,6 @@ class RealTokens(unittest.TestCase):
             files = build.qml_module(self.tokens, pieces=Path(folder))
         self.assertIn("Key 1.0 Key.qml", files["qml/Levves/qmldir"].splitlines())
         self.assertTrue(files["qml/Levves/Key.qml"].startswith("// Copied from design/qml/Key.qml"))
-        self.assertIn("qml/Levves/dither-strip.svg", files)
 
     def test_dist_is_up_to_date(self):
         self.assertEqual(build.main(["--check"]), 0, "run python3 design/build/build.py")

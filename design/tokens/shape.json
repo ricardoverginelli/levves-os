@@ -40,7 +40,7 @@
     },
     "group-header": {
       "$value": "24px",
-      "$description": "The dithered strip on top of a group box"
+      "$description": "A section's label row, over its content"
     },
     "key": {
       "$value": "28px",
@@ -58,13 +58,9 @@
       "$value": "44px",
       "$description": "Smallest touch target"
     },
-    "led": {
-      "$value": "6px",
-      "$description": "Deprecated (Survey's title-bar light)"
-    },
     "dither": {
       "$value": "2px",
-      "$description": "Deprecated (Survey's dither tile)"
+      "$description": "The 1px screen's 2x2 tile over a blurred cover (CoverBackdrop)"
     },
     "field": {
       "$value": "30px",
@@ -91,10 +87,6 @@
     "width": {
       "$value": "1px",
       "$description": "Every outline and hairline"
-    },
-    "key-depth": {
-      "$value": "0px",
-      "$description": "Deprecated (Survey's key bottom edge); zero, keys are flat"
     }
   },
   "cut": {

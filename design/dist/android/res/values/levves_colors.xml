@@ -31,9 +31,6 @@
     <color name="levves_key_depth">#12292e</color>
     <color name="levves_field_edge">#1e2f34</color>
     <color name="levves_row_line">#0d2024</color>
-    <color name="levves_dither_a">#0e2227</color>
-    <color name="levves_dither_b">#0e2227</color>
-    <color name="levves_desktop_dither">#02090f</color>
     <color name="levves_terminal_black">#12292e</color>
     <color name="levves_terminal_bright_black">#56716f</color>
     <color name="levves_terminal_magenta">#b48cbf</color>

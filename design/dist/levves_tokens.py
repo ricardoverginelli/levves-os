@@ -31,9 +31,6 @@ TOKENS = {
     "color.key-depth": "#12292e",
     "color.field-edge": "#1e2f34",
     "color.row-line": "#0d2024",
-    "color.dither-a": "#0e2227",
-    "color.dither-b": "#0e2227",
-    "color.desktop-dither": "#02090f",
     "color.terminal.black": "#12292e",
     "color.terminal.bright-black": "#56716f",
     "color.terminal.magenta": "#b48cbf",
@@ -43,7 +40,6 @@ TOKENS = {
     "opacity.selection": 0.14,
     "opacity.hover": 0.06,
     "opacity.tag-fill": 0.12,
-    "opacity.tag-edge": 0.45,
     "opacity.outline": 0.2,
     "opacity.field-outline": 0.22,
     "opacity.pane": 0.94,
@@ -52,9 +48,6 @@ TOKENS = {
     "opacity.terminal-clear": 0.95,
     "opacity.lamp": 0.24,
     "opacity.key-glow": 0.4,
-    "opacity.edge-light": 0,
-    "opacity.edge-shade": 0,
-    "opacity.etch": 0,
     "easing.out-quint": [
         0.22,
         1,
@@ -83,14 +76,12 @@ TOKENS = {
     "size.row": "32px",
     "size.row-touch": "58px",
     "size.touch": "44px",
-    "size.led": "6px",
     "size.dither": "2px",
     "size.field": "30px",
     "size.action-bar": "36px",
     "radius.container": "0px",
     "radius.key": "0px",
     "edge.width": "1px",
-    "edge.key-depth": "0px",
     "cut.window": "18px",
     "cut.pane": "12px",
     "type.family.display": [
@@ -106,11 +97,6 @@ TOKENS = {
     "type.family.mono": [
         "JetBrains Mono",
         "monospace"
-    ],
-    "type.family.serif": [
-        "Bricolage Grotesque",
-        "Bricolage Grotesque Variable",
-        "sans-serif"
     ],
     "type.weight.regular": 400,
     "type.weight.semibold": 600,
