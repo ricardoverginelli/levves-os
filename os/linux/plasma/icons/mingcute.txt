@@ -56,3 +56,5 @@ video-fill
 volume-fill
 volume-off-fill
 wifi-fill
+keyboard-fill
+shield-fill

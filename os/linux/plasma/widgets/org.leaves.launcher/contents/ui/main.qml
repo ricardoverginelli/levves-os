@@ -43,6 +43,7 @@ import org.kde.coreaddons as KCoreAddons
 import org.kde.kcmutils as KCMUtils
 import org.kde.plasma.private.kicker as Kicker
 import org.kde.plasma.private.sessions as Sessions
+import org.kde.plasma.plasma5support as P5Support
 import org.kde.ksysguard.process as Process
 import org.kde.ksysguard.sensors as Sensors
 import org.kde.taskmanager as TaskManager
@@ -487,16 +488,51 @@ PlasmoidItem {
         id: apps
         enabled: launcher.visible || taskLinger.running
         enabledAttributes: root.taskAttributes
-        cgroupMapping: Object.keys(root.taskServices).reduce((map, unit) => { map[unit] = unit; return map }, ({}))
     }
     Timer { id: taskLinger; interval: 60000 }
 
-    // Our own user services, listed under "Services". They're outside the app-*
-    // cgroups, so the model only sees them through cgroupMapping (the value is a
-    // group key: non-empty text, one per row, or units vanish or merge), and names
-    // them by the end of their cgroup path: the unit is the row's identity.
+    // Everything outside the app-* cgroups comes from ../code/tasks.py: services
+    // that are ours or third-party (keyd, tailscaled…), and apps started inside
+    // another unit's cgroup (through the portal, D-Bus, a service or a terminal).
+    // It says which pids make each row; their numbers come from the per-process
+    // model below. It's rerun every 3s while the launcher is open.
+    property var extraTasks: ({ services: [], programs: [] })
+    readonly property string tasksScript: decodeURIComponent(Qt.resolvedUrl("../code/tasks.py").toString().replace(/^file:\/\//, ""))
+    P5Support.DataSource {
+        id: shell
+        engine: "executable"
+        onNewData: (source, data) => {
+            disconnectSource(source)
+            if (source !== root.scanCommand) return   // systemctl from endTask
+            try { root.extraTasks = JSON.parse(data.stdout) } catch (e) { return }
+            Qt.callLater(root.rebuildTasks)
+        }
+    }
+    readonly property string scanCommand: "python3 -I '" + tasksScript + "'"
+    Timer {
+        interval: 3000
+        running: launcher.visible
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: if (!shell.connectedSources.includes(root.scanCommand)) shell.connectSource(root.scanCommand)
+    }
+    readonly property var processAttributes: ["pid", "usage", "gpu_usage", "gpu_memory", "memory",
+                                              "ioCharactersActuallyReadRate", "ioCharactersActuallyWrittenRate"]
+    Process.ProcessDataModel {
+        id: perProcess
+        enabled: apps.enabled
+        enabledAttributes: root.processAttributes
+    }
+
+    // Names and icons for services, by unit; others show their unit's description
+    readonly property string serviceIcon: "mingcute-server-2-fill"
     readonly property var taskServices: ({
         "capture-replay.service":    { name: "Capture Replay", icon: "mingcute-video-fill" },
+        "capture-tray.service":      { name: "Capture Tray",   icon: "mingcute-video-fill" },
+        "keyd.service":              { name: "keyd",           icon: "mingcute-keyboard-fill" },
+        "nordvpnd.service":          { name: "NordVPN Daemon", icon: "mingcute-shield-fill" },
+        "soloist-netwatch.service":  { name: "Soloist Netwatch", icon: "mingcute-refresh-2-fill" },
+        "tailscaled.service":        { name: "Tailscale",      icon: "mingcute-shield-fill" },
         "leaves-music-dock.service": { name: "Leaves Music",   icon: "mingcute-music-2-fill" },
         "mic-mute-sound.service":    { name: "Mic Mute Sound", icon: "mingcute-mic-fill" },
         "s25-control.service":       { name: "S25 Control",    icon: "mingcute-midi-fill" },
@@ -588,6 +624,7 @@ PlasmoidItem {
     // Pids and window rows per row key, kept out of the ListModel (it would turn arrays into models)
     property var taskPids: ({})
     property var taskWindows: ({})
+    property var taskUnits: ({})   // services: { unit, scope }
 
     // Rows update in place every sample, so hover and the highlight don't flicker
     ListModel { id: taskRows }
@@ -610,7 +647,7 @@ PlasmoidItem {
             if (!windows.data(i, W.IsWindow)) continue
             const appId = windows.data(i, W.AppId) ?? ""
             const pid = windows.data(i, W.AppPid)
-            allWindows.push({ row: w, appId: appId, pid: pid })
+            allWindows.push({ row: w, appId: appId, pid: pid, name: windows.data(i, W.AppName) ?? "" })
             if (appId && !(appId in windowById)) windowById[appId] = w
             if (pid && !(pid in windowByPid)) windowByPid[pid] = { row: w, appId: appId }
         }
@@ -628,13 +665,9 @@ PlasmoidItem {
             const pids = apps.data(apps.index(r, 0), Process.ProcessDataModel.PIDs)
             if (!pids || !pids.length) continue
             const menuId = value(r, "menuId") || ""
-            const appName = value(r, "appName") || menuId
-            const unit = Object.keys(taskServices).find(u => appName.endsWith("/" + u))
-            const service = unit ? taskServices[unit] : null
-            const name = service ? service.name : appName
+            const name = value(r, "appName") || menuId
             const t = {
-                key: menuId || name, name: name, icon: service ? service.icon : value(r, "iconName") || "",
-                menuId: menuId, service: !!service,
+                key: menuId || name, name: name, icon: value(r, "iconName") || "", menuId: menuId,
                 pids: Array.from(pids),
                 cpu: (value(r, "usage") || 0) / cpuMax * 100,
                 gpu: value(r, "gpu_usage") || 0,
@@ -648,6 +681,50 @@ PlasmoidItem {
             if (same) merge(same, t)
             else list.push(t)
         }
+
+        // The rows from tasks.py, summed per process
+        const byPid = {}
+        for (let r = 0; r < perProcess.rowCount(); r++)
+            byPid[perProcess.data(perProcess.index(r, 0), Process.ProcessDataModel.Value)] = r
+        const measure = pids => {
+            const t = { cpu: 0, gpu: 0, vram: 0, ram: 0, disk: 0 }
+            for (const pid of pids) {
+                const r = byPid[pid]
+                if (r === undefined) continue
+                const v = name => perProcess.data(perProcess.index(r, processAttributes.indexOf(name)),
+                                                  Process.ProcessDataModel.Value) || 0
+                t.cpu += v("usage") / cpuMax * 100
+                t.gpu += v("gpu_usage")
+                t.vram += v("gpu_memory")
+                t.ram += v("memory")
+                t.disk += v("ioCharactersActuallyReadRate") + v("ioCharactersActuallyWrittenRate")
+            }
+            return t
+        }
+        const extra = []
+        for (const s of extraTasks.services) {
+            const known = taskServices[s.unit]
+            extra.push(Object.assign(measure(s.pids), {
+                key: s.unit, name: known ? known.name : s.name, icon: known ? known.icon : serviceIcon,
+                menuId: "", unit: s.unit, scope: s.scope, pids: s.pids, windowRow: -1 }))
+        }
+        for (const p of extraTasks.programs) {
+            const t = Object.assign(measure(p.pids), {
+                key: p.menuId, name: p.name, icon: p.icon, menuId: p.menuId, pids: p.pids,
+                windowRow: p.menuId in windowById ? windowById[p.menuId] : -1 })
+            // Started from a terminal or another app: its share leaves that app's row
+            for (const host of list.filter(o => o.pids.some(pid => p.pids.includes(pid)))) {
+                for (const k of ["cpu", "gpu", "vram", "ram", "disk"]) host[k] = Math.max(0, host[k] - t[k])
+                host.pids = host.pids.filter(pid => !p.pids.includes(pid))
+            }
+            extra.push(t)
+        }
+        for (const t of extra) {
+            const same = list.find(o => o.key === t.key)
+            if (same) merge(same, t)
+            else list.push(t)
+        }
+
         // A window found by pid instead. Chromium browsers move their main
         // process into a scope of their own (org.chromium.Chromium, no desktop
         // file); its window names the app it belongs to, so it's merged into it.
@@ -660,6 +737,20 @@ PlasmoidItem {
             if (owner) merge(owner, t)
         }
         list = list.filter(t => !t.merged)
+
+        // Any window still without a row (an app nothing above recognised) gets one
+        const covered = new Set()
+        for (const t of list) for (const pid of t.pids) covered.add(pid)
+        for (const w of allWindows) {
+            if (!w.pid || covered.has(w.pid) || list.some(t => t.windowRow === w.row)) continue
+            const key = w.appId || "pid:" + w.pid
+            const same = list.find(o => o.key === key)
+            if (same) { same.pids.push(w.pid); covered.add(w.pid); continue }
+            list.push(Object.assign(measure([w.pid]), {
+                key: key, name: w.name || w.appId || String(w.pid), icon: w.appId.replace(/\.desktop$/, ""),
+                menuId: "", pids: [w.pid], windowRow: w.row }))
+            covered.add(w.pid)
+        }
 
         // Load and its lead column, smoothed per key
         const loads = {}
@@ -693,9 +784,10 @@ PlasmoidItem {
         const currentKey = current ? current.key : ""
         const sameRows = rows.length === taskRows.count && rows.every((t, i) => taskRows.get(i).key === t.key)
         if (!sameRows) taskRows.clear()
-        const pids = {}, windowRows = {}
+        const pids = {}, windowRows = {}, units = {}
         rows.forEach((t, i) => {
             pids[t.key] = t.pids
+            if (t.unit) units[t.key] = { unit: t.unit, scope: t.scope }
             windowRows[t.key] = allWindows.filter(w => (t.menuId && w.appId === t.menuId) || t.pids.includes(w.pid))
                                           .map(w => w.row)
             // The lead is only drawn when sorting by load and something is happening
@@ -708,6 +800,7 @@ PlasmoidItem {
         })
         taskPids = pids
         taskWindows = windowRows
+        taskUnits = units
         // Keep the highlight on the same app as rows come, go and re-sort
         const i = rows.findIndex(t => t.key === currentKey)
         taskIndex = i >= 0 ? i : Math.max(0, Math.min(taskIndex, rows.length - 1))
@@ -722,7 +815,9 @@ PlasmoidItem {
 
     // The first ask closes the app's windows like their × (the app can ask to
     // save and quit normally), or is SIGTERM for an app without one; asking
-    // again within 5s, while it's still listed, is SIGKILL
+    // again within 5s, while it's still listed, is SIGKILL. A service is stopped
+    // through systemd instead (it would restart it), then killed the same way; a
+    // system service asks for the password.
     property string endingKey: ""
     Timer {
         id: endingTimer
@@ -734,6 +829,16 @@ PlasmoidItem {
         if (index < 0 || index >= taskRows.count) return
         const key = taskRows.get(index).key
         if (!taskPids[key]) return
+        const service = taskUnits[key]
+        if (service) {
+            const systemctl = "systemctl" + (service.scope === "user" ? " --user " : " ")
+            shell.connectSource(systemctl + (endingKey === key ? "kill --signal=KILL " : "stop ")
+                                + "'" + service.unit.replace(/'/g, "") + "'")
+            endingKey = endingKey === key ? "" : key
+            if (endingKey) endingTimer.restart()
+            else endingTimer.stop()
+            return
+        }
         if (endingKey === key) {
             processes.sendSignal(taskPids[key], Process.Signal.KillSignal)
             endingKey = ""
