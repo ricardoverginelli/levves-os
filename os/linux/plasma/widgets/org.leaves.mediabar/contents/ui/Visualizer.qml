@@ -1,9 +1,9 @@
-// A soft silhouette of the music rising from the bottom of the popup's sunk screen: one
-// smooth filled curve through the spectrum in the cover's tint, from edge to edge. Levels come
+// A soft silhouette of the music rising from the popup's bottom edge: one smooth filled curve
+// through the spectrum in the cover's tint, faint enough that the cover behind still shows,
+// from edge to edge. Levels come
 // from ../code/visualizer.py, started here on demand; it records only the
 // given player's own stream and exits once nothing asks it for levels.
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Shapes
 import org.kde.plasma.plasma5support as P5Support
 
@@ -13,7 +13,7 @@ Item {
     property string app        // the player's MPRIS identity
     property bool running      // popup open and playing
     property color tint        // the cover's color
-    property real strength: 1  // scales the fill and line; the popup's sunk screen shows it stronger
+    property real strength: 1  // scales the fill and line
     readonly property int bands: 32
     readonly property int steps: 8  // curve samples between two bands
 
@@ -122,24 +122,6 @@ Item {
         id: executable
         engine: "executable"
         onNewData: source => disconnectSource(source)
-    }
-
-    // Edge to edge, so it takes the frame's rounded bottom corners
-    layer.enabled: true
-    layer.effect: MultiEffect {
-        maskEnabled: true
-        maskSource: corners
-        maskThresholdMin: 0.5
-        maskSpreadAtMin: 1
-    }
-    Item {
-        id: corners
-        anchors.fill: parent
-        layer.enabled: true
-        visible: false
-        Rectangle {
-            anchors.fill: parent
-        }
     }
 
     Shape {

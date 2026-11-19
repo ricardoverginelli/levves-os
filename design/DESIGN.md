@@ -174,9 +174,10 @@ Everything under `os/linux/plasma/`, applied by its `apply.sh`; phases in its `T
   and draws its `edge` on the inner side only.
 - Exception to "one amber thing": the media popup takes the cover's color
   (`Kirigami.ImageColors`, held at 62-78% lightness, at most 70% saturation) for its visualizer
-  and progress meter. The Leaves Music dock goes further: the cover's color on its toggles, slider
-  and play key (a primary `Key` with `tone`), and the cover itself behind everything, blurred
-  (`CoverBackdrop.qml`), because a player should look like what it plays.
+  and progress meter, over the cover itself, blurred (the Levves `CoverBackdrop`, cut to the
+  pane), with the visualizer a faint silhouette rising from its bottom edge behind the controls.
+  The Leaves Music dock goes further: the cover's color on its toggles, slider and play key (a
+  primary `Key` with `tone`), because a player should look like what it plays.
 
 **Motion mechanics** (values in Motion above)
 - Plasma's popups and the launcher drop 8px out of their panel with a fade, reversed on close

@@ -1,7 +1,8 @@
-// The player popup under the media bar, a Levves window (design/DESIGN.md): source keys (only with
-// more than one player), the cover in a well with title/artist/album, a sunk screen showing the
-// player's audio (Visualizer.qml), a meter to seek, and the controls. The cover's color stands in
-// for the accent: the screen's curve and the meter's fill.
+// The player popup under the media bar, a Levves pane (design/DESIGN.md): source keys (only with
+// more than one player), the cover in a well with title/artist/album, a meter to seek, and the
+// controls. Behind it all, like the Leaves Music dock, the cover blurred and held down
+// (CoverBackdrop), with a faint silhouette of the player's audio rising from the bottom
+// (Visualizer.qml). The cover's color stands in for the accent: the curve and the meter's fill.
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -111,6 +112,29 @@ Item {
         return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`
     }
 
+    // Out to the frame: the style pads popups by 4px, the outer one its border. The frame's
+    // top-right cut is Theme.cutPane from its outer corner, so from here, a pixel in, every pixel
+    // centered within cutPane - 0.5 is the cut or its line.
+    CoverBackdrop {
+        anchors.fill: parent
+        anchors.margins: -3
+        url: popup.player ? popup.player.artUrl : ""
+        cut: Theme.cutPane - 0.5
+    }
+
+    Visualizer {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: -3
+        anchors.rightMargin: -3
+        anchors.bottomMargin: -3
+        height: Math.round(parent.height * 0.5)
+        app: popup.player ? popup.player.identity : ""
+        running: popup.shown && popup.playing
+        tint: popup.tint
+    }
+
     ColumnLayout {
         id: content
         anchors.fill: parent
@@ -200,21 +224,6 @@ Item {
                     font.pixelSize: Theme.typeSizeSmall + 1
                     elide: Text.ElideRight
                 }
-            }
-        }
-
-        // The player's audio on a sunk screen, in the cover's tint
-        Well {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 44
-
-            Visualizer {
-                anchors.fill: parent
-                anchors.margins: 1
-                app: popup.player ? popup.player.identity : ""
-                running: popup.shown && popup.playing
-                tint: popup.tint
-                strength: 2.5
             }
         }
 
