@@ -4,6 +4,7 @@ Appear 1.0 Appear.qml
 AppearIn 1.0 AppearIn.qml
 AppearOut 1.0 AppearOut.qml
 Caps 1.0 Caps.qml
+CoverBackdrop 1.0 CoverBackdrop.qml
 Dither 1.0 Dither.qml
 Field 1.0 Field.qml
 GroupBox 1.0 GroupBox.qml
