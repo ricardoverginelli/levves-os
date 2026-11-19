@@ -1,35 +1,112 @@
 {
-  "$description": "Spacing, sizes, corners and edges. Everything on a 4px grid.",
+  "$description": "Spacing, sizes, corners and edges. Everything on a 4px grid. Corners are square; a floating surface's top-right corner is cut.",
   "space": {
     "$type": "dimension",
-    "4": { "$value": "4px", "$description": "A label and its control; keys in a row" },
-    "8": { "$value": "8px", "$description": "Between rows and cards; icon to text in a key" },
-    "12": { "$value": "12px", "$description": "Inside a group box or row; between sections of a window" },
-    "16": { "$value": "16px", "$description": "A window's or screen's content to its edge" },
-    "24": { "$value": "24px", "$description": "Between unrelated blocks" },
-    "32": { "$value": "32px" }
+    "4": {
+      "$value": "4px",
+      "$description": "A label and its control; keys in a row"
+    },
+    "8": {
+      "$value": "8px",
+      "$description": "Between rows and cards; icon to text in a key"
+    },
+    "12": {
+      "$value": "12px",
+      "$description": "Inside a group box or row; between sections of a window"
+    },
+    "16": {
+      "$value": "16px",
+      "$description": "A window's or screen's content to its edge"
+    },
+    "24": {
+      "$value": "24px",
+      "$description": "Between unrelated blocks"
+    },
+    "32": {
+      "$value": "32px"
+    }
   },
   "size": {
     "$type": "dimension",
-    "top-bar": { "$value": "28px" },
-    "title-bar": { "$value": "30px", "$description": "Window title bars; 52px on the phone (size.header-touch)" },
-    "header-touch": { "$value": "52px" },
-    "group-header": { "$value": "24px", "$description": "The dithered strip on top of a group box" },
-    "key": { "$value": "28px", "$description": "Keys on the desktop" },
-    "row": { "$value": "32px", "$description": "List rows on the desktop" },
-    "row-touch": { "$value": "58px", "$description": "List rows on the phone" },
-    "touch": { "$value": "44px", "$description": "Smallest touch target" },
-    "led": { "$value": "6px", "$description": "The light in a title bar" },
-    "dither": { "$value": "2px", "$description": "Tile of the dither texture (a 1px checkerboard)" }
+    "top-bar": {
+      "$value": "26px"
+    },
+    "title-bar": {
+      "$value": "30px",
+      "$description": "Window title bars; 52px on the phone (size.header-touch)"
+    },
+    "header-touch": {
+      "$value": "52px"
+    },
+    "group-header": {
+      "$value": "24px",
+      "$description": "The dithered strip on top of a group box"
+    },
+    "key": {
+      "$value": "28px",
+      "$description": "Keys on the desktop"
+    },
+    "row": {
+      "$value": "32px",
+      "$description": "List rows on the desktop"
+    },
+    "row-touch": {
+      "$value": "58px",
+      "$description": "List rows on the phone"
+    },
+    "touch": {
+      "$value": "44px",
+      "$description": "Smallest touch target"
+    },
+    "led": {
+      "$value": "6px",
+      "$description": "Deprecated (Survey's title-bar light)"
+    },
+    "dither": {
+      "$value": "2px",
+      "$description": "Deprecated (Survey's dither tile)"
+    },
+    "field": {
+      "$value": "30px",
+      "$description": "A field's height on the desktop; in a bottom bar the field fills the bar"
+    },
+    "action-bar": {
+      "$value": "36px",
+      "$description": "A window's bottom bar: the field, the keys and the primary key, flush, with a hairline above"
+    }
   },
   "radius": {
     "$type": "dimension",
-    "container": { "$value": "2px", "$description": "Windows, group boxes, wells, tags" },
-    "key": { "$value": "3px", "$description": "Keys, tabs, toggles" }
+    "container": {
+      "$value": "0px",
+      "$description": "Windows, popups, wells, tags: square"
+    },
+    "key": {
+      "$value": "0px",
+      "$description": "Keys, tabs, toggles, fields: square"
+    }
   },
   "edge": {
     "$type": "dimension",
-    "width": { "$value": "1px", "$description": "Every outline and inner line" },
-    "key-depth": { "$value": "2px", "$description": "A key's bottom edge; 3px on the phone's main key" }
+    "width": {
+      "$value": "1px",
+      "$description": "Every outline and hairline"
+    },
+    "key-depth": {
+      "$value": "0px",
+      "$description": "Deprecated (Survey's key bottom edge); zero, keys are flat"
+    }
+  },
+  "cut": {
+    "$type": "dimension",
+    "$description": "The 45-degree cut at a floating surface's top-right corner, never on a corner that touches a screen edge",
+    "window": {
+      "$value": "18px",
+      "$description": "Windows and docked panels' free top-right"
+    },
+    "pane": {
+      "$value": "12px",
+      "$description": "Popups, notifications, menus, OSDs"
+    }
   }
 }

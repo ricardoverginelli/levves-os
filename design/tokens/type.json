@@ -1,35 +1,106 @@
 {
-  "$description": "Levves type. Serif for titles and numbers, sans for everything you read or press.",
+  "$description": "Levves type. A styled grotesque for titles and big numbers, a plain sans for everything you read or press, mono for code only. No serif, no caps labels.",
   "type": {
     "family": {
       "$type": "fontFamily",
-      "serif": { "$value": ["Source Serif 4", "serif"], "$description": "Window titles, headings, readouts and every number that's read (amounts, dates, timers)" },
-      "sans": { "$value": ["Source Sans 3", "sans-serif"], "$description": "Body text, rows, fields, and the caps labels" },
-      "mono": { "$value": ["JetBrains Mono", "monospace"], "$description": "Terminals and code only" }
+      "display": {
+        "$value": [
+          "Bricolage Grotesque",
+          "sans-serif"
+        ],
+        "$description": "Window and section titles, headings, readout numbers"
+      },
+      "sans": {
+        "$value": [
+          "Figtree",
+          "sans-serif"
+        ],
+        "$description": "Body text, rows, fields, keys, labels, and every inline number (tabular figures)"
+      },
+      "mono": {
+        "$value": [
+          "JetBrains Mono",
+          "monospace"
+        ],
+        "$description": "Terminals and code only"
+      },
+      "serif": {
+        "$value": "{type.family.display}",
+        "$description": "Deprecated: no serif in Urban Flora; points at display until the pieces move off it"
+      }
     },
     "weight": {
       "$type": "fontWeight",
-      "regular": { "$value": 400 },
-      "semibold": { "$value": 600, "$description": "Titles, caps labels, keys, the name in a row" }
+      "regular": {
+        "$value": 400,
+        "$description": "Display titles at small sizes"
+      },
+      "semibold": {
+        "$value": 600,
+        "$description": "Titles, labels, the current tab, the name in a row"
+      },
+      "body": {
+        "$value": 450,
+        "$description": "Body text and rows: a touch heavier than regular, for reading on dark"
+      }
     },
     "size": {
       "$type": "dimension",
-      "label": { "$value": "11px", "$description": "Caps labels: group headers, column headers, status bars" },
-      "small": { "$value": "12px", "$description": "Key labels, hints" },
-      "body": { "$value": "14px", "$description": "Desktop body text and rows" },
-      "body-touch": { "$value": "16px", "$description": "Phone body text and fields (iOS zooms into fields under 16px)" },
-      "number": { "$value": "15px", "$description": "Serif numbers inline with body text" },
-      "bar": { "$value": "13px", "$description": "Serif readings next to caps labels in the top bar (perf meter)" },
-      "title": { "$value": "15px", "$description": "Window titles" },
-      "heading": { "$value": "20px", "$description": "A screen's heading on the phone" },
-      "readout": { "$value": "24px", "$description": "A number in a readout well" },
-      "readout-large": { "$value": "28px", "$description": "The one big number of a screen" }
+      "label": {
+        "$value": "12px",
+        "$description": "Labels: section and column headers, sentence case"
+      },
+      "small": {
+        "$value": "11px",
+        "$description": "Hints, the bar's readings, timestamps"
+      },
+      "body": {
+        "$value": "13px",
+        "$description": "Desktop body text and rows"
+      },
+      "body-touch": {
+        "$value": "16px",
+        "$description": "Phone body text and fields (iOS zooms into fields under 16px)"
+      },
+      "number": {
+        "$value": "13px",
+        "$description": "Inline numbers, in sans with tabular figures"
+      },
+      "bar": {
+        "$value": "12px",
+        "$description": "The top bar's text and readings"
+      },
+      "title": {
+        "$value": "14px",
+        "$description": "Window and pane titles, in display"
+      },
+      "heading": {
+        "$value": "18px",
+        "$description": "A screen's heading on the phone"
+      },
+      "readout": {
+        "$value": "22px",
+        "$description": "A number in a readout, in display"
+      },
+      "readout-large": {
+        "$value": "28px",
+        "$description": "The one big number of a screen"
+      }
     },
     "tracking": {
       "$type": "number",
       "$description": "Letter spacing in em",
-      "label": { "$value": 0.12, "$description": "Caps labels and key labels, always uppercase" },
-      "tag": { "$value": 0.1, "$description": "Status tags" }
+      "label": {
+        "$value": 0,
+        "$description": "Labels are sentence case with normal spacing"
+      },
+      "tag": {
+        "$value": 0
+      },
+      "display": {
+        "$value": -0.01,
+        "$description": "Display titles, slightly tight"
+      }
     }
   }
 }

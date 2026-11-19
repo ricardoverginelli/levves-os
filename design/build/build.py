@@ -172,7 +172,7 @@ def qml(tokens):
 # Derived colors in Theme.qml: (name, base color token or hex, opacity token)
 TINTS = [
     ("hoverTint", "text", "hover"),
-    ("selectionTint", "accent", "selection"),
+    ("selectionTint", "fog", "selection"),
     ("edgeLight", "#ffffff", "edge-light"),
     ("edgeShade", "#000000", "edge-shade"),
     ("etchLight", "#ffffff", "etch"),
@@ -250,7 +250,7 @@ def qml_module(tokens, pieces=QML_PIECES):
         "Theme.qml": qml(tokens),
         "dither-strip.svg": dither(color["dither-a"], color["dither-b"]),
         "dither-desktop.svg": dither(color["bg-deep"], color["desktop-dither"]),
-        "dither-well.svg": dither(color["well"], color["row-line"]),
+        "dither-well.svg": dither(color["well"], color["well"]),
     }
     qmldir = ["module Levves", "singleton Theme 1.0 Theme.qml"]
     for path in sorted(pieces.glob("*.qml")):

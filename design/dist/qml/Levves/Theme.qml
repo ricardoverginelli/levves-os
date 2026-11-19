@@ -3,49 +3,59 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property color bgDeep: "#0b1016"
-    readonly property color bg: "#11171d"
-    readonly property color surface: "#182027"
-    readonly property color raised: "#222b32"
-    readonly property color border: "#2e383d"
-    readonly property color textFaint: "#5f6b67"
-    readonly property color textMuted: "#93a09a"
-    readonly property color textSoft: "#c9d0cc"
-    readonly property color text: "#dde3df"
-    readonly property color accent: "#e9a23b"
-    readonly property color accentHover: "#f3b75c"
-    readonly property color accentPressed: "#c7852a"
-    readonly property color accentEdge: "#8a5a17"
-    readonly property color textOnAccent: "#1a1206"
-    readonly property color critical: "#e0607a"
-    readonly property color warning: "#e8cf6a"
-    readonly property color success: "#8fbf8a"
-    readonly property color info: "#82a9c4"
-    readonly property color titleBar: "#1d262d"
-    readonly property color titleBarInactive: "#192127"
-    readonly property color edge: "#05080b"
-    readonly property color well: "#0a0e11"
-    readonly property color wellPressed: "#0e1419"
-    readonly property color keyEdge: "#2f3a40"
-    readonly property color keyDepth: "#06090b"
-    readonly property color fieldEdge: "#263036"
-    readonly property color rowLine: "#141b20"
-    readonly property color ditherA: "#141b20"
-    readonly property color ditherB: "#1b2328"
-    readonly property color desktopDither: "#10161c"
-    readonly property color terminalBlack: "#222b32"
-    readonly property color terminalBrightBlack: "#5f6b67"
+    readonly property color bgDeep: "#02090f"
+    readonly property color bg: "#061418"
+    readonly property color surface: "#0b1d22"
+    readonly property color raised: "#12292e"
+    readonly property color border: "#163035"
+    readonly property color textFaint: "#56716f"
+    readonly property color textMuted: "#8ba8a6"
+    readonly property color textSoft: "#b9cfcc"
+    readonly property color text: "#dbe9e6"
+    readonly property color fog: "#7fb5b8"
+    readonly property color fogDeep: "#2f5a60"
+    readonly property color glow: "#c4ecec"
+    readonly property color accent: "#e8a849"
+    readonly property color accentHover: "#f2bd68"
+    readonly property color accentPressed: "#c98d35"
+    readonly property color accentEdge: "#e8a849"
+    readonly property color textOnAccent: "#1c1204"
+    readonly property color critical: "#ec7a62"
+    readonly property color warning: "#e6cf72"
+    readonly property color success: "#8fc39a"
+    readonly property color info: "#7fb5b8"
+    readonly property color titleBar: "#12292e"
+    readonly property color titleBarInactive: "#0e2227"
+    readonly property color edge: "#213a3f"
+    readonly property color well: "#061418"
+    readonly property color wellPressed: "#061418"
+    readonly property color keyEdge: "#12292e"
+    readonly property color keyDepth: "#12292e"
+    readonly property color fieldEdge: "#1e2f34"
+    readonly property color rowLine: "#0d2024"
+    readonly property color ditherA: "#0e2227"
+    readonly property color ditherB: "#0e2227"
+    readonly property color desktopDither: "#02090f"
+    readonly property color terminalBlack: "#12292e"
+    readonly property color terminalBrightBlack: "#56716f"
     readonly property color terminalMagenta: "#b48cbf"
-    readonly property color terminalCyan: "#7fbab3"
-    readonly property color decorativeLeaf: "#353d3f"
-    readonly property color decorativeStem: "#7c394d"
-    readonly property real opacitySelection: 0.18
+    readonly property color terminalCyan: "#8fd0c8"
+    readonly property color decorativeLeaf: "#12292e"
+    readonly property color decorativeStem: "#c4553a"
+    readonly property real opacitySelection: 0.14
     readonly property real opacityHover: 0.06
-    readonly property real opacityTagFill: 0.1
+    readonly property real opacityTagFill: 0.12
     readonly property real opacityTagEdge: 0.45
-    readonly property real opacityEdgeLight: 0.07
-    readonly property real opacityEdgeShade: 0.45
-    readonly property real opacityEtch: 0.05
+    readonly property real opacityOutline: 0.2
+    readonly property real opacityFieldOutline: 0.22
+    readonly property real opacityPane: 0.94
+    readonly property real opacityBar: 0.93
+    readonly property real opacityTerminal: 0.95
+    readonly property real opacityLamp: 0.24
+    readonly property real opacityKeyGlow: 0.4
+    readonly property real opacityEdgeLight: 0
+    readonly property real opacityEdgeShade: 0
+    readonly property real opacityEtch: 0
     readonly property var easingOutQuint: [0.22, 1, 0.36, 1, 1, 1]
     readonly property int durationHover: 150
     readonly property int durationPopupOpen: 240
@@ -61,7 +71,7 @@ QtObject {
     readonly property real space16: 16
     readonly property real space24: 24
     readonly property real space32: 32
-    readonly property real sizeTopBar: 28
+    readonly property real sizeTopBar: 26
     readonly property real sizeTitleBar: 30
     readonly property real sizeHeaderTouch: 52
     readonly property real sizeGroupHeader: 24
@@ -71,32 +81,39 @@ QtObject {
     readonly property real sizeTouch: 44
     readonly property real sizeLed: 6
     readonly property real sizeDither: 2
-    readonly property real radiusContainer: 2
-    readonly property real radiusKey: 3
+    readonly property real sizeField: 30
+    readonly property real sizeActionBar: 36
+    readonly property real radiusContainer: 0
+    readonly property real radiusKey: 0
     readonly property real edgeWidth: 1
-    readonly property real edgeKeyDepth: 2
-    readonly property string typeFamilySerif: "Source Serif 4"
-    readonly property string typeFamilySans: "Source Sans 3"
+    readonly property real edgeKeyDepth: 0
+    readonly property real cutWindow: 18
+    readonly property real cutPane: 12
+    readonly property string typeFamilyDisplay: "Bricolage Grotesque"
+    readonly property string typeFamilySans: "Figtree"
     readonly property string typeFamilyMono: "JetBrains Mono"
+    readonly property string typeFamilySerif: "Bricolage Grotesque"
     readonly property int typeWeightRegular: 400
     readonly property int typeWeightSemibold: 600
-    readonly property real typeSizeLabel: 11
-    readonly property real typeSizeSmall: 12
-    readonly property real typeSizeBody: 14
+    readonly property int typeWeightBody: 450
+    readonly property real typeSizeLabel: 12
+    readonly property real typeSizeSmall: 11
+    readonly property real typeSizeBody: 13
     readonly property real typeSizeBodyTouch: 16
-    readonly property real typeSizeNumber: 15
-    readonly property real typeSizeBar: 13
-    readonly property real typeSizeTitle: 15
-    readonly property real typeSizeHeading: 20
-    readonly property real typeSizeReadout: 24
+    readonly property real typeSizeNumber: 13
+    readonly property real typeSizeBar: 12
+    readonly property real typeSizeTitle: 14
+    readonly property real typeSizeHeading: 18
+    readonly property real typeSizeReadout: 22
     readonly property real typeSizeReadoutLarge: 28
-    readonly property real typeTrackingLabel: 0.12
-    readonly property real typeTrackingTag: 0.1
+    readonly property real typeTrackingLabel: 0
+    readonly property real typeTrackingTag: 0
+    readonly property real typeTrackingDisplay: -0.01
 
     // The mixes every piece uses (design/DESIGN.md Color, Edges), so none is mixed by hand
-    readonly property color hoverTint: "#0fdde3df"
-    readonly property color selectionTint: "#2ee9a23b"
-    readonly property color edgeLight: "#12ffffff"
-    readonly property color edgeShade: "#73000000"
-    readonly property color etchLight: "#0dffffff"
+    readonly property color hoverTint: "#0fdbe9e6"
+    readonly property color selectionTint: "#247fb5b8"
+    readonly property color edgeLight: "#00ffffff"
+    readonly property color edgeShade: "#00000000"
+    readonly property color etchLight: "#00ffffff"
 }

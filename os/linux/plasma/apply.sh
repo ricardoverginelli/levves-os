@@ -13,20 +13,26 @@ if [ "$(kreadconfig6 --group KDE --key LookAndFeelPackage)" != org.kde.breezedar
     lookandfeeltool -a org.kde.breezedark.desktop >/dev/null
 fi
 
-# Levves type (design/DESIGN.md): Source Sans 3 for the UI, Source Serif 4 for window titles,
-# JetBrains Mono for code and the launcher. Fedora packages the first two under their old "Pro" names
-for family in "Source Sans 3" "Source Serif 4" "JetBrains Mono"; do
-    if ! fc-list -q "$family"; then
-        echo "Missing the font $family: sudo dnf install -y adobe-source-sans-pro-fonts adobe-source-serif-pro-fonts jetbrains-mono-fonts"
-    fi
-done
+# Levves type (design/DESIGN.md): Figtree for the UI, Bricolage Grotesque for window titles
+# (both bundled in design/fonts, Fedora doesn't package them), JetBrains Mono for code
+fonts="$HOME/.local/share/fonts/levves"
+if ! diff -rq ../../../design/fonts "$fonts" >/dev/null 2>&1; then
+    echo "Installing the Levves fonts"
+    rm -rf "$fonts"
+    mkdir -p "$fonts"
+    cp ../../../design/fonts/*.ttf ../../../design/fonts/*.txt "$fonts"
+    fc-cache -f "$fonts" >/dev/null
+fi
+if ! fc-list -q "JetBrains Mono"; then
+    echo "Missing the font JetBrains Mono: sudo dnf install -y jetbrains-mono-fonts"
+fi
 font() { echo "$1,$2,-1,5,${3:-400},0,0,0,0,0,0,0,0,0,0,1"; }
 for key in font menuFont toolBarFont; do
-    kwriteconfig6 --file kdeglobals --group General --key "$key" "$(font "Source Sans 3" 10.5)"
+    kwriteconfig6 --file kdeglobals --group General --key "$key" "$(font Figtree 10 450)"
 done
-kwriteconfig6 --file kdeglobals --group General --key smallestReadableFont "$(font "Source Sans 3" 8.5)"
-kwriteconfig6 --file kdeglobals --group General --key fixed "$(font "JetBrains Mono" 10)"
-kwriteconfig6 --file kdeglobals --group WM --key activeFont "$(font "Source Serif 4" 11 600)"
+kwriteconfig6 --file kdeglobals --group General --key smallestReadableFont "$(font Figtree 8)"
+kwriteconfig6 --file kdeglobals --group General --key fixed "$(font "JetBrains Mono" 9.5)"
+kwriteconfig6 --file kdeglobals --group WM --key activeFont "$(font "Bricolage Grotesque" 10.5 600)"
 
 # The Levves QML module (design/dist/qml), so plasmashell's and KWin's QML can `import Levves`
 # like the apps do. QML_IMPORT_PATH reaches them through systemd's user environment: set now for
