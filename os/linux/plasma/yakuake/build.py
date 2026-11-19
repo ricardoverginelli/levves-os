@@ -3,8 +3,10 @@
 
 - Konsole color scheme ~/.local/share/konsole/Levves.colorscheme: frosted, the
   terminal on `bg` at opacity.terminal over KWin's blur, ANSI colors from the
-  palette. Yakuake's default profile and Konsole's own (Levves.profile) use it,
-  with JetBrains Mono and an amber cursor.
+  palette, for Konsole's own profile (Levves.profile). Yakuake's default profile
+  uses LevvesYakuake.colorscheme, the same without the blur (KWin's blur behind it
+  flickers while it slides and redraws), a step more opaque at opacity.terminal-clear. Both profiles get
+  JetBrains Mono and an amber cursor.
 - Yakuake skin ~/.local/share/yakuake/skins/levves: the tab bar a flat strip with
   tabs as flat segments (the current one `bg` with a fog line on top), the title
   plane along the bottom with the weak border on its free edge, and the
@@ -24,6 +26,7 @@ DIST = HERE.parents[3] / "design/dist"
 CONFIG = Path.home() / ".config"
 KONSOLE = Path.home() / ".local/share/konsole"
 SCHEME = KONSOLE / "Levves.colorscheme"
+YAKUAKE_SCHEME = KONSOLE / "LevvesYakuake.colorscheme"
 SKIN = Path.home() / ".local/share/yakuake/skins/levves"
 OLD = [KONSOLE / "Leaves.colorscheme", SKIN.parent / "leaves"]  # the glass look's names
 
@@ -43,6 +46,7 @@ TILE = 2                         # width of the tiled strip and bar backgrounds
 KEY_W, KEY_H = 22, 18            # the decoration's small keys (kwin-decoration/levves Frame.qml)
 KEY_GAP = 4
 FROST = TOKENS["opacity.terminal"]
+CLEAR = TOKENS["opacity.terminal-clear"]  # Yakuake, unblurred
 KEY_MARGIN = 5                   # last key to the window's right edge, edge included
 TAB_CORNER = 10                  # a tab's ends: 2px of strip, then its key's side
 FONT = "JetBrains Mono,9.5,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
@@ -65,7 +69,7 @@ def ini(color):
 
 # --- Konsole color scheme -------------------------------------------------
 
-def build_scheme():
+def build_scheme(blur=True, name="Levves", opacity=FROST):
     # Normal ANSI colors; intense is a step toward white, faint a step toward bg
     ansi = [palette("terminal.black"), palette("critical"), palette("success"), palette("warning"),
             palette("info"), palette("terminal.magenta"), palette("terminal.cyan"), palette("text")]
@@ -84,8 +88,8 @@ def build_scheme():
     for i, color in enumerate(ansi):
         intense = palette("terminal.bright-black") if i == 0 else mix(color, "#ffffff", 0.25)
         triple(f"Color{i}", color, intense)
-    lines.extend(["[General]", "Blur=true", "ColorRandomization=false",
-                  "Description=Levves", f"Opacity={FROST}", "Wallpaper=", ""])
+    lines.extend(["[General]", f"Blur={str(blur).lower()}", "ColorRandomization=false",
+                  f"Description={name}", f"Opacity={opacity}", "Wallpaper=", ""])
     return "\n".join(lines)
 
 
@@ -310,10 +314,10 @@ def default_profile(rc, fallback):
     return profile, changed
 
 
-def style_profile(profile):
+def style_profile(profile, scheme="Levves"):
     """The Levves look on a Konsole profile, keeping its own name and command."""
     changed = False
-    for group, key, value in (("Appearance", "ColorScheme", "Levves"), ("Appearance", "Font", FONT),
+    for group, key, value in (("Appearance", "ColorScheme", scheme), ("Appearance", "Font", FONT),
                               ("Appearance", "LineSpacing", str(LINE_SPACING)),
                               ("Cursor Options", "UseCustomCursorColor", "true"),
                               ("Cursor Options", "CustomCursorColor", ini(palette("accent"))),
@@ -324,6 +328,7 @@ def style_profile(profile):
 
 def main():
     changed = changes.write(SCHEME, build_scheme())
+    changed |= changes.write(YAKUAKE_SCHEME, build_scheme(blur=False, name="Levves Yakuake", opacity=CLEAR))
     changed |= changes.replace_tree(SKIN, build_skin())
     for old in OLD:
         if old.is_dir():
@@ -333,10 +338,10 @@ def main():
             old.unlink()
             changed = True
 
-    # Yakuake: our skin, frosted like the terminal; its own fill only shows in gaps
+    # Yakuake: our skin, translucent like the terminal; its own fill only shows in gaps
     yakuakerc = CONFIG / "yakuakerc"
     for key, value in (("Skin", "levves"), ("SkinInstalledWithKns", "false"), ("Translucency", "true"),
-                       ("BackgroundColor", ini(palette("bg"))), ("BackgroundColorOpacity", str(round(FROST * 100)))):
+                       ("BackgroundColor", ini(palette("bg"))), ("BackgroundColorOpacity", str(round(CLEAR * 100)))):
         changed |= kwrite(yakuakerc, "Appearance", key, value)
 
     # Yakuake's profile keeps its own name and command. Every new tab opens the terminal
@@ -344,7 +349,7 @@ def main():
     # home base (its CLAUDE.md describes that machine), through yakuake-tab (os/linux/kwin),
     # which gives Meta+Shift+N tabs a plain shell instead
     profile, picked = default_profile(yakuakerc, "Levves Yakuake")
-    changed |= picked | style_profile(profile)
+    changed |= picked | style_profile(profile, "LevvesYakuake")
     (Path.home() / "system").mkdir(exist_ok=True)
     changed |= kwrite(profile, "General", "Command", str(Path.home() / ".local/bin/yakuake-tab"))
 
