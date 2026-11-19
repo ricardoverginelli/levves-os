@@ -100,8 +100,8 @@ Item {
 
     // ── Pieces ────────────────────────────────────────────────────────────
 
-    // A key as drawn on a Levves key (design/DESIGN.md Pieces): raised, a lighter outline, a 2px
-    // bottom edge, a caps label; Meta is the leaf
+    // A key as drawn on a Levves key (design/DESIGN.md Pieces): a flat raised square with its
+    // label; Meta is the leaf
     component Keycap: Item {
         id: cap
         required property string key
@@ -109,32 +109,18 @@ Item {
         implicitHeight: 24
         implicitWidth: Math.max(24, (meta ? 14 : label.implicitWidth) + 12)
 
-        Rectangle { anchors.fill: parent; radius: Theme.radiusKey; color: Theme.keyDepth }
-        Rectangle {
-            anchors.fill: parent
-            anchors.bottomMargin: Theme.edgeKeyDepth
-            radius: Theme.radiusKey
-            color: Theme.keyEdge
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: Theme.edgeWidth
-                radius: Theme.radiusKey - 1
-                color: Theme.raised
-            }
-        }
+        Rectangle { anchors.fill: parent; radius: Theme.radiusKey; color: Theme.raised }
 
         Caps {
             id: label
             visible: !cap.meta
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -1
             text: root.keyLabel(cap.key)
             color: Theme.text
         }
         Kirigami.Icon {
             visible: cap.meta
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -1
             width: 14
             height: 14
             source: "leaves-leaf"

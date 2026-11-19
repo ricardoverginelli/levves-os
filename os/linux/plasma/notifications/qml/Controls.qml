@@ -52,9 +52,8 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: 12
         Layout.bottomMargin: 12
-        implicitHeight: 2
-        Rectangle { width: parent.width; height: 1; color: Theme.edge }
-        Rectangle { y: 1; width: parent.width; height: 1; color: Theme.etchLight }
+        implicitHeight: 1
+        Rectangle { width: parent.width; height: 1; color: Theme.border }
     }
 
     component SectionTitle: Caps {

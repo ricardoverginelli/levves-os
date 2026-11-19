@@ -322,20 +322,18 @@ Item {
                 layer.enabled: !atYBeginning || !atYEnd
                 layer.effect: GE.OpacityMask { maskSource: fade }
 
-                // Each day a thin strip: a caps label on the dither between two edges
+                // Each day a header row: its label with a hairline under it, no strip
                 section.property: popup.selectedDay ? "" : "dayKey"
                 section.delegate: Item {
                     required property string section
                     width: ListView.view.width
                     height: Theme.sizeGroupHeader
-                    Dither { anchors.fill: parent }
-                    Rectangle { width: parent.width; height: 1; color: Theme.edge; visible: parent.y > 0 }
                     Caps {
                         x: Theme.space12
                         height: parent.height
                         text: popup.dayLabel(new Date(parent.section))
                     }
-                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.edge }
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.border }
                 }
 
                 delegate: QQC2.AbstractButton {

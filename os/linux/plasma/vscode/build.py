@@ -163,13 +163,13 @@ SEMANTIC = {
 
 def workbench():
     # Urban Flora's window: chrome on `surface` with the weak `edge` between parts and around
-    # popups, headers and the status bar as flat strips, fields as `bg-deep` openings, the editor
+    # popups, section headers as labels over a hairline, the status bar on `surface`, fields as `bg-deep` openings, the editor
     # and terminal on `bg`. Fog is focus, the current tab's line and the selection; amber is the
     # primary button and the cursor only
     bg, surface, raised, border = palette("bg"), palette("surface"), palette("raised"), palette("border")
     text, muted, faint = palette("text"), palette("text-muted"), palette("text-faint")
     accent, on_accent = palette("accent"), palette("on-accent")
-    edge, well, strip = palette("edge"), palette("well"), palette("dither-a")
+    edge, well = palette("edge"), palette("well")
     hover = alpha("text", LEVVES["opacity.hover"])
     highlight = alpha("fog", LEVVES["opacity.selection"])
     selection = alpha("info", 0.28)  # selected text in the editor, apart from the amber cursor
@@ -237,7 +237,7 @@ def workbench():
         "sideBar.border": edge,
         "sideBarTitle.background": surface,
         "sideBarTitle.foreground": muted,
-        "sideBarSectionHeader.background": strip,  # caps labels on a strip, like a group box header
+        "sideBarSectionHeader.background": bg,  # a section: its label over a hairline, no strip
         "sideBarSectionHeader.foreground": muted,
         "sideBarSectionHeader.border": palette("row-line"),
         "sideBarStickyScroll.background": bg,
@@ -376,7 +376,7 @@ def workbench():
         "editorSuggestWidget.focusHighlightForeground": palette("glow"),
         "editorHoverWidget.background": surface,
         "editorHoverWidget.border": edge,
-        "editorHoverWidget.statusBarBackground": strip,
+        "editorHoverWidget.statusBarBackground": surface,
         "editorGhostText.foreground": faint,
         "peekView.border": edge,
         "peekViewTitle.background": palette("title-bar"),
@@ -432,7 +432,7 @@ def workbench():
         "button.background": accent,
         "button.foreground": on_accent,
         "button.hoverBackground": palette("accent-hover"),
-        "button.border": palette("key-edge"),
+        "button.border": accent,  # flat: the border is the key itself
         "button.separator": alpha("on-accent", 0.3),
         "button.secondaryBackground": raised,
         "button.secondaryForeground": text,
@@ -445,8 +445,8 @@ def workbench():
         "scrollbarSlider.activeBackground": alpha("text", 0.22),
         "keybindingLabel.background": raised,
         "keybindingLabel.foreground": text,
-        "keybindingLabel.border": palette("key-edge"),
-        "keybindingLabel.bottomBorder": palette("key-depth"),
+        "keybindingLabel.border": raised,  # a flat key, no bottom edge
+        "keybindingLabel.bottomBorder": raised,
 
         # Quick input (command palette)
         "quickInput.background": surface,
@@ -465,7 +465,7 @@ def workbench():
         "panelTitle.activeBorder": muted,
         "panelTitle.inactiveForeground": muted,
         "panelSection.border": edge,
-        "panelSectionHeader.background": strip,
+        "panelSectionHeader.background": bg,
         "panelInput.border": palette("field-edge"),
         "outputView.background": bg,
         "terminal.background": bg,
@@ -481,12 +481,12 @@ def workbench():
         "terminalCommandDecoration.errorBackground": palette("critical"),
         "terminalOverviewRuler.cursorForeground": accent,
 
-        # Status bar: a strip
-        "statusBar.background": strip,
+        # Status bar: flat on the window surface
+        "statusBar.background": surface,
         "statusBar.foreground": muted,
         "statusBar.border": edge,
         "statusBar.focusBorder": palette("fog"),
-        "statusBar.noFolderBackground": strip,
+        "statusBar.noFolderBackground": surface,
         "statusBar.noFolderForeground": muted,
         "statusBar.debuggingBackground": palette("accent-pressed"),
         "statusBar.debuggingForeground": on_accent,

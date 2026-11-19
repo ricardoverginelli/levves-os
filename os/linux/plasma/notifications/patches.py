@@ -87,36 +87,17 @@ ACTION_BUTTON = '''            PlasmaComponents3.ToolButton {
                 bottomPadding: 6
                 Kirigami.Theme.inherit: false
                 Kirigami.Theme.textColor: leavesPrimary ? Theme.textOnAccent : Theme.text
-                // A caps label, as on every key
+                // The key's label in sans, as written (design/DESIGN.md Pieces, Key)
                 font.family: Theme.typeFamilySans
                 font.pixelSize: Theme.typeSizeSmall
                 font.weight: Theme.typeWeightSemibold
-                font.capitalization: Font.AllUppercase
-                font.letterSpacing: Theme.typeTrackingLabel * Theme.typeSizeSmall
-                background: Item {  // Leaves: a key (design/DESIGN.md Pieces)
+                background: Rectangle {  // Leaves: a flat key (design/DESIGN.md Pieces)
                     readonly property bool sunk: leavesActionButton.down || false
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Theme.radiusKey
-                        visible: !parent.sunk
-                        color: leavesActionButton.leavesPrimary ? Theme.accentEdge : Theme.keyDepth
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.bottomMargin: parent.sunk ? 0 : Theme.edgeKeyDepth
-                        radius: Theme.radiusKey
-                        color: parent.sunk ? Theme.fieldEdge : leavesActionButton.leavesPrimary ? Theme.accentHover : Theme.keyEdge
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: Theme.edgeWidth
-                        anchors.bottomMargin: parent.sunk ? Theme.edgeWidth : Theme.edgeKeyDepth
-                        radius: Theme.radiusKey - 1
-                        color: leavesActionButton.leavesPrimary ? (leavesActionButton.down ? Theme.accentPressed : leavesActionButton.hovered ? Theme.accentHover : Theme.accent)
-                            : parent.sunk ? Theme.wellPressed
-                            : leavesActionButton.hovered ? Qt.tint(Theme.raised, Theme.hoverTint)
-                            : Theme.raised
-                    }
+                    radius: Theme.radiusKey
+                    color: leavesActionButton.leavesPrimary ? (leavesActionButton.down ? Theme.accentPressed : leavesActionButton.hovered ? Theme.accentHover : Theme.accent)
+                        : sunk ? Theme.wellPressed
+                        : leavesActionButton.hovered ? Qt.tint(Theme.raised, Theme.hoverTint)
+                        : Theme.raised
                 }
 '''
 
@@ -130,37 +111,19 @@ MENU_BUTTON = '''            PlasmaComponents3.Button {
                 icon.width: 16
                 icon.height: 16
                 padding: 8
-                background: Item {  // Leaves: a key (design/DESIGN.md Pieces)
+                background: Rectangle {  // Leaves: a flat key (design/DESIGN.md Pieces)
                     readonly property bool sunk: menuButton.down || menuButton.checked
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Theme.radiusKey
-                        visible: !parent.sunk
-                        color: false ? Theme.accentEdge : Theme.keyDepth
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.bottomMargin: parent.sunk ? 0 : Theme.edgeKeyDepth
-                        radius: Theme.radiusKey
-                        color: parent.sunk ? Theme.fieldEdge : false ? Theme.accentHover : Theme.keyEdge
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: Theme.edgeWidth
-                        anchors.bottomMargin: parent.sunk ? Theme.edgeWidth : Theme.edgeKeyDepth
-                        radius: Theme.radiusKey - 1
-                        color: false ? (menuButton.down ? Theme.accentPressed : menuButton.hovered ? Theme.accentHover : Theme.accent)
-                            : parent.sunk ? Theme.wellPressed
-                            : menuButton.hovered ? Qt.tint(Theme.raised, Theme.hoverTint)
-                            : Theme.raised
-                    }
+                    radius: Theme.radiusKey
+                    color: sunk ? Theme.wellPressed
+                        : menuButton.hovered ? Qt.tint(Theme.raised, Theme.hoverTint)
+                        : Theme.raised
                 }
                 checkable: true
 '''
 
 
 # The app name and time over a notification: a caps label (design/DESIGN.md Type)
-CAPS_LABEL = '        level: 5\n        color: Kirigami.Theme.disabledTextColor  // Leaves: a caps label in text-muted\n        font.family: Theme.typeFamilySans\n        font.pixelSize: Theme.typeSizeLabel\n        font.weight: Theme.typeWeightSemibold\n        font.capitalization: Font.AllUppercase\n        font.letterSpacing: Theme.typeTrackingLabel * Theme.typeSizeLabel\n'
+CAPS_LABEL = '        level: 5\n        color: Kirigami.Theme.disabledTextColor  // Leaves: the sentence-case label in text-muted\n        font.family: Theme.typeFamilySans\n        font.pixelSize: Theme.typeSizeLabel\n        font.weight: Theme.typeWeightSemibold\n'
 
 
 def apply(files):
@@ -253,8 +216,8 @@ def apply(files):
     type: Kirigami.Heading.Type.Primary
 """,
             """    level: 4
-    // Leaves: a serif title (design/DESIGN.md Type)
-    font.family: Theme.typeFamilySerif
+    // Leaves: a display title (design/DESIGN.md Type)
+    font.family: Theme.typeFamilyDisplay
     font.pixelSize: Theme.typeSizeTitle + 1
     font.weight: Theme.typeWeightSemibold
 """)
@@ -371,25 +334,15 @@ def apply(files):
             """            delegate: DraggableDelegate {
                 id: delegate
                 width: ListView.view.width
-                // Leaves: a group box (design/DESIGN.md Edges): the near-black edge, etched
+                // Leaves: a flat surface with the weak edge (design/DESIGN.md Surfaces)
                 leftPadding: 12
                 rightPadding: 12
                 topPadding: 12
                 bottomPadding: 12
-                background: Item {
-                    Rectangle {
-                        x: 1; y: 1
-                        width: parent.width; height: parent.height
-                        radius: Theme.radiusContainer
-                        color: "transparent"
-                        border.color: Theme.etchLight
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Theme.radiusContainer
-                        color: Theme.surface
-                        border.color: Theme.edge
-                    }
+                background: Rectangle {
+                    radius: Theme.radiusContainer
+                    color: Theme.surface
+                    border.color: Theme.edge
                 }
 """)
     # Cards have top and bottom padding (the popups have none, so they're unchanged)
