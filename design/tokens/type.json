@@ -6,6 +6,7 @@
       "display": {
         "$value": [
           "Bricolage Grotesque",
+          "Bricolage Grotesque Variable",
           "sans-serif"
         ],
         "$description": "Window and section titles, headings, readout numbers"
@@ -13,9 +14,10 @@
       "sans": {
         "$value": [
           "Figtree",
+          "Figtree Variable",
           "sans-serif"
         ],
-        "$description": "Body text, rows, fields, keys, labels, and every inline number (tabular figures)"
+        "$description": "Body text, rows, fields, keys, labels, and every inline number (tabular figures). The web loads the fonts as \"... Variable\" (@fontsource-variable), hence the second name"
       },
       "mono": {
         "$value": [

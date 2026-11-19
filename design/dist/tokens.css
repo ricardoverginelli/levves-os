@@ -86,10 +86,10 @@
   --lv-edge-key-depth: 0px;
   --lv-cut-window: 18px;
   --lv-cut-pane: 12px;
-  --lv-type-family-display: 'Bricolage Grotesque', sans-serif;
-  --lv-type-family-sans: Figtree, sans-serif;
+  --lv-type-family-display: 'Bricolage Grotesque', 'Bricolage Grotesque Variable', sans-serif;
+  --lv-type-family-sans: Figtree, 'Figtree Variable', sans-serif;
   --lv-type-family-mono: 'JetBrains Mono', monospace;
-  --lv-type-family-serif: 'Bricolage Grotesque', sans-serif;
+  --lv-type-family-serif: 'Bricolage Grotesque', 'Bricolage Grotesque Variable', sans-serif;
   --lv-type-weight-regular: 400;
   --lv-type-weight-semibold: 600;
   --lv-type-weight-body: 450;

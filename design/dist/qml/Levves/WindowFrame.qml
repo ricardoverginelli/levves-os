@@ -4,8 +4,10 @@
 // decoration); Plasma's popups get the same frame from the Plasma style. Put a TitleBar and the
 // content inside it: the border stays drawn over them, and a TitleBar cuts its own corner to match.
 //
-// `pane` is a frosted shell pane (popups, OSDs, menus): translucent `surface` at opacity.pane with
-// the lamp light from the top-right and the smaller cut; the blur itself comes from KWin.
+// `pane` is a shell pane (popups, OSDs, menus): the smaller cut and the lamp light from the
+// top-right, frosted (translucent `surface` at opacity.pane; the blur itself comes from KWin). A pane
+// inside an app window, where nothing can blur (a QtQuick Popup or Menu), sets `frosted: false`
+// and stays solid.
 // `docked` is for a window flush against a monitor edge (a side panel, a dock): no cut, and only the
 // side that faces the screen ("left" for a window docked on the right) gets the border.
 // `bare` draws no border and no cut (a maximized window), only the fill.
@@ -18,7 +20,8 @@ Item {
     property bool bare: false
     property bool pane: false
     property bool cut: true
-    property color color: pane
+    property bool frosted: pane
+    property color color: frosted
         ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.opacityPane)
         : Theme.surface
     readonly property bool free: docked === "" && !bare

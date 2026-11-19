@@ -94,10 +94,12 @@ TOKENS = {
     "cut.pane": "12px",
     "type.family.display": [
         "Bricolage Grotesque",
+        "Bricolage Grotesque Variable",
         "sans-serif"
     ],
     "type.family.sans": [
         "Figtree",
+        "Figtree Variable",
         "sans-serif"
     ],
     "type.family.mono": [
@@ -106,6 +108,7 @@ TOKENS = {
     ],
     "type.family.serif": [
         "Bricolage Grotesque",
+        "Bricolage Grotesque Variable",
         "sans-serif"
     ],
     "type.weight.regular": 400,
