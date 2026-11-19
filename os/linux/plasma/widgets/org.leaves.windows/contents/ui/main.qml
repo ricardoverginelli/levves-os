@@ -431,7 +431,7 @@ PlasmoidItem {
                 width: parent.width - 2 * root.pad
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                font.family: Theme.typeFamilySerif
+                font.family: Theme.typeFamilyDisplay
                 font.pixelSize: Theme.typeSizeTitle
                 font.weight: Theme.typeWeightSemibold
                 color: Theme.text

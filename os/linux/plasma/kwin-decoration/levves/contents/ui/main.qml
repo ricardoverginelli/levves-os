@@ -7,7 +7,7 @@ import Levves
 
 Decoration {
     id: root
-    alpha: true  // the shadow and the 2px corners
+    alpha: true  // the shadow and the cut corner
 
     Loader {
         anchors.fill: parent
@@ -15,12 +15,12 @@ Decoration {
     }
 
     Component.onCompleted: {
-        // The black edge and the engraved line inside it, under a 30px title bar
-        borders.setBorders(2);
-        borders.setTitle(Theme.sizeTitleBar + 1);
+        // The weak 1px border around a 30px title plane
+        borders.setBorders(Theme.edgeWidth);
+        borders.setTitle(Theme.sizeTitleBar + Theme.edgeWidth);
         maximizedBorders.setBorders(0);
         maximizedBorders.setTitle(Theme.sizeTitleBar);
-        extendedBorders.setAllBorders(4);  // room to grab for resizing, outside the thin edge
+        extendedBorders.setAllBorders(5);  // room to grab for resizing, outside the thin border
         // The shadow: 10px around, dropped 3px
         padding.left = 10;
         padding.right = 10;

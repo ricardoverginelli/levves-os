@@ -47,8 +47,8 @@ def alpha(color, opacity):
 
 
 # --- Syntax ---------------------------------------------------------------
-# Accent amber stays out of the code (DESIGN.md: one accented thing per view;
-# here that's the cursor, focus and selection). Semantic and ANSI colors carry it.
+# Accent amber stays out of the code (DESIGN.md: one amber thing per view; here
+# that's the cursor and the primary button). Semantic and ANSI colors carry it.
 
 SYNTAX = {
     "comment": mix(palette("text-faint"), palette("text-muted"), 0.3),
@@ -106,7 +106,7 @@ TOKENS = [
 
 MARKUP = [
     ("Headings", ["markup.heading", "markup.heading entity.name",
-                  "punctuation.definition.heading"], palette("accent"), "bold"),
+                  "punctuation.definition.heading"], palette("fog"), "bold"),
     ("Bold", ["markup.bold"], palette("text"), "bold"),
     ("Italic", ["markup.italic"], palette("text"), "italic"),
     ("Links", ["markup.underline.link", "string.other.link"], palette("info"), None),
@@ -162,16 +162,16 @@ SEMANTIC = {
 # --- Workbench ------------------------------------------------------------
 
 def workbench():
-    # D's window: chrome on `surface` with the black `edge` between parts and around popups,
-    # headers and the status bar as dithered strips (flat dither-a: themes can't tile), fields
-    # in wells, the editor and terminal on `bg`. Amber is the focused part's selection, the
-    # primary key, the cursor and the focus ring; elsewhere a selection is `raised`
+    # Urban Flora's window: chrome on `surface` with the weak `edge` between parts and around
+    # popups, headers and the status bar as flat strips, fields as `bg-deep` openings, the editor
+    # and terminal on `bg`. Fog is focus, the current tab's line and the selection; amber is the
+    # primary button and the cursor only
     bg, surface, raised, border = palette("bg"), palette("surface"), palette("raised"), palette("border")
     text, muted, faint = palette("text"), palette("text-muted"), palette("text-faint")
     accent, on_accent = palette("accent"), palette("on-accent")
     edge, well, strip = palette("edge"), palette("well"), palette("dither-a")
     hover = alpha("text", LEVVES["opacity.hover"])
-    highlight = alpha("accent", LEVVES["opacity.selection"])
+    highlight = alpha("fog", LEVVES["opacity.selection"])
     selection = alpha("info", 0.28)  # selected text in the editor, apart from the amber cursor
 
     c = {
@@ -181,7 +181,7 @@ def workbench():
         "disabledForeground": faint,
         "errorForeground": palette("critical"),
         "icon.foreground": muted,
-        "focusBorder": accent,  # the amber ring for focus, as on Plasma's keys
+        "focusBorder": palette("fog"),  # the fog ring for focus, as on Plasma's keys
         "contrastBorder": "#00000000",
         "widget.border": edge,
         "widget.shadow": alpha("bg-deep", 0.6),
@@ -194,7 +194,7 @@ def workbench():
         "textPreformat.foreground": SYNTAX["string"],
         "textSeparator.foreground": border,
         "sash.hoverBorder": muted,
-        "progressBar.background": accent,
+        "progressBar.background": palette("fog"),
         "toolbar.hoverBackground": hover,
         "toolbar.activeBackground": alpha("text", 0.1),
 
@@ -204,7 +204,7 @@ def workbench():
         "titleBar.inactiveBackground": palette("title-bar-inactive"),
         "titleBar.inactiveForeground": muted,
         "titleBar.border": edge,
-        "commandCenter.background": well,  # a field
+        "commandCenter.background": palette("bg-deep"),  # a field
         "commandCenter.foreground": muted,
         "commandCenter.activeBackground": palette("well-pressed"),
         "commandCenter.border": palette("field-edge"),
@@ -256,8 +256,8 @@ def workbench():
         "list.focusOutline": "#00000000",
         "list.focusAndSelectionOutline": "#00000000",
         "list.inactiveFocusOutline": "#00000000",
-        "list.highlightForeground": accent,
-        "list.focusHighlightForeground": palette("accent-hover"),
+        "list.highlightForeground": palette("fog"),
+        "list.focusHighlightForeground": palette("glow"),
         "list.dropBackground": hover,
         "list.errorForeground": palette("critical"),
         "list.warningForeground": palette("warning"),
@@ -276,7 +276,7 @@ def workbench():
         "editorGroupHeader.border": edge,
         "tab.activeBackground": bg,
         "tab.activeForeground": text,
-        "tab.activeBorderTop": "#00000000",
+        "tab.activeBorderTop": palette("fog"),
         "tab.activeBorder": bg,
         "tab.unfocusedActiveBorderTop": "#00000000",
         "tab.unfocusedActiveForeground": muted,
@@ -372,8 +372,8 @@ def workbench():
         "editorSuggestWidget.foreground": text,
         "editorSuggestWidget.selectedBackground": highlight,
         "editorSuggestWidget.selectedForeground": text,
-        "editorSuggestWidget.highlightForeground": accent,
-        "editorSuggestWidget.focusHighlightForeground": palette("accent-hover"),
+        "editorSuggestWidget.highlightForeground": palette("fog"),
+        "editorSuggestWidget.focusHighlightForeground": palette("glow"),
         "editorHoverWidget.background": surface,
         "editorHoverWidget.border": edge,
         "editorHoverWidget.statusBarBackground": strip,
@@ -407,7 +407,7 @@ def workbench():
 
         # Inputs and buttons
         # Fields in wells, buttons as keys
-        "input.background": well,
+        "input.background": palette("bg-deep"),  # a field is an opening
         "input.foreground": text,
         "input.border": palette("field-edge"),
         "input.placeholderForeground": faint,
@@ -485,7 +485,7 @@ def workbench():
         "statusBar.background": strip,
         "statusBar.foreground": muted,
         "statusBar.border": edge,
-        "statusBar.focusBorder": accent,
+        "statusBar.focusBorder": palette("fog"),
         "statusBar.noFolderBackground": strip,
         "statusBar.noFolderForeground": muted,
         "statusBar.debuggingBackground": palette("accent-pressed"),
@@ -502,7 +502,7 @@ def workbench():
         "statusBarItem.errorForeground": on_accent,
         "statusBarItem.warningBackground": palette("warning"),
         "statusBarItem.warningForeground": on_accent,
-        "statusBarItem.focusBorder": accent,
+        "statusBarItem.focusBorder": palette("fog"),
 
         # Notifications
         "notifications.background": surface,
@@ -538,7 +538,7 @@ def workbench():
         "welcomePage.tileBorder": border,
         "walkThrough.embeddedEditorBackground": well,
         "settings.headerForeground": text,
-        "settings.modifiedItemIndicator": accent,
+        "settings.modifiedItemIndicator": palette("fog"),
         "settings.focusedRowBackground": alpha("text", 0.03),
         "settings.rowHoverBackground": alpha("text", 0.03),
         "settings.dropdownBackground": well,
@@ -559,7 +559,7 @@ def workbench():
         "chat.requestBackground": surface,
         "chat.requestBorder": border,
         "chat.slashCommandBackground": raised,
-        "chat.slashCommandForeground": accent,
+        "chat.slashCommandForeground": palette("fog"),
         "inlineChat.background": surface,
         "inlineChat.border": edge,
         "charts.foreground": text,
@@ -599,7 +599,7 @@ def package_json():
     return {
         "name": NAME,
         "displayName": "Levves",
-        "description": "Levves, direction D: dark, cool, one amber accent",
+        "description": "Levves, Urban Flora: teal-black planes, fog light, one amber accent",
         "publisher": PUBLISHER,
         "version": VERSION,
         "engines": {"vscode": "^1.70.0"},
@@ -620,7 +620,7 @@ MANIFEST = f"""<?xml version="1.0" encoding="utf-8"?>
 <Metadata>
 <Identity Language="en-US" Id="{NAME}" Version="{VERSION}" Publisher="{PUBLISHER}"/>
 <DisplayName>Levves</DisplayName>
-<Description xml:space="preserve">Levves, direction D: dark, cool, one amber accent</Description>
+<Description xml:space="preserve">Levves, Urban Flora: teal-black planes, fog light, one amber accent</Description>
 <Categories>Themes</Categories>
 <Properties><Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.70.0"/></Properties>
 </Metadata>

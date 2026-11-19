@@ -1,6 +1,6 @@
-// A Levves window (design/DESIGN.md Pieces, Window): the black engraved edge, D's title bar (the
-// light, amber while focused, and the serif title) and small keys for the buttons. Maximized, only
-// the title bar is left. Buttons on the left aren't drawn: the light stands where an icon would be.
+// A Levves window (design/DESIGN.md Surfaces, Window): solid `surface`, the weak `edge` border and
+// the top-right cut, a flat title plane with the display title, and small square keys for the
+// buttons. Maximized, only the title plane is left, square. Buttons on the left aren't drawn.
 import QtQuick
 import org.kde.kwin.decoration
 import Levves
@@ -24,13 +24,12 @@ Item {
             y: win.y - index + 2
             width: win.width + 2 * (index + 1)
             height: win.height + 2 * (index + 1)
-            radius: Theme.radiusContainer + index + 1
             color: "black"
             opacity: frame.active ? 0.06 : 0.04
         }
     }
 
-    WindowFrame {  // the black engraved edge, drawn over the title bar's top and left
+    WindowFrame {  // the border and the cut, drawn over the title plane's edges
         id: win
         bare: frame.maximized
         x: frame.maximized ? 0 : frame.deco.padding.left
@@ -43,16 +42,17 @@ Item {
             x: frame.maximized ? 0 : 1
             y: x
             width: parent.width - 2 * x
+            cut: frame.maximized ? 0 : Theme.cutWindow - 1
             title: frame.client.caption
             active: frame.active
 
             Item {
                 implicitWidth: buttons.width
-                implicitHeight: 20
+                implicitHeight: 18
                 ButtonGroup {
                     id: buttons
-                    height: 20
-                    spacing: 3
+                    height: 18
+                    spacing: Theme.space4
                     explicitSpacer: 24
                     buttons: options.titleButtonsRight
                     minimizeButton: minimizeKey
@@ -77,11 +77,12 @@ Item {
         readonly property bool isClose: kind === DecorationOptions.DecorationButtonClose
         readonly property color ink: !enabled ? Theme.textFaint : frame.active || hovered ? Theme.text : Theme.textMuted
 
-        implicitWidth: 24
-        implicitHeight: 20
+        implicitWidth: 22
+        implicitHeight: 18
         leftPadding: 0
         rightPadding: 0
         focusPolicy: Qt.NoFocus
+        flat: true  // on the title plane, a key would be the same color: glyph only, tinted on hover
         highlighted: isClose && hovered
         tone: Theme.critical
         current: kind === DecorationOptions.DecorationButtonKeepAbove && frame.client.keepAbove

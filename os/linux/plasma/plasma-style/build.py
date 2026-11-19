@@ -3,8 +3,9 @@
 and the apps' color scheme "Levves" (~/.local/share/color-schemes/Levves.colors) from the same palette.
 
 Starts from the Breeze Dark style installed on this machine (so it tracks Plasma updates), swaps
-in the Levves colors and redraws the frames of panels, popups and tooltips as D draws containers
-(design/DESIGN.md): opaque, a 1px near-black edge with an engraved inner line, 2px corners. No glass.
+in the Levves colors and redraws the frames of panels, popups and tooltips as Urban Flora draws
+shell panes (design/DESIGN.md Surfaces): frosted (translucent over KWin's blur; solid where Plasma
+has no compositing), the weak fog border and the top-right cut. Controls are flat planes.
 Everything not overridden falls back to the stock "default" style.
 """
 import configparser
@@ -38,19 +39,19 @@ BACKGROUNDS = {
     "Header][Inactive": ("title-bar-inactive", "bg"),
     "Tooltip": ("surface", "raised"),
     "Complementary": ("bg-deep", "bg"),
-    "Selection": ("accent", "accent-pressed"),
+    "Selection": ("raised", "surface"),
 }
 FOREGROUNDS = {
     "ForegroundNormal": "text",
     "ForegroundInactive": "text-muted",
-    "ForegroundActive": "accent",
-    "ForegroundLink": "accent",
-    "ForegroundVisited": "accent-pressed",
+    "ForegroundActive": "fog",
+    "ForegroundLink": "fog",
+    "ForegroundVisited": "fog-deep",
     "ForegroundNegative": "critical",
     "ForegroundNeutral": "warning",
     "ForegroundPositive": "success",
-    "DecorationFocus": "accent",
-    "DecorationHover": "text-muted",        # hover stays neutral; amber is one thing per view
+    "DecorationFocus": "fog",               # focus is fog; amber is the primary key only
+    "DecorationHover": "text-muted",
 }
 
 
@@ -67,30 +68,24 @@ def scheme(base):
         colors[section]["BackgroundAlternate"] = rgb(alternate)
         for key, role in FOREGROUNDS.items():
             colors[section][key] = rgb(role)
-        if color_set == "Selection":
-            colors[section]["ForegroundNormal"] = rgb("on-accent")
-            colors[section]["ForegroundActive"] = rgb("on-accent")
     return colors
 
 
 def build_colors():
-    # Plasma's selection is D's: amber at opacity.selection under normal text. Plasma also takes
-    # the selection's text color for pressed and checked buttons, which here sink into a dark well
+    # Plasma's selection is Urban Flora's: fog at opacity.selection under normal text. Plasma also
+    # takes the selection's text color for pressed and checked buttons, which sink into `well-pressed`
     style = scheme(SYSTEM / "breeze-dark/colors")
-    tint = over(on("accent", TOKENS["opacity.selection"]), solid("surface"))[0].lstrip("#")
+    tint = over(on("fog", TOKENS["opacity.selection"]), solid("surface"))[0].lstrip("#")
     style["Colors:Selection"]["BackgroundNormal"] = ",".join(str(int(tint[i:i + 2], 16)) for i in (0, 2, 4))
-    style["Colors:Selection"]["ForegroundNormal"] = rgb("text")
-    style["Colors:Selection"]["ForegroundActive"] = rgb("accent")
     with open(OUT / "colors", "w") as f:
         style.write(f, space_around_delimiters=False)
 
     # The apps' scheme: the same sets on Breeze Dark's app scheme (keeping its effects for disabled
-    # text), the decoration's title bar colors, and inactive windows' selection in the window's own
-    # colors (the amber one is the focused window's)
+    # text) and the decoration's title plane colors
     colors = scheme(Path("/usr/share/color-schemes/BreezeDark.colors"))
     colors["General"] = {"ColorScheme": "Levves", "Name": "Levves", "shadeSortColumn": "false"}
     colors["WM"] = {
-        "activeBackground": rgb("title-bar"), "activeForeground": rgb("text"), "activeBlend": rgb("accent"),
+        "activeBackground": rgb("title-bar"), "activeForeground": rgb("text"), "activeBlend": rgb("fog"),
         "inactiveBackground": rgb("title-bar-inactive"), "inactiveForeground": rgb("text-muted"),
         "inactiveBlend": rgb("border"),
     }
@@ -232,33 +227,58 @@ def rebuild(src, dest_paths, pieces, margin, keep_shadow):
         dest.write_bytes(data)
 
 
-def everywhere(path):
-    """A frame used with and without compositing: Plasma picks translucent/, solid/ or the plain one."""
-    return [path, f"translucent/{path}", f"solid/{path}"]
+def pane_pixels(fill, line, cut=0):
+    """A shell pane's 9 pieces: `fill` inside a 1px `line`, with the top-right corner cut at 45
+    degrees by `cut` pixels (the pixels past the diagonal left out, the diagonal itself drawn as a
+    1px staircase in `line`). The frame is cut + 1 pixels thick so the whole cut fits in the
+    top-right piece; content margins come from hints, not from this thickness."""
+    t = max(1, cut + 1)
+    pieces = {}
 
+    def corner(name, flip_x, flip_y):
+        rects = []
+        for y in range(t):
+            for x in range(t):
+                dx, dy = (t - 1 - x if flip_x else x), (t - 1 - y if flip_y else y)
+                if name == "topright" and cut and dx + dy < cut:
+                    continue  # past the cut
+                on_edge = dx == 0 or dy == 0 or (name == "topright" and cut and dx + dy == cut)
+                rects.append((x, y, 1, 1, line if on_edge else fill))
+        pieces[name] = (t, t, rects)
 
-def window_sides():
-    """A window's engraved edge: `edge` outside, then light top-left and shade bottom-right."""
-    light, shade = white(TOKENS["opacity.edge-light"]), black(TOKENS["opacity.edge-shade"])
-    return {"top": [solid("edge"), light], "left": [solid("edge"), light],
-            "bottom": [solid("edge"), shade], "right": [solid("edge"), shade]}
+    corner("topleft", False, False)
+    corner("topright", True, False)
+    corner("bottomleft", False, True)
+    corner("bottomright", True, True)
+    inner = [fill] * (t - 1)
+    pieces["top"] = (EDGE, t, [(0, i, EDGE, 1, c) for i, c in enumerate([line] + inner)])
+    pieces["bottom"] = (EDGE, t, [(0, t - 1 - i, EDGE, 1, c) for i, c in enumerate([line] + inner)])
+    pieces["left"] = (t, EDGE, [(i, 0, 1, EDGE, c) for i, c in enumerate([line] + inner)])
+    pieces["right"] = (t, EDGE, [(t - 1 - i, 0, 1, EDGE, c) for i, c in enumerate([line] + inner)])
+    pieces["center"] = (EDGE, EDGE, [(0, 0, EDGE, EDGE, fill)])
+    return pieces
 
 
 def build_frames():
     default = SYSTEM / "default/translucent"
-    # Popups (bar popups, the launcher, menus) are windows, on `surface`; Breeze's shadow is kept
-    popup = frame_pixels(window_sides(), solid("surface"))
-    rebuild(default / "dialogs/background.svgz", everywhere("dialogs/background.svgz"),
-            popup, margin=4, keep_shadow=True)
-    rebuild(default / "widgets/tooltip.svgz", everywhere("widgets/tooltip.svgz"),
-            popup, margin=None, keep_shadow=True)
-    # The top bar: `bg`, a near-black edge along the side away from the screen edge with an etched
-    # line inside it (Plasma leaves out the sides against the screen). Square, no shadow
-    line = [solid("edge"), white(TOKENS["opacity.etch"])]
-    bar = frame_pixels({"top": line, "bottom": line, "left": line, "right": line}, solid("bg"),
-                       cut_corners=False)
-    rebuild(default / "widgets/panel-background.svgz", everywhere("widgets/panel-background.svgz"),
-            bar, margin=None, keep_shadow=False)
+    # Frosted where KWin composites (translucent/: the fill at its opacity token, the border in fog
+    # at opacity.outline, both over KWin's blur), solid otherwise (solid/ and the plain one)
+    frost = {"pane": on("surface", TOKENS["opacity.pane"]), "bar": on("bg", TOKENS["opacity.bar"])}
+    weak = on("fog", TOKENS["opacity.outline"])
+    cut = int(TOKENS["cut.pane"].rstrip("px"))
+
+    def both(src, path, fill, margin, keep_shadow, cut=0):
+        rebuild(src, [f"translucent/{path}"], pane_pixels(frost[fill], weak, cut), margin, keep_shadow)
+        rebuild(src, [path, f"solid/{path}"],
+                pane_pixels(solid("surface" if fill == "pane" else "bg"), solid("edge"), cut), margin, keep_shadow)
+
+    # Popups (bar popups, the launcher, menus) are panes with the cut; Breeze's shadow is kept
+    both(default / "dialogs/background.svgz", "dialogs/background.svgz", "pane", 4, True, cut)
+    # Tooltips are too small for the cut
+    both(default / "widgets/tooltip.svgz", "widgets/tooltip.svgz", "pane", None, True)
+    # The top bar: frosted `bg`, the border along the side away from the screen edge (Plasma
+    # leaves out the sides against the screen). Square, no shadow
+    both(default / "widgets/panel-background.svgz", "widgets/panel-background.svgz", "bar", None, False)
 
 
 # --- Controls --------------------------------------------------------------
@@ -278,18 +298,15 @@ def all_sides(lines):
 
 
 def key_frame(face):
-    """A key: `key-edge` outline, the face, and the 2px `key-depth` bottom edge."""
-    return frame_pixels({"top": [solid("key-edge"), face], "left": [solid("key-edge"), face],
-                         "right": [solid("key-edge"), face], "bottom": [solid("key-depth"), solid("key-depth")]},
-                        face)
+    """A key: a flat square plane."""
+    return frame_pixels(all_sides([face, face]), face, cut_corners=False)
 
 
 def sunk_frame():
-    """A pressed key: `well-pressed` in a `field-edge` outline with a shadow along the top."""
-    wp = solid("well-pressed")
-    return frame_pixels({"top": [solid("field-edge"), black(0.5), black(0.25)],
-                         "left": [solid("field-edge"), wp, wp], "right": [solid("field-edge"), wp, wp],
-                         "bottom": [solid("field-edge"), wp, wp]}, wp)
+    """A pressed, checked or current key: `well-pressed` with a 2px fog line along the top."""
+    wp, fog = solid("well-pressed"), solid("fog")
+    return frame_pixels({"top": [fog, fog], "left": [wp, wp], "right": [wp, wp], "bottom": [wp, wp]},
+                        wp, cut_corners=False)
 
 
 def ring(paint, thickness=1):
@@ -304,12 +321,6 @@ def tint_frame(paint, cut_corners=True):
 def rect_svg(rects):
     return "".join(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="fill:{c};fill-opacity:{o}"/>'
                    for x, y, w, h, (c, o) in rects if o > 0)
-
-
-def key_rects(x, y, w, h, face):
-    """A small key as rects, for handles: depth, outline, face."""
-    return [(x, y, w, h, solid("key-depth")), (x, y, w, h - 2, solid("key-edge")),
-            (x + 1, y + 1, w - 2, h - 3, face)]
 
 
 def hint_rects(prefix, margins, y):
@@ -359,103 +370,87 @@ def circle(r, cx, cy, fill=None, stroke=None):
 
 
 def build_controls():
-    raised, accent = solid("raised"), solid("accent")
-    hover_face = over(white(TOKENS["opacity.hover"]), raised)
-    hover_tint = white(TOKENS["opacity.hover"])
+    raised, fog = solid("raised"), solid("fog")
+    hover_tint = on("text", TOKENS["opacity.hover"])
+    hover_face = over(hover_tint, raised)
 
-    # Buttons are keys; pressed or checked they sink. Hover lightens the face (drawn over the key,
-    # so no margins); focus is an amber ring 2px outside it. Flat (tool) buttons show only a tint
+    # Buttons are keys: flat `raised` planes; pressed or checked they sink to `well-pressed` with a
+    # fog line. Hover lightens the face (drawn over the key, so no margins); focus is a fog ring 1px
+    # outside it. Flat (tool) buttons show only a tint
     write_widget("button", frames=[
         ("normal", key_frame(raised), 6),
         ("pressed", sunk_frame(), 6),
         ("hover", key_frame(hover_face), 0),
-        ("focus", ring(accent, 2), 2),
+        ("focus", ring(fog, 2), 2),
         ("toolbutton-hover", tint_frame(hover_tint), 4),
         ("toolbutton-pressed", sunk_frame(), 4),
     ])
 
-    # Fields sit in a well: `field-edge` outline and a shadow inside the top and left
-    well = solid("well")
-    field = frame_pixels({"top": [solid("field-edge"), black(0.35)], "left": [solid("field-edge"), black(0.15)],
-                          "right": [solid("field-edge"), well], "bottom": [solid("field-edge"), well]}, well)
+    # Fields are openings: `bg-deep` inside the weak `field-edge` outline, fog while focused
+    well, deep = solid("well"), solid("bg-deep")
+    field = frame_pixels(all_sides([solid("field-edge"), deep]), deep, cut_corners=False)
     write_widget("lineedit", frames=[
         ("base", field, 6),
-        ("hover", ring(solid("text-faint")), 0),
-        ("focus", ring(accent), 0),
+        ("hover", ring(on("fog", 0.45)), 0),
+        ("focus", ring(fog), 0),
     ], hints=[("hint-focus-over-base", 2, 2)])
 
-    # List rows: square, a hover tint, the selection in amber at opacity.selection
+    # List rows: square, a hover tint, the selection in fog at opacity.selection
     selection = TOKENS["opacity.selection"]
     write_widget("viewitem", frames=[
         ("normal", tint_frame(CLEAR, False), 5),
         ("hover", tint_frame(hover_tint, False), 5),
-        ("selected", tint_frame(on("accent", selection), False), 5),
-        ("selected+hover", tint_frame(on("accent", selection + TOKENS["opacity.hover"]), False), 5),
+        ("selected", tint_frame(on("fog", selection), False), 5),
+        ("selected+hover", tint_frame(on("fog", selection + TOKENS["opacity.hover"]), False), 5),
     ])
 
-    # Sliders like the Levves Slider: a sunk 6px groove (a black line above, `key-edge` below), the
-    # part up to the value in `text-muted`, and a thumb shaped like a small key
-    groove_fill = solid("edge")
-    fill = solid("text-muted")
-    groove = frame_pixels({"top": [black(1), groove_fill, groove_fill], "bottom": [solid("key-edge"), groove_fill, groove_fill],
-                           "left": [groove_fill] * 3, "right": [groove_fill] * 3}, groove_fill, cut_corners=False)
-    highlight = frame_pixels({"top": [black(1), fill, fill], "bottom": [solid("key-edge"), fill, fill],
-                              "left": [groove_fill, fill, fill], "right": [fill] * 3}, fill, cut_corners=False)
+    # Sliders like the Levves Slider: a flat 6px `raised` track, the part up to the value in fog,
+    # and a narrow square thumb in `text-soft` (`text` on hover)
+    groove = frame_pixels(all_sides([raised] * 3), raised, cut_corners=False)
+    highlight = frame_pixels(all_sides([fog] * 3), fog, cut_corners=False)
 
     def thumb(horizontal, face):
-        w, h = (12, 20) if horizontal else (20, 12)
-        x, y = (20 - w) // 2, (20 - h) // 2
-        grip = (x + 3, y + 8, w - 6, 2) if horizontal else (x + 9, y + 3, 2, h - 7)
-        return rect_svg(key_rects(x, y, w, h, face) + [(*grip, solid("key-edge"))])
+        w, h = (6, 16) if horizontal else (16, 6)
+        return rect_svg([((20 - w) // 2, (20 - h) // 2, w, h, face)])
 
     def thumb_ring(horizontal):
-        w, h = (16, 24) if horizontal else (24, 16)
+        w, h = (10, 20) if horizontal else (20, 10)
         x, y = (24 - w) // 2, (24 - h) // 2
-        c = solid("accent")
-        return rect_svg([(x, y, w, 1, c), (x, y + h - 1, w, 1, c), (x, y, 1, h, c), (x + w - 1, y, 1, h, c)])
+        return rect_svg([(x, y, w, 1, fog), (x, y + h - 1, w, 1, fog), (x, y, 1, h, fog), (x + w - 1, y, 1, h, fog)])
 
     write_widget("slider", frames=[("groove", groove, None), ("groove-highlight", highlight, None)], shapes=[
-        ("horizontal-slider-handle", 20, 20, thumb(True, raised)),
-        ("horizontal-slider-hover", 20, 20, thumb(True, hover_face)),
+        ("horizontal-slider-handle", 20, 20, thumb(True, solid("text-soft"))),
+        ("horizontal-slider-hover", 20, 20, thumb(True, solid("text"))),
         ("horizontal-slider-focus", 24, 24, thumb_ring(True)),
-        ("vertical-slider-handle", 20, 20, thumb(False, raised)),
-        ("vertical-slider-hover", 20, 20, thumb(False, hover_face)),
+        ("vertical-slider-handle", 20, 20, thumb(False, solid("text-soft"))),
+        ("vertical-slider-hover", 20, 20, thumb(False, solid("text"))),
         ("vertical-slider-focus", 24, 24, thumb_ring(False)),
     ], hints=[("hint-handle-size", 20, 20)])
 
-    # Switches: a slot (a well with a `field-edge` outline and a shadow along the top) and a square
-    # knob, `text-faint` when off and `text` when on
+    # Switches: a flat `raised` slot and a square knob, `text-faint` when off and fog when on
     def slot_piece(piece, w):
-        edge, sh = solid("field-edge"), black(0.35)
-        rects = [(0, 0, w, 16, well), (0, 0, w, 1, edge), (0, 15, w, 1, edge), (0, 1, w, 1, over(sh, well))]
-        if piece == "left":
-            rects = [(1, 0, w - 1, 16, well), (1, 0, w - 1, 1, edge), (1, 15, w - 1, 1, edge),
-                     (1, 1, w - 1, 1, over(sh, well)), (0, 1, 1, 14, edge)]
-        if piece == "right":
-            rects = [(0, 0, w - 1, 16, well), (0, 0, w - 1, 1, edge), (0, 15, w - 1, 1, edge),
-                     (0, 1, w - 1, 1, over(sh, well)), (w - 1, 1, 1, 14, edge)]
-        return rect_svg(rects)
+        return rect_svg([(0, 0, w, 16, raised)])
 
     def knob(ink):
-        return rect_svg([(2, 2, 12, 12, solid("edge")), (3, 3, 10, 10, ink)])
+        return rect_svg([(2, 2, 12, 12, ink)])
 
     slot = [(f"{state}-{piece}", w, 16, slot_piece(piece, w))
             for state in ("inactive", "active") for piece, w in (("left", 8), ("center", 5), ("right", 8))]
     write_widget("switch", shapes=slot + [
         ("handle", 16, 16, knob(solid("text-faint"))),
-        ("handle-active", 16, 16, knob(solid("text"))),
+        ("handle-active", 16, 16, knob(fog)),
         ("handle-hover", 16, 16, knob(solid("text-soft"))),
         ("handle-pressed", 16, 16, knob(solid("text-muted"))),
-        ("handle-focus", 20, 20, rect_svg([(2, 2, 16, 1, accent), (2, 17, 16, 1, accent),
-                                           (2, 2, 1, 16, accent), (17, 2, 1, 16, accent)])),
+        ("handle-focus", 20, 20, rect_svg([(2, 2, 16, 1, fog), (2, 17, 16, 1, fog),
+                                           (2, 2, 1, 16, fog), (17, 2, 1, 16, fog)])),
     ], hints=[("hint-bar-size", 38, 16)])
 
-    # Radios: a round well; the dot in `text`
+    # Radios: a round opening like a field; the dot in fog
     write_widget("radiobutton", shapes=[
-        ("normal", 16, 16, circle(7.5, 8, 8, fill=well, stroke=solid("field-edge"))),
-        ("checked", 16, 16, circle(3, 8, 8, fill=solid("text"))),
-        ("hover", 16, 16, circle(7.5, 8, 8, stroke=solid("text-faint"))),
-        ("focus", 20, 20, circle(9.5, 10, 10, stroke=accent)),
+        ("normal", 16, 16, circle(7.5, 8, 8, fill=deep, stroke=solid("field-edge"))),
+        ("checked", 16, 16, circle(3, 8, 8, fill=fog)),
+        ("hover", 16, 16, circle(7.5, 8, 8, stroke=on("fog", 0.45))),
+        ("focus", 20, 20, circle(9.5, 10, 10, stroke=fog)),
         ("symbol", 6, 6, circle(3, 3, 3, fill=solid("text"))),
     ], hints=[("hint-size", 16, 16)])
 
@@ -466,22 +461,21 @@ def build_controls():
         ("radiobutton", 16, 16, circle(3, 8, 8, fill=solid("text"))),
     ])
 
-    # Tabs are flat keys; the current one is held down. Margins as a key's, not Breeze's (its
-    # underline needed room)
+    # Tabs are flat segments; the current one is `well-pressed` with the fog line on top. Margins as
+    # a key's, not Breeze's (its underline needed room)
     write_widget("tabbar", frames=[(f"{side}-active-tab", sunk_frame(), dict(left=10, right=10, top=6, bottom=6))
                                    for side in ("north", "south", "east", "west")])
 
-    # Progress bars and meters like the Levves Meter: a sunk track with the black edge, the fill in
-    # `text-muted` 1px inside it
+    # Progress bars and meters: a flat `raised` track, the fill in fog
     write_widget("bar_meter_horizontal", frames=[
-        ("bar-inactive", frame_pixels(all_sides([solid("edge")]), well, cut_corners=False), None),
-        ("bar-active", frame_pixels(all_sides([solid("edge"), well]), fill, cut_corners=False), None),
+        ("bar-inactive", frame_pixels(all_sides([raised]), raised, cut_corners=False), None),
+        ("bar-active", frame_pixels(all_sides([fog]), fog, cut_corners=False), None),
     ], hints=[("hint-bar-size", 6, 6)])
 
 
 def build_plasmarc():
     rc = (SYSTEM / "breeze-dark/plasmarc").read_text()
-    # Opaque always: no see-through panels over an empty desktop either
+    # No adaptive transparency: the bar stays frosted whether or not a window is maximized
     rc = rc.replace("[AdaptiveTransparency]\nenabled=true", "[AdaptiveTransparency]\nenabled=false")
     (OUT / "plasmarc").write_text(rc)
 

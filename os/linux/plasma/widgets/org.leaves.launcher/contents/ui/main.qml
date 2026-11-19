@@ -863,17 +863,16 @@ PlasmoidItem {
             width: launcher.width - launcher.leftPadding - launcher.rightPadding
             height: launcher.height - launcher.topPadding - launcher.bottomPadding
 
-            // The terminal launcher's background (bg) over the whole window, frame padding
-            // included: PlasmaCore.Window can't drop the Plasma style's frame (surface)
-            Rectangle {
+            // The terminal launcher's background over the whole window, frame padding included
+            // (PlasmaCore.Window can't drop the Plasma style's frame): a frosted pane on `bg` at
+            // the terminal's opacity, with the cut, the weak border and the lamp light
+            WindowFrame {
                 x: -launcher.leftPadding
                 y: -launcher.topPadding
                 width: launcher.width
                 height: launcher.height
-                radius: 12   // the popups' corners (Plasma style)
-                color: Theme.bg
-                border.width: 1
-                border.color: Theme.border
+                pane: true
+                color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.opacityTerminal)
             }
 
             RowLayout {
@@ -1016,9 +1015,8 @@ PlasmoidItem {
                         Layout.fillWidth: true
                         implicitHeight: 42
                         color: "transparent"
-                        radius: 3
                         border.width: 1
-                        border.color: root.area === "search" ? Theme.accent : Theme.border
+                        border.color: root.area === "search" ? Theme.fog : Theme.fieldEdge
                         Behavior on border.color {
                             ColorAnimation { duration: root.hoverDuration; easing.type: root.houseCurve }
                         }
@@ -1041,8 +1039,8 @@ PlasmoidItem {
                                 verticalCenter: parent.verticalCenter
                             }
                             color: Theme.text
-                            selectionColor: Theme.accent
-                            selectedTextColor: Theme.textOnAccent
+                            selectionColor: Theme.fog
+                            selectedTextColor: Theme.bgDeep
                             font.family: root.mono
                             font.pixelSize: 14
                             clip: true
@@ -1082,14 +1080,13 @@ PlasmoidItem {
                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                             width: modeLabel.implicitWidth + 16
                             height: 22
-                            radius: 2
-                            color: Theme.accent
+                            color: Theme.fog
                             Mono {
                                 id: modeLabel
                                 anchors.centerIn: parent
                                 font.pixelSize: 12
                                 font.weight: Font.DemiBold
-                                color: Theme.textOnAccent
+                                color: Theme.bgDeep
                                 text: "folders"
                             }
                         }
@@ -1110,7 +1107,7 @@ PlasmoidItem {
                                     required property var modelData
                                     Mono {
                                         font.pixelSize: 12
-                                        color: crumbHover.hovered ? Theme.accent : Theme.textSoft
+                                        color: crumbHover.hovered ? Theme.fog : Theme.textSoft
                                         text: modelData.name
                                         HoverHandler { id: crumbHover; cursorShape: Qt.PointingHandCursor }
                                         TapHandler { onTapped: search.text = modelData.path }
@@ -1333,13 +1330,12 @@ PlasmoidItem {
         Layout.preferredWidth: vertical ? 1 : -1
     }
 
-    // A row: the keyboard highlight is the one accented thing (amber at opacity.selection),
-    // hover a neutral tint; no line under it
+    // A row: the keyboard highlight is fog at opacity.selection, hover a neutral tint; no line
+    // under it
     component RowBackground: Rectangle {
         property bool selected
         property bool hovered
-        property color tint: Theme.accent
-        radius: 3
+        property color tint: Theme.fog
         color: selected ? Qt.rgba(tint.r, tint.g, tint.b, Theme.opacitySelection)
              : hovered ? Theme.hoverTint
              : "transparent"
@@ -1585,7 +1581,7 @@ PlasmoidItem {
             height: root.taskRowHeight
             hovered: taskRow.hovered
             selected: (root.area === "tasks" && root.taskIndex === taskRow.index) || taskRow.ending
-            tint: taskRow.ending ? Theme.critical : Theme.accent
+            tint: taskRow.ending ? Theme.critical : Theme.fog
 
             Kirigami.Icon {
                 id: taskIcon
@@ -1662,7 +1658,7 @@ PlasmoidItem {
         implicitHeight: sideAction.user ? 40 : root.rowHeight
         selected: (root.area === "side" && root.sideIndex === actionIndex) || confirming
         hovered: sideMouse.containsMouse
-        tint: confirming ? Theme.critical : Theme.accent
+        tint: confirming ? Theme.critical : Theme.fog
 
         RowLayout {
             anchors { fill: parent; leftMargin: root.iconX; rightMargin: 8 }

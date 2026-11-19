@@ -299,12 +299,14 @@ for effect in kwin-effects/*/; do
     qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "$id" >/dev/null
 done
 
-# Blur and background contrast off: Levves surfaces are opaque (design/DESIGN.md Mood), so they
-# only cost frames
-for id in blur contrast; do
-    kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" false
-    qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect "$id" >/dev/null || true
-done
+# Blur on: Levves shell panes are frosted (design/DESIGN.md Surfaces), KWin blurs what's behind the
+# Plasma style's translucent frames and Yakuake. Background contrast off: it would shift the colors
+kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled true
+if [ "$(qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded blur)" != true ]; then
+    qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect blur >/dev/null
+fi
+kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled false
+qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect contrast >/dev/null || true
 
 # Window switcher layouts (Alt+Tab): copy the package, make leaves-switcher the one in use
 for layout in kwin-tabbox/*/; do
