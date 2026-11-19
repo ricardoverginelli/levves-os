@@ -126,7 +126,9 @@ the `Levves` module. Pieces still being redrawn from Survey are listed at the en
 - **Meter**: a row of lit cells, like the towers' windows: `fog` cells (lit) and `raised` cells
   (unlit), 2-3px gaps. A small bar meter is 3px-wide cells.
 - **Slider**: a 6px `raised` track with a `fog` fill (`fog-deep` when it isn't the current one).
-- **Terminal and code editor**: JetBrains Mono on frosted `bg`, tabs as flat segments with the fog
+- **Terminal and code editor**: JetBrains Mono on frosted `bg` (Yakuake and the launcher on
+  translucent `bg` at `opacity.terminal-clear`, without the blur, which flickers while Yakuake
+  slides), tabs as flat segments with the fog
   line, and the focused pane marked by a 2px `fog` line on top. ANSI colors are `color.terminal`
   plus the status colors (red `critical`, green `success`, yellow `warning`, blue `info`, white
   `text`); bright variants are the color 25% toward white, faint ones 35% toward `bg`. Amber is the

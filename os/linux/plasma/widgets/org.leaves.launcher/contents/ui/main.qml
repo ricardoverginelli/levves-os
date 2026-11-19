@@ -35,7 +35,6 @@ import QtCore
 import Qt.labs.folderlistmodel
 import Qt5Compat.GraphicalEffects as GE
 import org.kde.plasma.plasmoid
-import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.components as KirigamiComponents
@@ -846,9 +845,12 @@ PlasmoidItem {
 
     // Drawn like the terminal launcher (agents/launcher): one flat surface, everything in
     // mono, lines only between the three areas and inside the task table
-    PlasmaCore.Window {
+    // A plain window, not PlasmaCore.Window: that one always paints the Plasma style's frosted
+    // frame under the content, which made the launcher nearly opaque whatever its own fill
+    Window {
         id: launcher
         visible: false
+        color: "transparent"
         // Layer surfaces need a real size up front (0 is a protocol error).
         // Tasks (750), search (~540), session (210), with 24px gaps around the rules
         width: 1630
@@ -860,21 +862,20 @@ PlasmoidItem {
         LayerShell.Window.wantsToBeOnActiveScreen: true
         onActiveChanged: if (!active) root.close()
 
-        mainItem: Item {
+        Item {
             id: content
-            width: launcher.width - launcher.leftPadding - launcher.rightPadding
-            height: launcher.height - launcher.topPadding - launcher.bottomPadding
+            anchors.fill: parent
+            anchors.margins: 4  // where the Plasma style's popup frame used to put the content
 
-            // The terminal launcher's background over the whole window, frame padding included
-            // (PlasmaCore.Window can't drop the Plasma style's frame): a frosted pane on `bg` at
-            // the terminal's opacity, with the cut, the weak border and the lamp light
+            // The terminal launcher's background over the whole window, like Yakuake: `bg` at
+            // opacity.terminal-clear, with the cut, the weak border and the lamp light
             WindowFrame {
-                x: -launcher.leftPadding
-                y: -launcher.topPadding
+                x: -content.anchors.margins
+                y: -content.anchors.margins
                 width: launcher.width
                 height: launcher.height
                 pane: true
-                color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.opacityTerminal)
+                color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Theme.opacityTerminalClear)
             }
 
             RowLayout {
