@@ -230,6 +230,8 @@ Still to redraw (order in `os/linux/plasma/TODO.md`):
   `Meter` becomes lit cells, `web/levves.css` to match.
 - The desktop: Plasma style SVGs (frosted panes, cut, lamp), the decoration, the color scheme
   and fonts, Yakuake/Konsole and VS Code.
-- The apps, one at a time; the TV launcher last.
+- The apps, one at a time; the TV launcher last. The suite is done: it reads none of the
+  deprecated names, and `web/levves.css` has dropped `.lv-led` and `.lv-dither`. Still reading
+  them: p45's `editor.html`, s25-control's `Main.qml`, the Plasma pieces and VS Code.
 - The suite's `packages/design-tokens/tokens.css` keeps a few names that are compositions with no
-  Levves token of their own (alert tints, bevel lines, the overlay).
+  Levves token of their own (alert tints, the overlay).

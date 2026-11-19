@@ -9,7 +9,6 @@
  *   chrome      .lv-titlebar .lv-tabs .lv-statusbar .lv-desktop
  *   text        .lv-caps (the label) .lv-num .lv-title .lv-quiet
  *   bits        .lv-tag(-due|-paid|-info|-critical) .lv-meter .lv-selected .lv-selected-inactive
- *   deprecated  .lv-led .lv-dither (Survey's; they draw nothing or flat)
  *
  * Plain classes in @layer components, so Tailwind utilities still win when a component adds one.
  */
@@ -161,8 +160,6 @@
     color: var(--lv-color-text-muted);
     font-size: var(--lv-type-size-small);
   }
-  .lv-led { display: none; }
-  .lv-dither { background: var(--lv-color-dither-a); }
 
   /* ── Controls: flat planes ────────────────────────────────────────────── */
   .lv-key {
