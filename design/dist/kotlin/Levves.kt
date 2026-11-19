@@ -52,7 +52,7 @@ object Levves {
     const val opacityOutline = 0.2f
     const val opacityFieldOutline = 0.22f
     const val opacityPane = 0.94f
-    const val opacityBar = 0.93f
+    const val opacityBar = 0.8f
     const val opacityTerminal = 0.88f
     const val opacityLamp = 0.24f
     const val opacityKeyGlow = 0.4f

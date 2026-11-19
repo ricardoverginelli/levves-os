@@ -112,7 +112,8 @@ PlasmoidItem {
     toolTipMainText: "Launcher"
     toolTipSubText: "Apps, files, power and session"
 
-    // The bar button is a key (design/DESIGN.md Pieces), held down while the launcher is open
+    // The bar button is a flat key (design/DESIGN.md Pieces): the leaf on the bar, a hover tint,
+    // held down with the fog line while the launcher is open
     fullRepresentation: Item {
         id: barButton
         implicitWidth: Theme.space8 + barKey.width
@@ -128,6 +129,7 @@ PlasmoidItem {
             height: 22
             leftPadding: 0
             rightPadding: 0
+            flat: true
             current: launcher.visible
             onClicked: root.toggle()
             contentItem: Item {

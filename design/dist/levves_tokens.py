@@ -47,7 +47,7 @@ TOKENS = {
     "opacity.outline": 0.2,
     "opacity.field-outline": 0.22,
     "opacity.pane": 0.94,
-    "opacity.bar": 0.93,
+    "opacity.bar": 0.8,
     "opacity.terminal": 0.88,
     "opacity.lamp": 0.24,
     "opacity.key-glow": 0.4,

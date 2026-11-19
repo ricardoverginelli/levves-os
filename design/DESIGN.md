@@ -50,7 +50,7 @@ The rule that holds the look together:
 |---|---|---|---|
 | What | Top bar, popups, notifications, menus, the launcher, OSDs, the terminal | Dolphin, the suite, our desktop apps: anything Plasma can't blur | Content areas, lists, fields, keys |
 | Fill | Frosted: blurred, `surface` (or `bg` for bar and terminal) at `opacity.pane` / `bar` / `terminal`, lamp light from the top-right at `opacity.lamp` | Solid `surface`; title plane `title-bar` (`title-bar-inactive` unfocused) | Flat planes: `well` for content, `raised` for keys, `bg-deep` for fields |
-| Border | 1px `edge` (fog at `opacity.outline`) on every side that doesn't touch a screen edge | The same `edge` | None around content; 1px `border` hairlines between areas |
+| Border | 1px `edge` (fog at `opacity.outline`) on every side that doesn't touch a screen edge; none on the top bar | The same `edge` | None around content; 1px `border` hairlines between areas |
 | Corner | Top-right cut by `cut.pane` (12px); no cut when that corner touches a screen edge (docked panels) | Top-right cut by `cut.window` (18px); none when maximized or snapped into that corner | Square |
 
 - **The cut is always top-right.** If the top-right corner can't be cut (it touches a screen edge,
@@ -162,7 +162,8 @@ Everything under `os/linux/plasma/`, applied by its `apply.sh`; phases in its `T
 **Where each part is drawn**
 - The Plasma style (`plasma-style/build.py`): popups, tooltips and notifications as frosted panes
   (KWin's blur behind a translucent `surface`, the lamp light, the `edge` border, the 12px cut),
-  the top bar frosted on `bg` with a hairline along its bottom, and Plasma's own controls as flat
+  the top bar frosted on `bg` at `opacity.bar` with no border (it belongs to the screen edge, it
+  doesn't float), and Plasma's own controls as flat
   keys, fields and meters. Frame pieces must measure whole pixels: lines are filled rects, never
   strokes (`agents/notes/plasma-svg-frames.md`).
 - Apps: the color scheme `Levves` (same palette), Figtree for the UI and Bricolage Grotesque for

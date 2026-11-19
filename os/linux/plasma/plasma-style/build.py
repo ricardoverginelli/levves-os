@@ -267,18 +267,21 @@ def build_frames():
     weak = on("fog", TOKENS["opacity.outline"])
     cut = int(TOKENS["cut.pane"].rstrip("px"))
 
-    def both(src, path, fill, margin, keep_shadow, cut=0):
-        rebuild(src, [f"translucent/{path}"], pane_pixels(frost[fill], weak, cut), margin, keep_shadow)
-        rebuild(src, [path, f"solid/{path}"],
-                pane_pixels(solid("surface" if fill == "pane" else "bg"), solid("edge"), cut), margin, keep_shadow)
+    def both(src, path, fill, margin, keep_shadow, cut=0, border=True):
+        opaque = solid("surface" if fill == "pane" else "bg")
+        rebuild(src, [f"translucent/{path}"], pane_pixels(frost[fill], weak if border else frost[fill], cut),
+                margin, keep_shadow)
+        rebuild(src, [path, f"solid/{path}"], pane_pixels(opaque, solid("edge") if border else opaque, cut),
+                margin, keep_shadow)
 
     # Popups (bar popups, the launcher, menus) are panes with the cut; Breeze's shadow is kept
     both(default / "dialogs/background.svgz", "dialogs/background.svgz", "pane", 4, True, cut)
     # Tooltips are too small for the cut
     both(default / "widgets/tooltip.svgz", "widgets/tooltip.svgz", "pane", None, True)
-    # The top bar: frosted `bg`, the border along the side away from the screen edge (Plasma
-    # leaves out the sides against the screen). Square, no shadow
-    both(default / "widgets/panel-background.svgz", "widgets/panel-background.svgz", "bar", None, False)
+    # The top bar: frosted `bg`, square, no border and no shadow: it's part of the screen's edge,
+    # not something floating over it
+    both(default / "widgets/panel-background.svgz", "widgets/panel-background.svgz", "bar", None, False,
+         border=False)
 
 
 # --- Controls --------------------------------------------------------------

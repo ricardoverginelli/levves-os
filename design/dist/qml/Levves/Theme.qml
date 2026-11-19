@@ -49,7 +49,7 @@ QtObject {
     readonly property real opacityOutline: 0.2
     readonly property real opacityFieldOutline: 0.22
     readonly property real opacityPane: 0.94
-    readonly property real opacityBar: 0.93
+    readonly property real opacityBar: 0.8
     readonly property real opacityTerminal: 0.88
     readonly property real opacityLamp: 0.24
     readonly property real opacityKeyGlow: 0.4

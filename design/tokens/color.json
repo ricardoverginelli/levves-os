@@ -64,7 +64,7 @@
     "outline": { "$value": 0.20, "$description": "Fog, the weak border on floating surfaces (the edge color)" },
     "field-outline": { "$value": 0.22, "$description": "Fog, a field's outline at rest" },
     "pane": { "$value": 0.94, "$description": "Frosted shell panes: popups, notifications, menus, the launcher" },
-    "bar": { "$value": 0.93, "$description": "The frosted top bar" },
+    "bar": { "$value": 0.80, "$description": "The frosted top bar: lighter than panes, it holds only a line of text" },
     "terminal": { "$value": 0.88, "$description": "The frosted terminal (Yakuake, Konsole)" },
     "lamp": { "$value": 0.24, "$description": "Fog at the center of a frosted pane's lamp light, pooled at its top-right" },
     "key-glow": { "$value": 0.40, "$description": "Amber, the primary key's glow: the only glow in a view" },
