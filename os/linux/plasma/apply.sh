@@ -134,11 +134,12 @@ if command -v code >/dev/null && [ "$(python3 -I vscode/build.py)" = changed ]; 
 fi
 
 # Wallpaper: desktop and lock screen use a copy in our data folder
-wallpaper="$HOME/.local/share/wallpapers/leaves.png"
-if ! cmp -s wallpaper/leaves.png "$wallpaper"; then
+wallpaper="$HOME/.local/share/wallpapers/urban-flora.png"
+if ! cmp -s wallpaper/urban-flora.png "$wallpaper"; then
     echo "Installing the wallpaper"
     mkdir -p "$(dirname "$wallpaper")"
-    cp wallpaper/leaves.png "$wallpaper"
+    cp wallpaper/urban-flora.png "$wallpaper"
+    rm -f "$HOME/.local/share/wallpapers/leaves.png"  # the previous wallpaper
 fi
 # Every desktop, not just one: a screen Plasma hasn't seen before (or sees under a new
 # identity, as after a monitor is turned off and on) gets a new desktop without it

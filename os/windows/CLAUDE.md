@@ -165,7 +165,7 @@ python os/windows/debloat/install.py
 
 ### theme/install.py
 - Windows take on the Plasma "Leaves" theme: reads colors from `design/dist/levves_tokens.py` and
-  the wallpaper from `os/linux/plasma/wallpaper/leaves.png`, so the design tokens (`design/tokens/`)
+  the wallpaper from `os/linux/plasma/wallpaper/urban-flora.png`, so the design tokens (`design/tokens/`)
   stay the single source of truth; change a token, rebuild, then re-run
 - Dark apps and system, transparency off (Levves is opaque); the amber accent drives Windows'
   accent palette but stays off title bars, borders, taskbar and Start (one accented thing per view)

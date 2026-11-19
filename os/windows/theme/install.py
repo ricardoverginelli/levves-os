@@ -2,7 +2,7 @@
 """
 Leaves Theme Setup Script
 Applies the Levves look (design/DESIGN.md) to Windows: dark mode, opaque (no transparency),
-the amber accent, the leaves wallpaper on desktop and lock screen, a minimal taskbar,
+the amber accent, the Urban Flora wallpaper on desktop and lock screen, a minimal taskbar,
 and the Leaves terminal colors with JetBrains Mono in console windows.
 Run with: python os/windows/theme/install.py
 """
@@ -24,9 +24,9 @@ from pathlib import Path
 # The Plasma theme is the source of truth; colors and wallpaper come from it
 PLASMA_DIR = Path(__file__).resolve().parents[2] / "linux" / "plasma"
 TOKENS_DIR = Path(__file__).resolve().parents[3] / "design" / "dist"  # levves_tokens.py, the Levves colors
-WALLPAPER_SRC = PLASMA_DIR / "wallpaper" / "leaves.png"
+WALLPAPER_SRC = PLASMA_DIR / "wallpaper" / "urban-flora.png"
 # Windows keeps pointing at the wallpaper file, so use a copy outside the repo
-WALLPAPER = Path(os.environ["LOCALAPPDATA"]) / "Leaves" / "leaves.png"
+WALLPAPER = Path(os.environ["LOCALAPPDATA"]) / "Leaves" / "urban-flora.png"
 
 PERSONALIZE_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 DWM_KEY = r"Software\Microsoft\Windows\DWM"

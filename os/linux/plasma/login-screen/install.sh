@@ -1,5 +1,5 @@
 #!/bin/sh
-# Login screen (Plasma Login Manager): the Leaves wallpaper plus the user's Plasma
+# Login screen (Plasma Login Manager): the Urban Flora wallpaper plus the user's Plasma
 # settings, i.e. what System Settings > Login Screen does on Apply and on
 # "Apply Plasma Settings". Runs as root: apply.sh calls it through pkexec.
 # Usage: install.sh <wallpaper> <user's ~/.config> <Leaves Plasma style folder> <Levves icon theme folder>
@@ -14,10 +14,10 @@ as_greeter="-o plasmalogin -g plasmalogin"
 # The greeter can't read the user's home, so the image lives in its own
 install -d $as_greeter -m 755 "$home/wallpapers"
 find "$home/wallpapers" -mindepth 1 -delete
-install $as_greeter -m 644 "$image" "$home/wallpapers/leaves.png"
+install $as_greeter -m 644 "$image" "$home/wallpapers/urban-flora.png"
 kwriteconfig6 --file /etc/plasmalogin.conf \
     --group Greeter --group Wallpaper --group org.kde.image --group General \
-    --key Image "file://$home/wallpapers/leaves.png"
+    --key Image "file://$home/wallpapers/urban-flora.png"
 chmod 644 /etc/plasmalogin.conf
 
 # Plasma settings: copied when the user has them, removed when they don't
