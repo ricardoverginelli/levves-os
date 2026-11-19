@@ -1,21 +1,13 @@
 // Copied from design/qml/Field.qml by design/build/build.py. Don't edit here.
-// A field's frame (design/DESIGN.md Pieces): a `well` with the lighter `field-edge` and an inner
-// shadow. Use it as a TextField's background, or behind a toggle or a slot.
+// A field's frame (design/DESIGN.md Pieces): an opening in the darkest plane, `bg-deep`, with a weak
+// `field-edge` outline that turns `fog` while the field has focus. Use it as a TextField's
+// background (bind `focused` to the field's activeFocus), or behind a toggle or a slot.
 import QtQuick
 
 Rectangle {
-    color: Theme.well
-    radius: Theme.radiusContainer
-    border.color: Theme.fieldEdge
+    property bool focused: false
+    color: Theme.bgDeep
+    border.color: !enabled ? "transparent" : focused ? Theme.fog : Theme.fieldEdge
     border.width: Theme.edgeWidth
-    implicitHeight: Theme.sizeKey
-
-    Rectangle {
-        x: Theme.edgeWidth; y: Theme.edgeWidth
-        width: parent.width - 2 * Theme.edgeWidth; height: 3
-        gradient: Gradient {
-            GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.5) }
-            GradientStop { position: 1; color: "transparent" }
-        }
-    }
+    implicitHeight: Theme.sizeField
 }

@@ -1,16 +1,14 @@
-// A caps label (design/DESIGN.md Type): group and column headers, keys, tabs, status bars.
+// A label (design/DESIGN.md Type): section and column headers, the bar's readings. Sentence case,
+// semibold, muted. The name is Survey's, when labels were caps; the text is shown as written.
 import QtQuick
 
 Text {
-    // Set size, not font.pixelSize: the tracking follows it
     property real size: Theme.typeSizeLabel
     property real tracking: Theme.typeTrackingLabel
-
     color: Theme.textMuted
     font.family: Theme.typeFamilySans
     font.pixelSize: size
     font.weight: Theme.typeWeightSemibold
-    font.capitalization: Font.AllUppercase
     font.letterSpacing: tracking * size
     verticalAlignment: Text.AlignVCenter
 }

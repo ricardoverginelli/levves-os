@@ -1,16 +1,17 @@
-// A slider (design/DESIGN.md Pieces): a sunk 4px groove, the part up to the value filled, and a
-// thumb shaped like a small key. The thumb turns amber while dragged, the one accent then.
-// `mark` puts a tick on the groove (e.g. where 100% is on a slider that can go past it).
+// A slider (design/DESIGN.md Pieces): a flat 6px `raised` track, the part up to the value in
+// `fill` (fog; fog-deep when it isn't the current one), and a narrow square thumb in `text` that
+// turns `glow` while dragged. `mark` puts a tick on the track (e.g. where 100% is on a slider that
+// can go past it).
 import QtQuick
 import QtQuick.Templates as T
 
 T.Slider {
     id: slider
-    property color fill: Theme.textMuted
+    property color fill: Theme.fog
     property real mark: NaN
 
     implicitWidth: 160
-    implicitHeight: 24
+    implicitHeight: 20
     hoverEnabled: true
 
     background: Item {
@@ -19,16 +20,10 @@ T.Slider {
         width: slider.availableWidth
         height: 6
 
-        Rectangle {  // the groove: a dark line with an edge above and a lighter one below
-            anchors.fill: parent
-            color: Theme.edge
-            Rectangle { width: parent.width; height: 1; color: "black" }
-            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.keyEdge }
-        }
+        Rectangle { anchors.fill: parent; color: Theme.raised }
         Rectangle {
-            x: 1; y: 1
-            width: Math.max(0, slider.visualPosition * (parent.width - 2))
-            height: parent.height - 2
+            width: slider.visualPosition * parent.width
+            height: parent.height
             color: slider.fill
         }
         Rectangle {
@@ -37,45 +32,15 @@ T.Slider {
             y: -3
             width: 2
             height: parent.height + 6
-            color: Theme.border
+            color: Theme.textFaint
         }
     }
 
-    handle: Item {
+    handle: Rectangle {
         x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
         y: slider.topPadding + (slider.availableHeight - height) / 2
-        width: 14
-        height: 22
-
-        Rectangle {  // the bottom edge
-            anchors.fill: parent
-            radius: Theme.radiusKey
-            color: slider.pressed ? Theme.accentEdge : Theme.keyDepth
-        }
-        Rectangle {
-            anchors.fill: parent
-            anchors.bottomMargin: Theme.edgeKeyDepth
-            radius: Theme.radiusKey
-            color: slider.pressed ? Theme.accentHover : Theme.keyEdge
-        }
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: Theme.edgeWidth
-            anchors.bottomMargin: Theme.edgeKeyDepth
-            radius: Theme.radiusKey - 1
-            color: slider.pressed ? Theme.accent : Theme.raised
-
-            Rectangle {  // hover tint
-                anchors.fill: parent
-                visible: slider.hovered && !slider.pressed
-                color: Theme.hoverTint
-            }
-            Rectangle {  // the grip
-                anchors.centerIn: parent
-                width: parent.width - 4
-                height: 2
-                color: slider.pressed ? Theme.accentEdge : Theme.keyEdge
-            }
-        }
+        width: 6
+        height: 16
+        color: slider.pressed ? Theme.glow : slider.hovered ? Theme.text : Theme.textSoft
     }
 }

@@ -1,27 +1,25 @@
 // Copied from design/qml/Meter.qml by design/build/build.py. Don't edit here.
-// A meter (design/DESIGN.md Pieces): a sunken, dithered track with a fill of 10px segments.
+// A meter (design/DESIGN.md Pieces): a row of lit cells, like the towers' windows. Lit cells in
+// `fill` (fog by default), unlit ones `raised`. `cell` is a cell's width; 3 makes the bar's small meters.
 import QtQuick
 
-Rectangle {
+Item {
     id: meter
     property real value: 0              // 0 to 1
-    property color fill: Theme.textMuted
-
-    implicitHeight: 14
-    color: Theme.well
-    border.color: Theme.edge
-
-    Dither { anchors.fill: parent; anchors.margins: 1; tone: "well" }
-    Item {
-        x: 2; y: 2
-        width: (meter.width - 4) * Math.max(0, Math.min(1, meter.value))
-        height: meter.height - 4
-        clip: true
-        Row {
-            spacing: 2
-            Repeater {
-                model: Math.ceil((meter.width - 4) / 12)
-                Rectangle { width: 10; height: meter.height - 4; color: meter.fill }
+    property color fill: Theme.fog
+    property real cell: 10
+    property real gap: 2
+    implicitHeight: 10
+    readonly property int count: Math.max(1, Math.floor((width + gap) / (cell + gap)))
+    readonly property int lit: Math.round(count * Math.max(0, Math.min(1, value)))
+    Row {
+        spacing: meter.gap
+        Repeater {
+            model: meter.count
+            Rectangle {
+                required property int index
+                width: meter.cell; height: meter.height
+                color: index < meter.lit ? meter.fill : Theme.raised
             }
         }
     }

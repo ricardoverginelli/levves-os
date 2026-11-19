@@ -1,12 +1,15 @@
 /*
- * Levves for the web: D's pieces as plain CSS classes, built only from the generated tokens
- * (design/dist/tokens.css, imported here). design/DESIGN.md explains each piece; keep the two in step.
+ * Levves for the web: Urban Flora's pieces as plain CSS classes, built only from the generated
+ * tokens (design/dist/tokens.css, imported here). design/DESIGN.md explains each piece; keep the
+ * two in step.
  *
- *   containers  .lv-window .lv-group .lv-well          the black engraved edge
- *   controls    .lv-key .lv-key-primary .lv-field      lighter outline; keys have a 2px bottom edge
- *   chrome      .lv-titlebar .lv-led .lv-statusbar .lv-dither .lv-desktop
- *   text        .lv-caps .lv-num .lv-title .lv-quiet
+ *   surfaces    .lv-window .lv-pane .lv-well .lv-group     flat planes; floating ones get the weak
+ *                                                           edge border and the top-right cut
+ *   controls    .lv-key .lv-key-primary .lv-field .lv-actionbar
+ *   chrome      .lv-titlebar .lv-tabs .lv-statusbar .lv-desktop
+ *   text        .lv-caps (the label) .lv-num .lv-title .lv-quiet
  *   bits        .lv-tag(-due|-paid|-info|-critical) .lv-meter .lv-selected .lv-selected-inactive
+ *   deprecated  .lv-led .lv-dither (Survey's; they draw nothing or flat)
  *
  * Plain classes in @layer components, so Tailwind utilities still win when a component adds one.
  */
@@ -18,75 +21,85 @@
 
 @layer components {
   /* ── Text ─────────────────────────────────────────────────────────────── */
+  /* The label: sentence case, semibold, muted (the name is Survey's, when labels were caps) */
   .lv-caps {
     font-family: var(--lv-type-family-sans);
     font-size: var(--lv-type-size-label);
     font-weight: var(--lv-type-weight-semibold);
-    letter-spacing: calc(var(--lv-type-tracking-label) * 1em);
-    text-transform: uppercase;
+    color: var(--lv-color-text-muted);
   }
   .lv-num {
-    font-family: var(--lv-type-family-serif);
+    font-family: var(--lv-type-family-sans);
     font-variant-numeric: tabular-nums lining-nums;
   }
   .lv-title {
-    font-family: var(--lv-type-family-serif);
+    font-family: var(--lv-type-family-display);
     font-size: var(--lv-type-size-title);
-    font-weight: var(--lv-type-weight-semibold);
+    font-weight: 650;
+    letter-spacing: calc(var(--lv-type-tracking-display) * 1em);
+    font-variant-numeric: tabular-nums lining-nums;
   }
-  /* Secondary text that reads as a remark: "five bills left this month" */
+  /* Secondary text that reads as a remark: "three bills left this month" */
   .lv-quiet {
-    font-family: var(--lv-type-family-serif);
-    font-style: italic;
+    font-family: var(--lv-type-family-sans);
     color: var(--lv-color-text-muted);
   }
 
-  /* ── Textures ─────────────────────────────────────────────────────────── */
-  .lv-dither {
-    background-color: var(--lv-color-dither-a);
-    background-image: conic-gradient(
-      var(--lv-color-dither-b) 25%,
-      transparent 0 50%,
-      var(--lv-color-dither-b) 0 75%,
-      transparent 0
-    );
-    background-size: var(--lv-size-dither) var(--lv-size-dither);
-  }
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
   .lv-desktop {
-    background-color: var(--lv-color-bg-deep);
-    background-image: conic-gradient(
-      var(--lv-color-desktop-dither) 25%,
-      transparent 0 50%,
-      var(--lv-color-desktop-dither) 0 75%,
-      transparent 0
-    );
-    background-size: var(--lv-size-dither) var(--lv-size-dither);
+    background: var(--lv-color-bg-deep);
   }
-
-  /* ── Containers: the black engraved edge ──────────────────────────────── */
-  .lv-window {
-    background: var(--lv-color-surface);
+  /* An app window: solid surface, the weak edge border, the top-right cut. The border is the
+     element's own background showing 1px around a ::before plane cut the same way, since
+     clip-path would clip a real border */
+  .lv-window,
+  .lv-pane {
+    --lv-cut: var(--lv-cut-window);
+    --lv-fill: var(--lv-color-surface);
+    position: relative;
+    isolation: isolate;
     color: var(--lv-color-text);
-    border: var(--lv-edge-width) solid var(--lv-color-edge);
-    border-radius: var(--lv-radius-container);
+    background: var(--lv-color-edge);
     padding: var(--lv-edge-width);
-    box-shadow:
-      inset 1px 1px 0 rgb(255 255 255 / var(--lv-opacity-edge-light)),
-      inset -1px -1px 0 rgb(0 0 0 / var(--lv-opacity-edge-shade)),
-      0 18px 48px rgb(0 0 0 / 0.55);
+    clip-path: polygon(0 0, calc(100% - var(--lv-cut)) 0, 100% var(--lv-cut), 100% 100%, 0 100%);
   }
-  /* The same edge without the drop shadow, for windows that fill the screen (the phone) */
+  .lv-window::before,
+  .lv-pane::before {
+    content: "";
+    position: absolute;
+    inset: var(--lv-edge-width);
+    z-index: -1;
+    background: var(--lv-fill);
+    clip-path: polygon(0 0, calc(100% - var(--lv-cut)) 0, 100% var(--lv-cut), 100% 100%, 0 100%);
+  }
+  /* A frosted shell pane: popups, menus, notifications, the launcher. Falls back to solid where
+     backdrop-filter isn't supported */
+  .lv-pane {
+    --lv-cut: var(--lv-cut-pane);
+    --lv-fill:
+      radial-gradient(120% 140% at 100% 0%,
+        color-mix(in srgb, var(--lv-color-fog) calc(var(--lv-opacity-lamp) * 100%), transparent),
+        color-mix(in srgb, var(--lv-color-fog) calc(var(--lv-opacity-lamp) * 30%), transparent) 45%,
+        transparent 70%),
+      color-mix(in srgb, var(--lv-color-surface) calc(var(--lv-opacity-pane) * 100%), transparent);
+    background: color-mix(in srgb, var(--lv-color-fog) calc(var(--lv-opacity-outline) * 100%), transparent);
+    backdrop-filter: blur(24px);
+  }
+  @supports not (backdrop-filter: blur(1px)) {
+    .lv-pane { --lv-fill: var(--lv-color-surface); background: var(--lv-color-edge); }
+  }
+  /* A window that fills the screen (the phone) or touches the screen's top-right: no cut, no border */
   .lv-window-flat {
-    box-shadow:
-      inset 1px 1px 0 rgb(255 255 255 / var(--lv-opacity-edge-light)),
-      inset -1px -1px 0 rgb(0 0 0 / var(--lv-opacity-edge-shade));
+    clip-path: none;
+    padding: 0;
   }
+  .lv-window-flat::before {
+    inset: 0;
+    clip-path: none;
+  }
+  /* A section: a label over its content and a hairline under it; no frame */
   .lv-group {
-    border: var(--lv-edge-width) solid var(--lv-color-edge);
-    border-radius: var(--lv-radius-container);
-    box-shadow:
-      1px 1px 0 rgb(255 255 255 / var(--lv-opacity-etch)),
-      inset 1px 1px 0 rgb(255 255 255 / var(--lv-opacity-etch));
+    border-bottom: var(--lv-edge-width) solid var(--lv-color-border);
   }
   .lv-group-header {
     display: flex;
@@ -94,16 +107,14 @@
     justify-content: space-between;
     gap: var(--lv-space-8);
     min-height: var(--lv-size-group-header);
-    padding: 0 var(--lv-space-12);
-    border-bottom: var(--lv-edge-width) solid var(--lv-color-edge);
+    padding: 0 var(--lv-space-16);
+    font-family: var(--lv-type-family-sans);
+    font-size: var(--lv-type-size-label);
+    font-weight: var(--lv-type-weight-semibold);
     color: var(--lv-color-text-muted);
   }
   .lv-well {
     background: var(--lv-color-well);
-    border: var(--lv-edge-width) solid var(--lv-color-edge);
-    box-shadow:
-      inset 1px 1px 0 rgb(0 0 0 / 0.6),
-      inset -1px -1px 0 rgb(255 255 255 / 0.04);
   }
 
   /* ── Chrome ───────────────────────────────────────────────────────────── */
@@ -112,60 +123,69 @@
     align-items: center;
     gap: var(--lv-space-8);
     min-height: var(--lv-size-title-bar);
-    padding: 0 5px 0 var(--lv-space-12);
+    padding: 0 calc(var(--lv-cut-window) + var(--lv-space-8)) 0 calc(var(--lv-space-12) + 2px);
     background: var(--lv-color-title-bar);
-    border-bottom: var(--lv-edge-width) solid var(--lv-color-edge);
+    font-family: var(--lv-type-family-display);
+    font-size: var(--lv-type-size-title);
+    font-weight: 650;
   }
   .lv-titlebar[data-inactive] {
     background: var(--lv-color-title-bar-inactive);
     color: var(--lv-color-text-muted);
   }
-  .lv-led {
-    flex: none;
-    width: var(--lv-size-led);
-    height: var(--lv-size-led);
-    border-radius: 50%;
-    background: var(--lv-color-accent);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--lv-color-accent) 55%, transparent);
+  /* Tabs: flat segments; the current one is the content's plane with a fog line on top */
+  .lv-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 var(--lv-space-16);
   }
-  [data-inactive] .lv-led,
-  .lv-led[data-off] {
-    background: var(--lv-color-border);
-    box-shadow: none;
+  .lv-tabs > * {
+    min-height: 28px;
+    padding: 0 var(--lv-space-12);
+    color: var(--lv-color-text-muted);
+    background: transparent;
   }
+  .lv-tabs > [aria-selected="true"],
+  .lv-tabs > [aria-current="page"] {
+    color: var(--lv-color-text);
+    font-weight: var(--lv-type-weight-semibold);
+    background: var(--lv-color-well);
+    box-shadow: inset 0 2px 0 var(--lv-color-fog);
+  }
+  /* Kept for live info only (sync time, counts): no status bar for show */
   .lv-statusbar {
     display: flex;
     gap: var(--lv-space-16);
-    padding: 5px var(--lv-space-12);
-    border-top: var(--lv-edge-width) solid var(--lv-color-edge);
+    padding: 5px var(--lv-space-16);
+    border-top: var(--lv-edge-width) solid var(--lv-color-border);
     color: var(--lv-color-text-muted);
+    font-size: var(--lv-type-size-small);
   }
+  .lv-led { display: none; }
+  .lv-dither { background: var(--lv-color-dither-a); }
 
-  /* ── Controls: lighter outline, never the black edge ──────────────────── */
+  /* ── Controls: flat planes ────────────────────────────────────────────── */
   .lv-key {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--lv-space-8);
     min-height: var(--lv-size-key);
-    padding: 0 var(--lv-space-12);
+    padding: 0 var(--lv-space-16);
     background: var(--lv-color-raised);
     color: var(--lv-color-text);
-    border: var(--lv-edge-width) solid var(--lv-color-key-edge);
-    border-bottom: var(--lv-edge-key-depth) solid var(--lv-color-key-depth);
+    border: 0;
     border-radius: var(--lv-radius-key);
     font-family: var(--lv-type-family-sans);
-    font-size: var(--lv-type-size-small);
-    font-weight: var(--lv-type-weight-semibold);
-    letter-spacing: calc(var(--lv-type-tracking-label) * 1em);
-    text-transform: uppercase;
+    font-size: var(--lv-type-size-body);
+    font-weight: var(--lv-type-weight-body);
     cursor: pointer;
     transition: background-color var(--lv-duration-hover) cubic-bezier(0.22, 1, 0.36, 1);
   }
   .lv-key:hover {
     background-image: linear-gradient(
-      rgb(221 227 223 / var(--lv-opacity-hover)),
-      rgb(221 227 223 / var(--lv-opacity-hover))
+      color-mix(in srgb, var(--lv-color-text) calc(var(--lv-opacity-hover) * 100%), transparent),
+      color-mix(in srgb, var(--lv-color-text) calc(var(--lv-opacity-hover) * 100%), transparent)
     );
   }
   .lv-key:active,
@@ -174,37 +194,28 @@
   .lv-key[aria-current="page"],
   .lv-key[data-pressed] {
     background: var(--lv-color-well-pressed);
-    border: var(--lv-edge-width) solid var(--lv-color-field-edge);
-    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5);
+    box-shadow: inset 0 2px 0 var(--lv-color-fog);
+    font-weight: var(--lv-type-weight-semibold);
   }
   .lv-key:disabled,
   .lv-key[aria-disabled="true"] {
     cursor: default;
     color: var(--lv-color-text-faint);
-    border-color: var(--lv-color-raised);
-    background-color: var(--lv-color-surface);
-    background-image: conic-gradient(
-      var(--lv-color-dither-b) 25%,
-      transparent 0 50%,
-      var(--lv-color-dither-b) 0 75%,
-      transparent 0
-    );
-    background-size: var(--lv-size-dither) var(--lv-size-dither);
+    background: var(--lv-color-surface);
   }
-  /* The one amber thing in a view */
+  /* The one amber thing in a view, and its only glow */
   .lv-key-primary {
     background: var(--lv-color-accent);
     color: var(--lv-color-on-accent);
-    border-color: var(--lv-color-accent-hover);
-    border-bottom-color: var(--lv-color-accent-edge);
+    font-weight: var(--lv-type-weight-semibold);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--lv-color-accent) calc(var(--lv-opacity-key-glow) * 100%), transparent);
   }
   .lv-key-primary:hover {
     background: var(--lv-color-accent-hover);
   }
   .lv-key-primary:active {
     background: var(--lv-color-accent-pressed);
-    border-color: var(--lv-color-accent-edge);
-    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.3);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--lv-color-accent) calc(var(--lv-opacity-key-glow) * 100%), transparent);
   }
   /* A key that only shows an icon (window controls, toolbar) */
   .lv-key-icon {
@@ -215,69 +226,81 @@
     color: var(--lv-color-text-muted);
   }
 
+  /* A field: an opening in the darkest plane with a weak outline, fog while focused */
   .lv-field {
-    background: var(--lv-color-well);
+    background: var(--lv-color-bg-deep);
     color: var(--lv-color-text);
     border: var(--lv-edge-width) solid var(--lv-color-field-edge);
-    border-radius: var(--lv-radius-container);
-    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5);
+    border-radius: var(--lv-radius-key);
     font-family: var(--lv-type-family-sans);
+    font-weight: var(--lv-type-weight-body);
+  }
+  .lv-field:focus,
+  .lv-field:focus-within {
+    outline: none;
+    border-color: var(--lv-color-fog);
   }
   .lv-field::placeholder {
-    color: var(--lv-color-text-faint);
+    color: var(--lv-color-text-muted);
   }
   .lv-field:disabled {
     color: var(--lv-color-text-faint);
+    border-color: transparent;
+  }
+  /* A window's bottom bar: the field fills the left, keys and the primary key flush at the right */
+  .lv-actionbar {
+    display: flex;
+    align-items: stretch;
+    min-height: var(--lv-size-action-bar);
+    border-top: var(--lv-edge-width) solid var(--lv-color-border);
+    background: var(--lv-color-well);
+  }
+  .lv-actionbar > .lv-field {
+    flex: 1;
+    min-width: 0;
+  }
+  .lv-actionbar > .lv-key {
+    min-height: 0;
   }
 
   /* ── Bits ─────────────────────────────────────────────────────────────── */
   .lv-tag {
     --lv-tag: var(--lv-color-text-muted);
     display: inline-block;
-    padding: 0 6px;
+    padding: 1px var(--lv-space-8);
     color: var(--lv-tag);
     background: color-mix(in srgb, var(--lv-tag) calc(var(--lv-opacity-tag-fill) * 100%), transparent);
-    border: var(--lv-edge-width) solid color-mix(in srgb, var(--lv-tag) calc(var(--lv-opacity-tag-edge) * 100%), transparent);
-    border-radius: var(--lv-radius-container);
     font-family: var(--lv-type-family-sans);
-    font-size: 10.5px;
+    font-size: var(--lv-type-size-small);
     font-weight: var(--lv-type-weight-semibold);
-    letter-spacing: calc(var(--lv-type-tracking-tag) * 1em);
-    text-transform: uppercase;
   }
   .lv-tag-due { --lv-tag: var(--lv-color-warning); }
   .lv-tag-paid { --lv-tag: var(--lv-color-success); }
   .lv-tag-info { --lv-tag: var(--lv-color-info); }
   .lv-tag-critical { --lv-tag: var(--lv-color-critical); }
 
-  /* A sunken, dithered track; its child is the fill, drawn in 10px segments */
+  /* Lit cells, like the towers' windows: unlit cells behind, its child is the lit part */
   .lv-meter {
-    height: 14px;
-    padding: 2px;
-    box-sizing: border-box;
-    background-color: var(--lv-color-well);
-    background-image: conic-gradient(
-      var(--lv-color-row-line) 25%,
-      transparent 0 50%,
-      var(--lv-color-row-line) 0 75%,
-      transparent 0
+    height: 10px;
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--lv-color-raised) 0 10px,
+      transparent 10px 12px
     );
-    background-size: var(--lv-size-dither) var(--lv-size-dither);
-    border: var(--lv-edge-width) solid var(--lv-color-edge);
-    box-shadow: inset 1px 1px 0 rgb(0 0 0 / 0.6);
   }
   .lv-meter > * {
     height: 100%;
     background-image: repeating-linear-gradient(
       90deg,
-      var(--lv-meter-fill, var(--lv-color-text-muted)) 0 10px,
+      var(--lv-meter-fill, var(--lv-color-fog)) 0 10px,
       transparent 10px 12px
     );
   }
 
-  /* The selected row: amber in the focused window, neutral everywhere else */
+  /* The selected row: raised with a fog line at its left */
   .lv-selected {
-    background: color-mix(in srgb, var(--lv-color-accent) calc(var(--lv-opacity-selection) * 100%), transparent);
+    background: var(--lv-color-raised);
+    box-shadow: inset 2px 0 0 var(--lv-color-fog);
   }
   .lv-selected-inactive {
     background: var(--lv-color-raised);

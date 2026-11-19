@@ -1,22 +1,18 @@
-// A status tag: caps text in its tone, a faint fill and outline of the same tone. Status colors
+// A status tag: semibold text in its tone on a plane of the same tone, no outline. Status colors
 // are for meaning (design/DESIGN.md Color): tone is Theme.warning, success, info, critical or muted.
 import QtQuick
 
 Rectangle {
     property alias text: label.text
     property color tone: Theme.textMuted
-
-    implicitWidth: label.implicitWidth + 12
-    implicitHeight: label.implicitHeight + 2
-    radius: Theme.radiusContainer
+    implicitWidth: label.implicitWidth + 2 * Theme.space8
+    implicitHeight: label.implicitHeight + 4
     color: Qt.rgba(tone.r, tone.g, tone.b, Theme.opacityTagFill)
-    border.color: Qt.rgba(tone.r, tone.g, tone.b, Theme.opacityTagEdge)
-
     Caps {
         id: label
         anchors.centerIn: parent
         color: parent.tone
-        size: 10
+        size: Theme.typeSizeSmall
         tracking: Theme.typeTrackingTag
     }
 }

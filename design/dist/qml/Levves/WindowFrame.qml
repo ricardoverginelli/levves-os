@@ -1,64 +1,78 @@
 // Copied from design/qml/WindowFrame.qml by design/build/build.py. Don't edit here.
-// A window's body (design/DESIGN.md Edges): `surface` inside the black engraved edge, a light
-// line top-left and a shade bottom-right. For windows drawn in QML (KWin scripts, apps, the window
+// A window's or pane's body (design/DESIGN.md Surfaces): a flat `surface` fill, the weak `edge`
+// border and the top-right cut. For windows drawn in QML (KWin scripts, apps, the window
 // decoration); Plasma's popups get the same frame from the Plasma style. Put a TitleBar and the
-// content inside it: the edge and its lines stay drawn over them.
+// content inside it: the border stays drawn over them, and a TitleBar cuts its own corner to match.
 //
-// `docked` is for a window flush against a monitor edge (a side panel, a dock): the one side that
-// faces the screen ("left" for a window docked on the right) gets the edge and the light, square.
-// `bare` draws no edge at all (a maximized window), only the fill.
+// `pane` is a frosted shell pane (popups, OSDs, menus): translucent `surface` at opacity.pane with
+// the lamp light from the top-right and the smaller cut; the blur itself comes from KWin.
+// `docked` is for a window flush against a monitor edge (a side panel, a dock): no cut, and only the
+// side that faces the screen ("left" for a window docked on the right) gets the border.
+// `bare` draws no border and no cut (a maximized window), only the fill.
 import QtQuick
+import QtQuick.Shapes
 
-Rectangle {
+Item {
     id: frame
     property string docked: ""
     property bool bare: false
+    property bool pane: false
+    property bool cut: true
+    property color color: pane
+        ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.opacityPane)
+        : Theme.surface
     readonly property bool free: docked === "" && !bare
+    readonly property real cutSize: free && cut ? (pane ? Theme.cutPane : Theme.cutWindow) : 0
 
-    color: Theme.surface
-    radius: free ? Theme.radiusContainer : 0
-    border.color: Theme.edge
-    border.width: free ? Theme.edgeWidth : 0
+    // The outline as a closed path, half a pixel in so the 1px stroke lands on whole pixels
+    component Outline: ShapePath {
+        readonly property real r: frame.width - 0.5
+        readonly property real b: frame.height - 0.5
+        startX: 0.5; startY: 0.5
+        PathLine { x: r - frame.cutSize; y: 0.5 }
+        PathLine { x: r; y: 0.5 + frame.cutSize }
+        PathLine { x: r; y: b }
+        PathLine { x: 0.5; y: b }
+        PathLine { x: 0.5; y: 0.5 }
+    }
 
-    // A free window: the light along the top and left inside the edge, the shade along the
-    // bottom and right
-    Rectangle {
+    Shape {  // the fill, and a pane's lamp light pooled at the top-right
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+        Outline { fillColor: frame.color; strokeColor: "transparent"; strokeWidth: 0 }
+        Outline {
+            strokeColor: "transparent"; strokeWidth: 0
+            fillGradient: frame.pane ? lamp : null
+            fillColor: "transparent"
+        }
+        RadialGradient {
+            id: lamp
+            centerX: frame.width; centerY: 0
+            focalX: centerX; focalY: centerY
+            centerRadius: Math.max(frame.width, frame.height) * 0.9
+            focalRadius: 0
+            GradientStop { position: 0; color: Qt.rgba(Theme.fog.r, Theme.fog.g, Theme.fog.b, Theme.opacityLamp) }
+            GradientStop { position: 0.45; color: Qt.rgba(Theme.fog.r, Theme.fog.g, Theme.fog.b, Theme.opacityLamp * 0.3) }
+            GradientStop { position: 1; color: "transparent" }
+        }
+    }
+
+    Shape {  // a free frame's border, over the content
         z: 1
         visible: frame.free
         anchors.fill: parent
-        anchors.margins: Theme.edgeWidth
-        color: "transparent"
-        border.width: 1
-        border.color: Theme.edgeLight
-    }
-    Rectangle {
-        z: 1
-        visible: frame.free
-        x: Theme.edgeWidth; y: parent.height - 2 * Theme.edgeWidth
-        width: parent.width - 2 * Theme.edgeWidth; height: 1
-        color: Theme.edgeShade
-    }
-    Rectangle {
-        z: 1
-        visible: frame.free
-        x: parent.width - 2 * Theme.edgeWidth; y: Theme.edgeWidth
-        width: 1; height: parent.height - 3 * Theme.edgeWidth
-        color: Theme.edgeShade
+        preferredRendererType: Shape.CurveRenderer
+        Outline { fillColor: "transparent"; strokeColor: Theme.edge; strokeWidth: Theme.edgeWidth }
     }
 
-    // A docked window: the edge, then the light, on the side that faces the screen
-    Repeater {
-        model: frame.docked === "" || frame.bare ? [] : [Theme.edge, Theme.edgeLight]
-        Rectangle {
-            required property color modelData
-            required property int index
-            readonly property bool across: frame.docked === "top" || frame.docked === "bottom"
-            z: 1
-            color: modelData
-            width: across ? frame.width : 1
-            height: across ? 1 : frame.height
-            x: frame.docked === "left" ? index : frame.docked === "right" ? frame.width - 1 - index : 0
-            y: frame.docked === "top" ? index : frame.docked === "bottom" ? frame.height - 1 - index : 0
-        }
+    Rectangle {  // a docked frame's border, on the side that faces the screen
+        z: 1
+        visible: frame.docked !== "" && !frame.bare
+        readonly property bool across: frame.docked === "top" || frame.docked === "bottom"
+        color: Theme.edge
+        width: across ? frame.width : Theme.edgeWidth
+        height: across ? Theme.edgeWidth : frame.height
+        x: frame.docked === "right" ? frame.width - width : 0
+        y: frame.docked === "bottom" ? frame.height - height : 0
     }
 }

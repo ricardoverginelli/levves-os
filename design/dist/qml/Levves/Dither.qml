@@ -1,6 +1,5 @@
 // Copied from design/qml/Dither.qml by design/build/build.py. Don't edit here.
-// The dither texture: a 1px checkerboard (design/DESIGN.md Pieces). "strip" for group headers,
-// status bars and disabled keys, "desktop" behind everything, "well" in meter tracks and empty slots.
+// Deprecated: Survey's dither texture. Its tiles are flat now (both colors equal); remove uses.
 import QtQuick
 
 Image {
