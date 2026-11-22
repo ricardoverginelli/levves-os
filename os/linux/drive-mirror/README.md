@@ -12,8 +12,18 @@ bash install.sh              # bash install.sh --uninstall to undo
 drive-mirror --dry-run       # preview; plain `drive-mirror` syncs now
 ```
 
-**Edited files on the disk from Windows?** Run `drive-push` there first
-(`os/windows/drive-mirror`), or the next sync moves those edits to `_rclone-removed/`.
+**Edited files on the disk from Windows?** `drive-push` there (`os/windows/drive-mirror`)
+uploads them every 30 minutes. Until it has, `drive-mirror` refuses to sync, since the sync
+would move those edits to `_rclone-removed/` (it did, twice, before this check).
+
+## Waiting for Windows
+Every file on the disk was in Drive at the newer of two stamps on the disk: `.drive-push-ok`
+(start of the last successful Windows push) and `.drive-mirror-ok` (end of the last sync
+here). Before syncing, `drive-mirror` looks for files written (mtime) or created, copied in
+or renamed (ctime) after that. If there are any, it lists them, sends a notification and exits 3
+without syncing. Boot Windows and let `drive-push` run, then sync again.
+`drive-mirror --force` syncs anyway, moving those files aside as before.
+Before either stamp exists, the log of the last real sync stands in.
 
 ## One-time setup
 - **Mount:** this line in `/etc/fstab` mounts the disk at `/mnt/drive-mirror`
@@ -34,7 +44,7 @@ drive-mirror --dry-run       # preview; plain `drive-mirror` syncs now
   `_rclone-removed/<timestamp>/` on the disk. Clean that out by hand now and then.
 - Google Docs/Sheets/Slides are saved as .docx/.xlsx/.pptx.
 - Windows leftovers (`$RECYCLE.BIN`, `System Volume Information`, `desktop.ini`,
-  `sync.ffs_lock`) are left alone.
+  `sync.ffs_lock`) and the two stamps are left alone.
 - Logs: `~/.local/state/drive-mirror/`, kept 90 days.
 - The timer runs daily (catches up after boot) and skips the run if the
   disk isn't mounted. `systemctl --user list-timers drive-mirror` shows the next run.

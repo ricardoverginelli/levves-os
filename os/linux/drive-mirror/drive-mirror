@@ -1,12 +1,23 @@
 #!/usr/bin/bash
 # One-way mirror of Google Drive onto the "Drive Mirror" HDD (see README.md).
-# Usage: drive-mirror [--dry-run] [any rclone flag]
+# Usage: drive-mirror [--force] [--dry-run] [any rclone flag]
 # Files the sync deletes or overwrites are moved to _rclone-removed/<timestamp>/.
+# Won't sync while files on the disk changed after the last Windows drive-push
+# (they'd be moved aside); --force syncs anyway.
 set -euo pipefail
 
 dest=/mnt/drive-mirror
 remote=gdrive:
 logdir=${XDG_STATE_HOME:-$HOME/.local/state}/drive-mirror
+
+force=0 dry=0 args=()
+for a in "$@"; do
+    case $a in
+        --force) force=1 ;;
+        --dry-run | -n) dry=1; args+=("$a") ;;
+        *) args+=("$a") ;;
+    esac
+done
 
 mountpoint -q "$dest" || { echo "$dest isn't mounted" >&2; exit 1; }
 findmnt -no OPTIONS "$dest" | grep -qw rw ||
@@ -16,6 +27,40 @@ stamp=$(date +%F_%H%M%S)
 log=$logdir/$stamp.log
 mkdir -p "$logdir"
 find "$logdir" -name '*.log' -mtime +90 -delete
+
+# Everything on the disk was in Drive at the newer of two moments: the start of
+# the last successful drive-push on Windows (.drive-push-ok) and the end of the
+# last sync here (.drive-mirror-ok). A file written (mtime) or created, renamed or
+# copied in (ctime) after that is a Windows change Drive doesn't have yet. Before
+# either stamp existed, the log of the last real sync stands in for the end of it
+# (not a refused run's or a dry run's).
+last_sync=
+for l in $(ls -t "$logdir"/*.log 2>/dev/null); do
+    grep -q 'Transferred:' "$l" && ! grep -q 'as --dry-run is set' "$l" && { last_sync=$l; break; }
+done
+ref=
+for f in "$dest/.drive-push-ok" "$dest/.drive-mirror-ok" $last_sync; do
+    [ -e "$f" ] && { [ -z "$ref" ] || [ "$f" -nt "$ref" ]; } && ref=$f
+done
+if [ -n "$ref" ] && [ $force = 0 ]; then
+    changed=$(find "$dest" \( -path "$dest/_rclone-removed" -o -path "$dest/\$RECYCLE.BIN" \
+            -o -path "$dest/System Volume Information" \) -prune -o -type f \
+        ! -path "$dest/.drive-push-ok" ! -path "$dest/.drive-mirror-ok" ! -path "$dest/sync.ffs_lock" \
+        ! -iname desktop.ini \( -newer "$ref" -o -cnewer "$ref" \) -print)
+    if [ -n "$changed" ]; then
+        n=$(wc -l <<<"$changed")
+        {
+            echo "Not syncing: $n file(s) changed on the disk after $(date -r "$ref" '+%F %R'), not in Drive yet:"
+            sed "s|^$dest/|  |" <<<"$changed" | head -20
+            echo "Boot Windows and let drive-push upload them (or run it there), then sync again."
+            echo "drive-mirror --force syncs anyway, moving them to _rclone-removed/."
+        } | tee "$log" >&2
+        command -v notify-send >/dev/null &&
+            notify-send -a drive-mirror -i dialog-warning "Drive mirror waiting for Windows" \
+                "$n file(s) edited on the Drive Mirror disk aren't in Drive yet. Run drive-push on Windows first." || true
+        exit 3
+    fi
+fi
 
 # Windows leftovers on the disk stay untouched. The local encoding is rclone's
 # Windows one, so names NTFS can't hold (a:b, a?) are stored with lookalike
@@ -27,13 +72,18 @@ rclone sync "$remote" "$dest" \
     --exclude '/$RECYCLE.BIN/**' \
     --exclude '/System Volume Information/**' \
     --exclude '/sync.ffs_lock' \
+    --exclude '/.drive-push-ok' \
+    --exclude '/.drive-mirror-ok' \
     --exclude 'desktop.ini' --ignore-case \
     --local-encoding 'Slash,LtGt,DoubleQuote,Colon,Question,Asterisk,Pipe,BackSlash,Ctl,RightSpace,RightPeriod,InvalidUtf8,Dot' \
     --drive-export-formats docx,xlsx,pptx,svg \
     --fast-list --transfers 6 --checkers 16 \
     --stats 1m --stats-log-level NOTICE \
     --log-level INFO --log-file "$log" \
-    "$@" || status=$?
+    ${args[@]+"${args[@]}"} || status=$?
+
+# After the sync, so what it just wrote counts as in Drive
+[ $status = 0 ] && [ $dry = 0 ] && touch "$dest/.drive-mirror-ok"
 
 grep -E 'ERROR|Transferred:|Deleted:|Checks:|Errors:' "$log" | tail -8
 echo "Log: $log"
