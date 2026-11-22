@@ -220,11 +220,10 @@ lists.
   through a notification replaced by its result (`notify-send -p` / `-r`).
 
 ## Moving off Survey
-The pieces, the desktop, VS Code, the suite and Leaves Music draw Urban Flora and read none of
+The pieces, the desktop, VS Code, the suite, Leaves Music and the TV launcher draw Urban Flora and read none of
 Survey's names; `Led`, `Dither`, the dither tiles and the tokens only they read are gone. What's left:
 - `key-edge`, `key-depth` and `accent-edge` (flat now, marked "Deprecated" in `tokens/`), read
   only by p45's `editor.html` and s25-control's `Main.qml`. They go once those two are redrawn.
 - The names `Caps` and `GroupBox` are Survey's; they draw the sentence-case label and the section.
-- The TV launcher, last.
 - The suite's `packages/design-tokens/tokens.css` keeps a few names that are compositions with no
   Levves token of their own (alert tints, the overlay).
