@@ -21,7 +21,8 @@
 // Folders: "/" in the empty field lists the home folder ("~/"); the text after
 // the last "/" filters it. Enter opens a folder (or a file, in its app), Backspace
 // past a "/" goes up, Shift+Enter shows the highlighted folder (or the one being
-// listed) in Dolphin. Folders pin like apps; Enter on a pinned one lists it.
+// listed) in Dolphin, or the folder of a highlighted file with the file selected.
+// Folders pin like apps; Enter on a pinned one lists it.
 // Pins: Alt+Right pins, Alt+Left unpins, Alt+Up/Down reorders pinned apps
 // (Ctrl+P toggles). Right-click a row (or click its pin) to pin/unpin it.
 // Tasks: Enter (or a click) switches to the app's window; Alt+Left (or its ×)
@@ -183,6 +184,8 @@ PlasmoidItem {
         readonly property var icon: model.decoration
         readonly property string description: model.description ?? ""
         readonly property string favoriteId: model.favoriteId ?? ""
+        // Search results' file (Files, Recent Files, Places), for Shift+Enter
+        readonly property string url: (model.url ?? "").toString()
     }
 
     Instantiator {
@@ -228,7 +231,7 @@ PlasmoidItem {
     // second, muted line
     function entryFrom(row, source, i) {
         return { source: source, row: i, name: row.name, icon: row.icon,
-                 description: row.description, favoriteId: row.favoriteId,
+                 description: row.description, favoriteId: row.favoriteId, url: row.url,
                  above: "", count: 0, subtitle: "" }
     }
 
@@ -335,7 +338,7 @@ PlasmoidItem {
             else openExternally(entry.path)
             return
         }
-        if (entry.favoriteId.startsWith("file://")) { openPinnedPath(entry); return }
+        if (entry.favoriteId.startsWith("file://")) { openPinnedPath(entry.favoriteId); return }
         entry.source.trigger(entry.row, "", null)
         close()
     }
@@ -427,12 +430,32 @@ PlasmoidItem {
         list.positionViewAtBeginning()
     }
 
-    // Shift+Enter: the highlighted folder, or the one being listed, in the file manager
+    // Shift+Enter: the highlighted folder, or the one being listed, in the file
+    // manager; a highlighted file (listed, pinned or a search result) is shown
+    // selected in its folder. Apps' and settings' results point at their
+    // .desktop file, so they're left out.
     function showInFileManager() {
         const highlighted = area === "list" || (area === "search" && autoHighlight)
         const entry = highlighted ? entries[list.currentIndex] : null
-        if (navigating) openExternally(entry && entry.isDir ? entry.path : "file://" + navFolder)
-        else if (entry && entry.favoriteId.startsWith("file://")) openExternally(entry.favoriteId)
+        if (navigating) {
+            if (entry && !entry.isDir) revealInFileManager(entry.path)
+            else openExternally(entry ? entry.path : "file://" + navFolder)
+        }
+        else if (entry) {
+            const url = entry.favoriteId.startsWith("file://") ? entry.favoriteId : entry.url || ""
+            if (url.startsWith("file://") && !url.endsWith(".desktop")) openPinnedPath(url, true)
+        }
+    }
+
+    // The FileManager1 D-Bus call (Dolphin answers it) opens the file's folder
+    // with the file selected. The URL is re-encoded so no quote reaches the shell.
+    function revealInFileManager(url) {
+        const path = decodeURIComponent(url.toString().replace(/^file:\/\//, ""))
+        const encoded = "file://" + path.split("/").map(encodeURIComponent).join("/").replace(/'/g, "%27")
+        shell.connectSource("gdbus call --session --dest org.freedesktop.FileManager1"
+                            + " --object-path /org/freedesktop/FileManager1"
+                            + " --method org.freedesktop.FileManager1.ShowItems \"['" + encoded + "']\" ''")
+        closeAfterOpen.restart()
     }
 
     // Files and folders open in their app (xdg-open). Qt first asks KWin for an
@@ -449,12 +472,14 @@ PlasmoidItem {
         onTriggered: root.close()
     }
 
-    // A pinned folder is listed in the navigator, a pinned file opens. The pin is
+    // A pinned folder is listed in the navigator, a pinned file opens (with
+    // reveal, from Shift+Enter: the folder opens in the file manager, the file is
+    // shown selected in its folder; search results go this way too). The pin is
     // only a URL, so its parent folder is looked up to tell which it is.
     property var pendingPin: null
-    function openPinnedPath(entry) {
-        const path = decodeURIComponent(entry.favoriteId.replace(/^file:\/\//, "")).replace(/\/$/, "")
-        pendingPin = { path: path, url: entry.favoriteId, name: path.slice(path.lastIndexOf("/") + 1) }
+    function openPinnedPath(url, reveal) {
+        const path = decodeURIComponent(url.replace(/^file:\/\//, "")).replace(/\/$/, "")
+        pendingPin = { path: path, url: url, name: path.slice(path.lastIndexOf("/") + 1), reveal: !!reveal }
         const parent = "file://" + path.slice(0, path.lastIndexOf("/") + 1)
         if (pinProbe.folder.toString() === parent && pinProbe.status === FolderListModel.Ready) resolvePin()
         else pinProbe.folder = parent
@@ -464,7 +489,10 @@ PlasmoidItem {
         if (!pin || pinProbe.status !== FolderListModel.Ready) return
         pendingPin = null
         const i = pinProbe.indexOf("file://" + pin.path)
-        if (i >= 0 && pinProbe.get(i, "fileIsDir")) {
+        if (pin.reveal) {
+            if (i >= 0 && pinProbe.get(i, "fileIsDir")) openExternally(pin.url)
+            else revealInFileManager(pin.url)
+        } else if (i >= 0 && pinProbe.get(i, "fileIsDir")) {
             search.text = (pin.path === homePath || pin.path.startsWith(homePath + "/")
                            ? "~" + pin.path.slice(homePath.length) : pin.path) + "/"
         } else {
