@@ -24,7 +24,7 @@ os/windows/
     main-monitor.ps1    ← toggle|off|on|status; main-monitor.ahk binds the hotkey
   drive-mirror/         ← drive-push: uploads edits on the Drive Mirror HDD to Google Drive (this PC only)
     install.py          ← Installs rclone, puts drive-push on the PATH, signs in gdrive-rw
-    drive-push.ps1      ← rclone copy <disk> gdrive-rw: --update
+    drive-push.ps1      ← rclone copy <disk> gdrive-rw: --update, changed files only except daily
   theme/install.py      ← Applies the Leaves look (from os/linux/plasma/) to Windows
   updates/
     install.py          ← Turns Windows Update off and keeps it off at every boot (admin)
@@ -137,13 +137,21 @@ python os/windows/debloat/install.py
   `--uninstall` removes it and stops the running copy. Machine-only: `.only-on`
 
 ### drive-mirror/
-- The Windows half of `os/linux/drive-mirror`. That one-way `rclone sync` moves files edited on
-  the disk but missing from the cloud to `_rclone-removed/`, so run `drive-push` after editing
-  on Windows (Ableton projects in `Arquivos/Ableton Project/`) and before booting Fedora
-- `drive-push [--dry-run] [rclone flags]`: `rclone copy <disk> gdrive-rw: --update`. Copy, not
-  sync, so it never deletes in the cloud, and `--update` skips files newer there. A full pass
-  over the disk (~540k files) took 10 minutes as a dry run and 75 minutes for real on
-  2026-11-08 (Drive throttling and a retried pass)
+- The Windows half of `os/linux/drive-mirror`. That one-way `rclone sync` would move files
+  edited on the disk but missing from the cloud to `_rclone-removed/`, so it refuses to sync
+  while the disk has changes newer than the last successful push (see the Linux README)
+- `drive-push [--full] [--dry-run] [rclone flags]`: `rclone copy <disk> gdrive-rw: --update`.
+  Copy, not sync, so it never deletes in the cloud, and `--update` skips files newer there
+- Quick pass (most runs): scans the disk for files whose write or creation time is after the
+  `.drive-push-ok` stamp (or Fedora's `.drive-mirror-ok`, whichever is newer, minus 10 min) and
+  copies just those with `--files-from-raw --no-traverse`. The scan takes ~1 s warm (~100 s
+  cold); the old full pass took ~15 minutes listing ~540k objects, and a shutdown in that
+  window lost Ableton saves to `_rclone-removed/` on 2026-10-31 and 2026-11-11
+- Full pass: first run, `--full`, or when the last one is over 20 hours old (`last-full` in the
+  log folder). Catches renames and moves, which keep a file's times
+- A successful run sets the hidden `<disk>\.drive-push-ok` to its start time; a dry run doesn't
+- Toast notifications when rclone fails, and at the next run when the last one was cut off
+  (the `running` file in the log folder was left behind)
 - Finds the disk by label `Drive Mirror` and NTFS serial `C236DF7C`, not by letter (`D:`
   today); refuses to run without it
 - Same excludes and `--drive-export-formats docx,xlsx,pptx,svg` as Linux, so the mirrored
@@ -154,8 +162,8 @@ python os/windows/debloat/install.py
   to `%LOCALAPPDATA%\levves\bin\`, adds both to the user PATH, and creates the `gdrive-rw`
   remote (`scope=drive`, browser sign-in; skipped if it exists). The Linux `gdrive` remote
   stays read-only. Re-run after the repo moves (the shim holds its absolute path)
-- Runs on its own through the `drive-push` scheduled task (current user, no admin): 10 minutes
-  after logon and every 3 hours, through `conhost --headless` so no window shows. A run that
+- Runs on its own through the `drive-push` scheduled task (current user, no admin): 2 minutes
+  after logon and every 30 minutes, through `conhost --headless` so no window shows. A run that
   overlaps another is skipped (the task's IgnoreNew, plus a mutex in the script for manual runs)
 - Logs to `%LOCALAPPDATA%\drive-mirror\push_*.log`, kept 90 days
 - Uses rclone's shared client ID, which is being retired during 2026 (see the Linux README);

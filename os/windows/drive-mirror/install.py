@@ -29,7 +29,7 @@ BIN_DIR = LOCALAPPDATA / "levves" / "bin"
 SHIM = BIN_DIR / "drive-push.cmd"
 REMOTE = "gdrive-rw"
 TASK_NAME = "drive-push"
-TASK_EVERY_HOURS = 3
+TASK_EVERY_MINUTES = 30
 DISK_LABEL = "Drive Mirror"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -173,9 +173,9 @@ $ErrorActionPreference = 'Stop'
 $action = New-ScheduledTaskAction -Execute 'conhost.exe' `
     -Argument '--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{PUSH_SCRIPT.resolve()}"'
 $logon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$logon.Delay = 'PT10M'
+$logon.Delay = 'PT2M'
 $every = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
-    -RepetitionInterval (New-TimeSpan -Hours {TASK_EVERY_HOURS})
+    -RepetitionInterval (New-TimeSpan -Minutes {TASK_EVERY_MINUTES})
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -ExecutionTimeLimit (New-TimeSpan -Hours 4)
@@ -186,7 +186,7 @@ Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $action -Trigger $logon,$
     result = subprocess.run(["powershell", "-NoProfile", "-Command", ps])
     if result.returncode != 0:
         fail(f"Could not register the {TASK_NAME} task.")
-    print(f"  ✓ '{TASK_NAME}' runs 10 min after logon and every {TASK_EVERY_HOURS} hours.")
+    print(f"  ✓ '{TASK_NAME}' runs 2 min after logon and every {TASK_EVERY_MINUTES} minutes.")
 
 def uninstall():
     print_header("Removing drive-push")
@@ -203,7 +203,8 @@ def done():
     print_header("Drive push setup complete")
     print("  In a new terminal:")
     print("    drive-push --dry-run   # list what would upload")
-    print("    drive-push             # upload it")
+    print("    drive-push             # upload what changed since the last push")
+    print("    drive-push --full      # compare the whole disk with Drive (~15 min)")
     print()
 
 # ── Main ──────────────────────────────────────────────────────────────────────
