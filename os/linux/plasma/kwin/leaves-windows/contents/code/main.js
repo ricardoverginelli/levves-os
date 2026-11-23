@@ -53,11 +53,11 @@
 // they're ignored) and live in this machine's kwinrc, [Script-leaves-windows]
 // homes, written through plasmashell's scripting (scripts can't write config).
 //
-// Borrowing: a window moved onto the main monitor from another one (dragged,
-// Meta+Down) is borrowed. When another window on main gets focus (its own
-// dialogs, Yakuake and the bars don't count), it goes back to the column or
-// place it left, and the main window it pushed out of a column gets that
-// column back. Meta+Down on main keeps it there. Meanwhile its old column goes
+// Borrowing: a window moved onto the main monitor out of a column on another
+// one (dragged, Meta+Down) is borrowed. When another window on main gets focus
+// (its own dialogs, Yakuake and the bars don't count), it goes back to the
+// column it left, and the main window it pushed out of a column gets that
+// column back. A floating window has no place to go back to, so it just stays. Meta+Down on main keeps it there. Meanwhile its old column goes
 // to the most recent window behind, which steps back when it returns.
 // Moves KWin makes itself don't count: placing a window that just opened, or
 // putting windows back on a monitor that was just plugged in.
@@ -908,12 +908,10 @@ function updateGame() {
 
 // ── Borrowing ─────────────────────────────────────────────────────────────
 
-// key → {window, from (monitor name), column (-1: none), floated, geometry, displaced: {window, column}}
+// key → {window, from (monitor name), column, displaced: {window, column}}
 const borrowed = {};
 // key → the window's monitor (name) as last seen, to tell where it came from
 const outputOf = {};
-// key → {output (name), geometry}: where it last sat still, off the main monitor
-const placeOf = {};
 // key → when it opened; when the monitors last changed. Moves onto main in the
 // next SETTLE_MS are KWin's (placing a new window, restoring windows to a
 // monitor that came back), not borrowing
@@ -923,15 +921,6 @@ let screensAt = 0;
 function settling(k) {
     const now = Date.now();
     return now - screensAt < SETTLE_MS || now - (addedAt[k] || 0) < SETTLE_MS;
-}
-
-function notePlace(w) {
-    if (w.move || w.deleted || !w.output || w.output == mainOutput())
-        return;
-    const g = w.frameGeometry;
-    if (!contains(w.output.geometry, {x: g.x + g.width / 2, y: g.y + g.height / 2}))
-        return;  // mid-move to another monitor
-    placeOf[key(w)] = {output: w.output.name, geometry: {x: g.x, y: g.y, width: g.width, height: g.height}};
 }
 
 // The main window a borrowed one pushed out of a column: the first one, as it lands
@@ -971,13 +960,14 @@ function outputMoved(w) {
     if (sending || !was || was == w.output.name || w.output != main || workspace.screens.length < 2
         || !isTileable(w) || settling(k))
         return;
-    const s = slots[was], place = placeOf[k];
-    borrowed[k] = {window: w, from: was, column: s ? s.indexOf(w) : -1, floated: !!floating[k],
-                   geometry: place && place.output == was ? place.geometry : null, displaced: null,
-                   at: Date.now()};
+    // Only a window that held a column is borrowed: a floating one stays where it's put
+    const s = slots[was], column = s ? s.indexOf(w) : -1;
+    if (column == -1)
+        return;
+    borrowed[k] = {window: w, from: was, column: column, displaced: null, at: Date.now()};
 }
 
-// Back to the column (or place) it left; that column's stand-in goes behind
+// Back to the column it left; that column's stand-in goes behind
 function sendBack(b) {
     const w = b.window, k = key(w);
     delete borrowed[k];
@@ -1001,10 +991,6 @@ function sendBack(b) {
         s[b.column] = w;
         delete floating[k];
         w.tile = tiles[b.column];
-    } else if (b.geometry) {
-        w.frameGeometry = b.geometry;
-        if (b.floated)
-            floating[k] = true;
     }
     schedule();
 }
@@ -1138,8 +1124,6 @@ function watch(w) {
     w.maximizedChanged.connect(back);
     w.fullScreenChanged.connect(back);
     outputOf[key(w)] = w.output ? w.output.name : null;
-    notePlace(w);
-    w.frameGeometryChanged.connect(() => notePlace(w));
     w.outputChanged.connect(() => outputMoved(w));
     // Moved to another monitor (Meta+Up/Down): it takes a column there like a picked window
     w.outputChanged.connect(() => {
@@ -1175,7 +1159,6 @@ workspace.windowRemoved.connect(w => {
     delete dragFrom[key(w)];
     delete borrowed[key(w)];
     delete outputOf[key(w)];
-    delete placeOf[key(w)];
     delete addedAt[key(w)];
     schedule();
 });
