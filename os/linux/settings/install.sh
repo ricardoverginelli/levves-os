@@ -29,11 +29,11 @@ set_key true --file kscreenlockerrc --group Daemon --key Autolock
 set_key 5 --file kscreenlockerrc --group Daemon --key Timeout
 set_key false --file powerdevilrc --group AC --group Display --key DimDisplayWhenIdle
 set_key false --file powerdevilrc --group AC --group Display --key TurnOffDisplayWhenIdle
-# Both daemons reread their files when told to
+# The screen locker rereads its file when told to. PowerDevil's reparseConfiguration
+# answers but kept the old display settings (screens still went off at lock), so restart it
 dbus-send --session --dest=org.freedesktop.ScreenSaver --type=method_call \
     /ScreenSaver org.kde.screensaver.configure
-dbus-send --session --dest=org.kde.Solid.PowerManagement --type=method_call \
-    /org/kde/Solid/PowerManagement org.kde.Solid.PowerManagement.reparseConfiguration
+systemctl --user restart plasma-powerdevil.service
 
 # Notifications: popups close after 3.3 s, a third less than Plasma's 5 s
 set_key 3333 --file plasmanotifyrc --group Notifications --key PopupTimeout
