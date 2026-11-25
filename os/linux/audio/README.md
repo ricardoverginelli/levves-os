@@ -1,6 +1,6 @@
 # audio
 
-**Desktop only** (`.only-on`): needs the Audient iD4.
+**Desktop only** (in its basket, `machines/`): needs the Audient iD4.
 
 Audient iD4 fix: its mic (input 1) shows up as a stereo source with the voice on
 the left channel only, so recordings (the capture replay buffer, Discord...)

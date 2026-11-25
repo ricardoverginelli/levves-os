@@ -1,0 +1,4 @@
+# A Levves component (see machines/README.md)
+kind: hardware
+about: Logitech G203 (Piper)
+needs: lsusb -d 046d:c092

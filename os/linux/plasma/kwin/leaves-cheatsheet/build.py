@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Write the cheat sheet's data (sheet.json) into the installed script as
-contents/ui/sheet.js, without the rows meant for other machines: a row's third
-item names a repo folder, and its .only-on file lists the hostnames it's for.
+contents/ui/sheet.js, without the rows for components this machine didn't pick: a
+row's third item names a repo folder, kept when it's core or in this machine's
+basket (machines/<hostname>, see machines/README.md).
 
 Usage: build.py <installed script folder>   (apply.sh runs it after copying)
 """
@@ -14,13 +15,24 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[4]  # os/linux/plasma/kwin/leaves-cheatsheet -> repo root
 
 
-def for_this_machine(folder):
-    only_on = REPO / folder / ".only-on"
-    if not only_on.exists():
-        return True
-    hosts = [line.strip() for line in only_on.read_text().splitlines()
-             if line.strip() and not line.startswith("#")]
-    return socket.gethostname() in hosts
+def basket():
+    try:
+        lines = (REPO / "machines" / socket.gethostname()).read_text().splitlines()
+    except OSError:
+        return set()
+    return {line.split("#")[0].strip() for line in lines} - {""}
+
+
+def for_this_machine(folder, picked=basket()):
+    """The nearest `component` file at or above the folder decides; none is core."""
+    path = Path(folder)
+    for d in (path, *path.parents):
+        component = REPO / d / "component"
+        if component.exists():
+            kind = next((line.split(":", 1)[1].strip() for line in component.read_text().splitlines()
+                         if line.startswith("kind:")), "core")
+            return kind == "core" or str(d) in picked
+    return True
 
 
 sections = json.loads((HERE / "sheet.json").read_text())["sections"]

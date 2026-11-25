@@ -1,6 +1,6 @@
 # drive-mirror
 
-**Desktop only** (`.only-on`): needs the "Drive Mirror" HDD (Seagate ST1000DM003, NTFS).
+**Desktop only** (in its basket, `machines/`): needs the "Drive Mirror" HDD (Seagate ST1000DM003, NTFS).
 
 A one-way copy of Google Drive (My Drive) on the HDD, kept up to date daily by
 rclone. It replaces the FreeFileSync mirror that ran on Windows. The disk stays

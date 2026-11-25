@@ -1,6 +1,6 @@
 # reboot-to-windows
 
-**Desktop only** (`.only-on`): the desktop dual-boots Windows 11 from the X15 SSD.
+**Desktop only** (in its basket, `machines/`): the desktop dual-boots Windows 11 from the X15 SSD.
 
 "Reboot to Windows" in the app menu (or KRunner, or `reboot-to-windows` in a
 terminal) restarts straight into Windows, once. The next boot after that follows

@@ -1,0 +1,4 @@
+# A Levves component (see machines/README.md)
+kind: hardware
+about: Logitech MX Master 3 (Solaar)
+needs: lsusb -d 046d:c52b || lsusb -d 046d:c548

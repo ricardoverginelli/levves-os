@@ -1,6 +1,6 @@
 # fingerprint
 
-**ASUS laptop only** (`.only-on`). Its fingerprint reader, a FocalTech FT9366 behind a
+**ASUS laptop only** (in its basket, `machines/`). Its fingerprint reader, a FocalTech FT9366 behind a
 Realtek RTS5811 bridge (USB `2808:a658`), isn't supported by upstream libfprint. This
 builds Fedora's own libfprint package with an open-source driver for it added, so fprintd
 and Fedora's fingerprint login (authselect `with-fingerprint`) work unchanged.

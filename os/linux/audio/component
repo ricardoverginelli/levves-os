@@ -1,0 +1,4 @@
+# A Levves component (see machines/README.md)
+kind: hardware
+about: Audient iD4 setup
+needs: lsusb -d 2708:0009

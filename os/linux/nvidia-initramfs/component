@@ -1,0 +1,4 @@
+# A Levves component (see machines/README.md)
+kind: hardware
+about: NVIDIA driver loaded from the initramfs
+needs: lspci -d 10de: | grep -q .

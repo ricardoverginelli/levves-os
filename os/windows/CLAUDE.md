@@ -134,7 +134,7 @@ python os/windows/debloat/install.py
   monitor counts: once detached, Windows lists the Asus under every output, the LG's included
 - `install.py` refuses where the Asus isn't connected, needs AHK (`ahk/install.py`), and
   registers `main-monitor.ahk` as the `main-monitor-ahk` startup entry (HKCU, no admin);
-  `--uninstall` removes it and stops the running copy. Machine-only: `.only-on`
+  `--uninstall` removes it and stops the running copy. Hardware component, in the desktop's basket
 
 ### drive-mirror/
 - The Windows half of `os/linux/drive-mirror`. That one-way `rclone sync` would move files
@@ -169,7 +169,7 @@ python os/windows/debloat/install.py
 - Uses rclone's shared client ID, which is being retired during 2026 (see the Linux README);
   `rclone config update gdrive-rw client_id=... client_secret=...` once there's an own one
 - `--uninstall` removes the task, rclone, the shim and the PATH entries; the remote stays in
-  `%APPDATA%\rclone\rclone.conf`. Machine-only: `.only-on`
+  `%APPDATA%\rclone\rclone.conf`. Hardware component, in the desktop's basket
 
 ### theme/install.py
 - Windows take on the Plasma "Leaves" theme: reads colors from `design/dist/levves_tokens.py` and

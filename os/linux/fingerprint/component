@@ -1,0 +1,4 @@
+# A Levves component (see machines/README.md)
+kind: hardware
+about: FocalTech FT9366 fingerprint reader
+needs: lsusb -d 2808:a658

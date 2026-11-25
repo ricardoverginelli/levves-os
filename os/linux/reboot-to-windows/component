@@ -1,0 +1,3 @@
+# A Levves component (see machines/README.md)
+kind: optional
+about: Reboot into the Windows install (dual boot)

@@ -1,5 +1,5 @@
 {
-    "_comment": "The cheat sheet (Meta+F12). Sections fill columns in order; 'column' starts a new one. Keys: '+' joins a combo, ' / ' separates alternatives. A row's optional third item names a repo folder whose .only-on file limits it to those machines (build.py drops it elsewhere). 'kind': 'commands' shows the first column as commands, not keys. Keep it in sync when shortcuts change.",
+    "_comment": "The cheat sheet (Meta+F12). Sections fill columns in order; 'column' starts a new one. Keys: '+' joins a combo, ' / ' separates alternatives. A row's optional third item names a repo folder; build.py drops the row on machines that don't have that component (machines/README.md). 'kind': 'commands' shows the first column as commands, not keys. Keep it in sync when shortcuts change.",
     "sections": [
         {
             "title": "Shell",
@@ -84,9 +84,9 @@
         {
             "title": "Instant replay",
             "rows": [
-                ["Alt+F10", "Save the last 90 seconds"],
-                ["Alt+Shift+F10", "Replay buffer off / on"],
-                ["Ctrl+Alt+F10", "Open the replay folder"]
+                ["Alt+F10", "Save the last 60 seconds", "os/linux/instant-replay"],
+                ["Alt+Shift+F10", "Replay buffer off / on", "os/linux/instant-replay"],
+                ["Ctrl+Alt+F10", "Open the replay folder", "os/linux/instant-replay"]
             ]
         },
         {

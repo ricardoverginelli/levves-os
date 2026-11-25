@@ -1,0 +1,4 @@
+# A Levves component (see machines/README.md)
+kind: hardware
+about: Mirror Google Drive to the "Drive Mirror" HDD
+needs: ls /dev/disk/by-id/ | grep -q ST1000DM003
