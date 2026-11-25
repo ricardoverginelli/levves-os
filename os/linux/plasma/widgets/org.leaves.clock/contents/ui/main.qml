@@ -35,7 +35,7 @@ PlasmoidItem {
 
     // Reminders: a notification 30, 10, 5 and 1 minute before each timed event,
     // checked on every tick. Only upcoming ones: nothing is replayed after login or
-    // a suspend (Akonadi's kalendarac, which did that, is off: apply.sh)
+    // a suspend (Akonadi's kalendarac, which did that, is off: os/linux/settings)
     readonly property var reminderMinutes: [30, 10, 5, 1]
     function remind() {
         if (!agenda.item)

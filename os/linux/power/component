@@ -1,3 +1,0 @@
-# A Levves component (see machines/README.md)
-kind: core
-about: Locks after 5 idle minutes; on AC the screen never dims or turns off
