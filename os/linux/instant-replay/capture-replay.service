@@ -6,7 +6,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=%h/.local/bin/capture replay run
+ExecStart=%h/.local/bin/instant-replay run
 Restart=on-failure
 RestartSec=10
 

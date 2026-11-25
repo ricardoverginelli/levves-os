@@ -20,10 +20,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "design/dist"))
 from levves_qt import tinted as tinted_pixmap  # noqa: E402  (the Levves design system)
 from levves_tokens import color  # noqa: E402
 
-CAPTURE = Path(__file__).resolve().parent / "capture"
+REPLAY = Path(__file__).resolve().parent / "instant-replay"
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "capture"
 RECORDING, WAITING, OFF = color("accent"), color("text"), color("text-faint")
-SECONDS = 60  # capture's replay_seconds
+SECONDS = 60  # instant-replay's replay_seconds
 
 
 def user_dir(kind):
@@ -77,13 +77,13 @@ class Tray:
         self.icons = {"recording": tinted(RECORDING), "waiting": tinted(WAITING), "off": tinted(OFF)}
         self.tray = QSystemTrayIcon()
         menu = QMenu()
-        self.save_action = menu.addAction(f"Save last {SECONDS} s", lambda: self.capture("save"))
-        self.toggle_action = menu.addAction("Replay buffer on", lambda: self.capture("toggle"))
+        self.save_action = menu.addAction(f"Save last {SECONDS} s", lambda: self.run("save"))
+        self.toggle_action = menu.addAction("Replay buffer on", lambda: self.run("toggle"))
         self.toggle_action.setCheckable(True)
-        menu.addAction("Open replay folder", lambda: self.capture("folder"))
+        menu.addAction("Open replay folder", lambda: self.run("folder"))
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(
-            lambda reason: reason == QSystemTrayIcon.ActivationReason.Trigger and self.capture("folder"))
+            lambda reason: reason == QSystemTrayIcon.ActivationReason.Trigger and self.run("folder"))
         self.menu = menu
         self.shown = None
         self.update()
@@ -98,8 +98,8 @@ class Tray:
         self.scan()
         self.cut_timer = QTimer(interval=1500, timeout=self.settle)
 
-    def capture(self, what):
-        subprocess.Popen([CAPTURE, "replay", what], start_new_session=True)
+    def run(self, what):
+        subprocess.Popen([REPLAY, what], start_new_session=True)
         QTimer.singleShot(800, self.update)
 
     def update(self):
