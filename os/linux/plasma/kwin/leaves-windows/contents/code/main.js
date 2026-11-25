@@ -53,12 +53,14 @@
 // they're ignored) and live in this machine's kwinrc, [Script-leaves-windows]
 // homes, written through plasmashell's scripting (scripts can't write config).
 //
-// Borrowing: a window moved onto the main monitor out of a column on another
-// one (dragged, Meta+Down) is borrowed. When another window on main gets focus
-// (its own dialogs, Yakuake and the bars don't count), it goes back to the
-// column it left, and the main window it pushed out of a column gets that
-// column back. A floating window has no place to go back to, so it just stays. Meta+Down on main keeps it there. Meanwhile its old column goes
-// to the most recent window behind, which steps back when it returns.
+// Borrowing: only a window fixed in a column, its app's home (Meta+H), is
+// borrowed when moved onto the main monitor from the monitor its home is on
+// (dragged, Meta+Down). When another window on main gets focus (its own
+// dialogs, Yakuake and the bars don't count), it goes back to its home column,
+// and the main window it pushed out of a column gets that column back. Any
+// other window just stays where it's put; Meta+Down on main keeps a borrowed
+// one there too. Meanwhile its old column goes to the most recent window
+// behind, which steps back when it returns.
 // Moves KWin makes itself don't count: placing a window that just opened, or
 // putting windows back on a monitor that was just plugged in.
 //
@@ -960,14 +962,16 @@ function outputMoved(w) {
     if (sending || !was || was == w.output.name || w.output != main || workspace.screens.length < 2
         || !isTileable(w) || settling(k))
         return;
-    // Only a window that held a column is borrowed: a floating one stays where it's put
-    const s = slots[was], column = s ? s.indexOf(w) : -1;
-    if (column == -1)
+    // Only a window fixed in a column (its home, Meta+H) on the monitor it left
+    // is borrowed: any other stays where it's put
+    const h = homeOf(w);
+    if (!h || h.output.name != was)
         return;
+    const column = h.column;
     borrowed[k] = {window: w, from: was, column: column, displaced: null, at: Date.now()};
 }
 
-// Back to the column it left; that column's stand-in goes behind
+// Back to its home column; that column's stand-in goes behind
 function sendBack(b) {
     const w = b.window, k = key(w);
     delete borrowed[k];
@@ -982,7 +986,8 @@ function sendBack(b) {
         w.setMaximize(false, false);
     sendAway(w, target);
     const s = slots[target.name], tiles = columns(target);
-    if (s && s.length == tiles.length && b.column >= 0 && b.column < s.length) {
+    if (s && s.length == tiles.length && b.column >= 0) {
+        b.column = Math.min(b.column, s.length - 1);  // a home past the layout's columns: its last one
         const occ = s[b.column];
         if (occ) {
             s.forEach((x, i) => { if (x == occ) s[i] = null; });
