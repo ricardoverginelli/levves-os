@@ -19,7 +19,9 @@ through kglobalaccel.
   mode and position to `~/.local/state/main-monitor`, and disables it with
   `kscreen-doctor`. Won't turn off the only enabled screen.
 - **On:** re-enables the saved output with that mode and position, and makes
-  it primary again.
+  it primary again. With no saved state (turned off in System Settings, or
+  the file is gone), it turns on the first connected but disabled external
+  screen instead, at the mode and position kscreen remembers.
 - No connector name is hardcoded, so it still works when names change after a
   GPU swap.
 - `main-monitor off` / `main-monitor on` force one or the other.

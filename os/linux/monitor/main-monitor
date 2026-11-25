@@ -18,17 +18,35 @@ off() {
     kscreen-doctor "output.${saved%% *}.disable"
 }
 
+# A connected but disabled external screen, with the mode and position kscreen
+# still remembers: what "on" restores when there's no saved state (turned off
+# from System Settings, or the state file was lost).
+idle_external() {
+    kscreen-doctor -j | jq -r 'first(.outputs[] |
+        select(.connected and (.enabled | not) and (.name | test("^(eDP|LVDS|DSI)") | not)) |
+        "\(.name) \(.currentModeId as $m | .modes[] | select(.id == $m) | .name) \(.pos.x),\(.pos.y)") // empty'
+}
+
 on() {
     local name mode pos
-    read -r name mode pos < "$state" || { echo "main-monitor: nothing to restore" >&2; exit 1; }
+    if [ -f "$state" ]; then
+        read -r name mode pos < "$state"
+    else
+        read -r name mode pos <<< "$(idle_external)"
+    fi
+    [ -n "$name" ] || { echo "main-monitor: nothing to restore" >&2; exit 1; }
     kscreen-doctor "output.$name.enable" "output.$name.mode.$mode" \
         "output.$name.position.$pos" "output.$name.priority.1"
     rm -f "$state"
 }
 
 saved_is_off() {
-    [ -f "$state" ] && kscreen-doctor -j | jq -e --arg n "$(cut -d' ' -f1 "$state")" \
-        'any(.outputs[]; .name == $n and .connected and (.enabled | not))' >/dev/null
+    if [ -f "$state" ]; then
+        kscreen-doctor -j | jq -e --arg n "$(cut -d' ' -f1 "$state")" \
+            'any(.outputs[]; .name == $n and .connected and (.enabled | not))' >/dev/null
+    else
+        [ -n "$(idle_external)" ]
+    fi
 }
 
 case ${1:-toggle} in
