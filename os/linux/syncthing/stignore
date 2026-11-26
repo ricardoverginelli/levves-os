@@ -1,0 +1,3 @@
+// ~/.agents/.stignore, written by levves os/linux/syncthing and nas/syncthing install.sh.
+// Git history lives on the NAS only (nightly commit); syncing .git between machines breaks it.
+.git
