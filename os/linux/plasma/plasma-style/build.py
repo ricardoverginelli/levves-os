@@ -98,7 +98,7 @@ def build_colors():
 
 # --- Frames ----------------------------------------------------------------
 # Drawn as pixels (whole-pixel rects), never strokes or curves: every piece then measures whole
-# pixels, which KSvg needs to lay a frame out without gaps (~/.agents/notes/plasma-svg-frames.md).
+# pixels, which KSvg needs to lay a frame out without gaps (os/linux/notes/plasma-svg-frames.md).
 
 SVG_NS = "http://www.w3.org/2000/svg"
 FRAME = ["topleft", "top", "topright", "left", "center", "right", "bottomleft", "bottom", "bottomright"]

@@ -167,7 +167,7 @@ Everything under `os/linux/plasma/`, applied by its `apply.sh`; phases in its `T
   the top bar frosted on `bg` at `opacity.bar` with no border (it belongs to the screen edge, it
   doesn't float), and Plasma's own controls as flat
   keys, fields and meters. Frame pieces must measure whole pixels: lines are filled rects, never
-  strokes (`~/.agents/notes/plasma-svg-frames.md`).
+  strokes (`os/linux/notes/plasma-svg-frames.md`).
 - Apps: the color scheme `Levves` (same palette), Figtree for the UI and Bricolage Grotesque for
   window titles, and the window decoration `kwin-decoration/levves` (the solid title plane, the
   `edge` border and the 18px cut). Their widgets are still Breeze's, in Levves colors.
