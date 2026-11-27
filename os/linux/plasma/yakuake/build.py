@@ -15,10 +15,11 @@
 Prints "changed" when anything was rewritten; Yakuake only picks the skin and
 profile up when it restarts.
 """
+
 import configparser
-import sys
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -32,35 +33,38 @@ OLD = [KONSOLE / "Leaves.colorscheme", SKIN.parent / "leaves"]  # the glass look
 
 sys.path.insert(0, str(DIST))
 sys.path.insert(0, str(HERE.parent / "shared"))
-import changes  # noqa: E402
-from levves_tokens import TOKENS, color as palette  # noqa: E402  (the Levves design system)
+import changes
+from levves_tokens import TOKENS
+from levves_tokens import color as palette
 
 
 def px(name):
     return int(TOKENS[name].removesuffix("px"))
 
 
-TAB_BAR = px("size.key")         # the strip with the tabs
-TITLE = px("size.title-bar")     # the title bar along the bottom
-TILE = 2                         # width of the tiled strip and bar backgrounds
-KEY_W, KEY_H = 22, 18            # the decoration's small keys (kwin-decoration/levves Frame.qml)
+TAB_BAR = px("size.key")  # the strip with the tabs
+TITLE = px("size.title-bar")  # the title bar along the bottom
+TILE = 2  # width of the tiled strip and bar backgrounds
+KEY_W, KEY_H = 22, 18  # the decoration's small keys (kwin-decoration/levves Frame.qml)
 KEY_GAP = 4
 FROST = TOKENS["opacity.terminal"]
 CLEAR = TOKENS["opacity.terminal-clear"]  # Yakuake, unblurred
-KEY_MARGIN = 5                   # last key to the window's right edge, edge included
-TAB_CORNER = 10                  # a tab's ends: 2px of strip, then its key's side
+KEY_MARGIN = 5  # last key to the window's right edge, edge included
+TAB_CORNER = 10  # a tab's ends: 2px of strip, then its key's side
 FONT = "JetBrains Mono,9.5,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
-LINE_SPACING = 1                 # px between rows: Claude Code's answers breathe a little
+LINE_SPACING = 1  # px between rows: Claude Code's answers breathe a little
 
 
 def rgb(hex_color):
     h = hex_color.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def mix(a, b, t):
     """Blend hex color a toward b by t (0..1)."""
-    return "#" + "".join(f"{round(x + (y - x) * t):02x}" for x, y in zip(rgb(a), rgb(b)))
+    return "#" + "".join(
+        f"{round(x + (y - x) * t):02x}" for x, y in zip(rgb(a), rgb(b), strict=False)
+    )
 
 
 def ini(color):
@@ -69,10 +73,19 @@ def ini(color):
 
 # --- Konsole color scheme -------------------------------------------------
 
+
 def build_scheme(blur=True, name="Levves", opacity=FROST):
     # Normal ANSI colors; intense is a step toward white, faint a step toward bg
-    ansi = [palette("terminal.black"), palette("critical"), palette("success"), palette("warning"),
-            palette("info"), palette("terminal.magenta"), palette("terminal.cyan"), palette("text")]
+    ansi = [
+        palette("terminal.black"),
+        palette("critical"),
+        palette("success"),
+        palette("warning"),
+        palette("info"),
+        palette("terminal.magenta"),
+        palette("terminal.cyan"),
+        palette("text"),
+    ]
     lines = []
 
     def entry(section, color):
@@ -88,8 +101,17 @@ def build_scheme(blur=True, name="Levves", opacity=FROST):
     for i, color in enumerate(ansi):
         intense = palette("terminal.bright-black") if i == 0 else mix(color, "#ffffff", 0.25)
         triple(f"Color{i}", color, intense)
-    lines.extend(["[General]", f"Blur={str(blur).lower()}", "ColorRandomization=false",
-                  f"Description={name}", f"Opacity={opacity}", "Wallpaper=", ""])
+    lines.extend(
+        [
+            "[General]",
+            f"Blur={str(blur).lower()}",
+            "ColorRandomization=false",
+            f"Description={name}",
+            f"Opacity={opacity}",
+            "Wallpaper=",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -98,17 +120,24 @@ def build_scheme(blur=True, name="Levves", opacity=FROST):
 # ones over earlier ones; whatever falls outside the image is cut off. Yakuake
 # tiles the tab and bar backgrounds; they're frosted like the terminal.
 
+
 def paint(name):
     """A color token by name, or a color given as is ("#ffffff")."""
     return name if name.startswith("#") else palette(name)
 
 
 def svg(width, height, rects, extra=""):
-    body = "".join(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{paint(c)}"'
-                   + (f' fill-opacity="{o}"' if o < 1 else "") + "/>"
-                   for x, y, w, h, c, o in rects if w > 0 and h > 0)
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-            f'viewBox="0 0 {width} {height}"><g shape-rendering="crispEdges">{body}</g>{extra}</svg>\n')
+    body = "".join(
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{paint(c)}"'
+        + (f' fill-opacity="{o}"' if o < 1 else "")
+        + "/>"
+        for x, y, w, h, c, o in rects
+        if w > 0 and h > 0
+    )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}"><g shape-rendering="crispEdges">{body}</g>{extra}</svg>\n'
+    )
 
 
 def current(x, y, w, h):
@@ -139,7 +168,7 @@ def glyph(kind, center, ink):
         return [(cx - 4, cy - 5 + 4 * i, 8, 2, ink, 1) for i in range(3)], ""
     if kind == "pin":  # the decoration's keep-above: a bar over a stem
         return [(cx - 4, cy - 5, 8, 2, ink, 1), (cx - 1, cy - 1, 2, 6, ink, 1)], ""
-    d = 11 / 2 / 2 ** 0.5  # close: an X of 11px lines, 1.5px thick
+    d = 11 / 2 / 2**0.5  # close: an X of 11px lines, 1.5px thick
     x, y = center
     path = f"M{x - d:.2f} {y - d:.2f}L{x + d:.2f} {y + d:.2f}M{x + d:.2f} {y - d:.2f}L{x - d:.2f} {y + d:.2f}"
     return [], f'<path d="{path}" stroke="{paint(ink)}" stroke-width="1.5" fill="none"/>'
@@ -171,7 +200,11 @@ def selected_tab(width, left, right):
     in height; left/right say whether the segment's side is in this piece."""
     x0 = 2 if left else -4
     x1 = width - 2 if right else width + 4
-    return svg(width, TAB_BAR, [(0, 0, width, TAB_BAR, "surface", FROST)] + current(x0, 1, x1 - x0, TAB_BAR - 1))
+    return svg(
+        width,
+        TAB_BAR,
+        [(0, 0, width, TAB_BAR, "surface", FROST)] + current(x0, 1, x1 - x0, TAB_BAR - 1),
+    )
 
 
 def build_skin():
@@ -196,17 +229,23 @@ def build_skin():
     title_y = (TITLE - 1 - KEY_H) // 2
     files["title/back.svg"] = svg(TILE, TITLE, title_bar(TILE))
     files["title/left.svg"] = svg(14, TITLE, title_bar(14) + [(0, 0, 1, TITLE, "edge", 1)])
-    files["title/right.svg"] = svg(KEY_MARGIN, TITLE, title_bar(KEY_MARGIN)
-                                   + [(KEY_MARGIN - 1, 0, 1, TITLE, "edge", 1)])
+    files["title/right.svg"] = svg(
+        KEY_MARGIN, TITLE, title_bar(KEY_MARGIN) + [(KEY_MARGIN - 1, 0, 1, TITLE, "edge", 1)]
+    )
     for name, kind in (("quit", "close"), ("config", "menu"), ("focus", "pin")):
         for state in ("up", "over", "down"):
-            files[f"title/{name}_{state}.svg"] = button(title_bar, KEY_W, TITLE, 0, title_y, kind, state)
-    files["icon.svg"] = svg(32, 32, [(2, 2, 28, 28, "surface", 1), (2, 2, 28, 3, "fog", 1),
-                                     (8, 20, 10, 3, "accent", 1)])
+            files[f"title/{name}_{state}.svg"] = button(
+                title_bar, KEY_W, TITLE, 0, title_y, kind, state
+            )
+    files["icon.svg"] = svg(
+        32, 32, [(2, 2, 28, 28, "surface", 1), (2, 2, 28, 3, "fog", 1), (8, 20, 10, 3, "accent", 1)]
+    )
 
     text, edge = rgb(palette("text")), rgb(palette("edge"))
     about = "[Description]\nSkin=Levves\nAuthor=Levves (design/dist)\nIcon=/icon.svg\n\n"
-    files["tabs.skin"] = about + f"""[Tabs]
+    files["tabs.skin"] = (
+        about
+        + f"""[Tabs]
 x={cell}
 y=0
 red={text[0]}
@@ -242,9 +281,12 @@ up_image=/tabs/close_up.svg
 over_image=/tabs/close_over.svg
 down_image=/tabs/close_down.svg
 """
+    )
     # Keys from the right: quit, menu, pin (x is from the window's right edge to the key's left)
     quit_x = KEY_MARGIN + KEY_W
-    files["title.skin"] = about + f"""[Border]
+    files["title.skin"] = (
+        about
+        + f"""[Border]
 red={edge[0]}
 green={edge[1]}
 blue={edge[2]}
@@ -285,17 +327,25 @@ up_image=/title/quit_up.svg
 over_image=/title/quit_over.svg
 down_image=/title/quit_down.svg
 """
+    )
     return files
 
 
 # --- Install --------------------------------------------------------------
 
+
 def kwrite(file, group, key, value):
-    current = subprocess.run(["kreadconfig6", "--file", str(file), "--group", group, "--key", key],
-                             capture_output=True, text=True).stdout.strip()
+    current = subprocess.run(
+        ["kreadconfig6", "--file", str(file), "--group", group, "--key", key],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
     if current == value:
         return False
-    subprocess.run(["kwriteconfig6", "--file", str(file), "--group", group, "--key", key, value], check=True)
+    subprocess.run(
+        ["kwriteconfig6", "--file", str(file), "--group", group, "--key", key, value], check=True
+    )
     return True
 
 
@@ -317,18 +367,23 @@ def default_profile(rc, fallback):
 def style_profile(profile, scheme="Levves"):
     """The Levves look on a Konsole profile, keeping its own name and command."""
     changed = False
-    for group, key, value in (("Appearance", "ColorScheme", scheme), ("Appearance", "Font", FONT),
-                              ("Appearance", "LineSpacing", str(LINE_SPACING)),
-                              ("Cursor Options", "UseCustomCursorColor", "true"),
-                              ("Cursor Options", "CustomCursorColor", ini(palette("accent"))),
-                              ("General", "TerminalMargin", "8")):
+    for group, key, value in (
+        ("Appearance", "ColorScheme", scheme),
+        ("Appearance", "Font", FONT),
+        ("Appearance", "LineSpacing", str(LINE_SPACING)),
+        ("Cursor Options", "UseCustomCursorColor", "true"),
+        ("Cursor Options", "CustomCursorColor", ini(palette("accent"))),
+        ("General", "TerminalMargin", "8"),
+    ):
         changed |= kwrite(profile, group, key, value)
     return changed
 
 
 def main():
     changed = changes.write(SCHEME, build_scheme())
-    changed |= changes.write(YAKUAKE_SCHEME, build_scheme(blur=False, name="Levves Yakuake", opacity=CLEAR))
+    changed |= changes.write(
+        YAKUAKE_SCHEME, build_scheme(blur=False, name="Levves Yakuake", opacity=CLEAR)
+    )
     changed |= changes.replace_tree(SKIN, build_skin())
     for old in OLD:
         if old.is_dir():
@@ -340,8 +395,13 @@ def main():
 
     # Yakuake: our skin, translucent like the terminal; its own fill only shows in gaps
     yakuakerc = CONFIG / "yakuakerc"
-    for key, value in (("Skin", "levves"), ("SkinInstalledWithKns", "false"), ("Translucency", "true"),
-                       ("BackgroundColor", ini(palette("bg"))), ("BackgroundColorOpacity", str(round(CLEAR * 100)))):
+    for key, value in (
+        ("Skin", "levves"),
+        ("SkinInstalledWithKns", "false"),
+        ("Translucency", "true"),
+        ("BackgroundColor", ini(palette("bg"))),
+        ("BackgroundColorOpacity", str(round(CLEAR * 100))),
+    ):
         changed |= kwrite(yakuakerc, "Appearance", key, value)
 
     # Yakuake's profile keeps its own name and command. Every new tab opens the terminal
@@ -361,5 +421,5 @@ def main():
 
 
 if __name__ == "__main__":
-    shutil.which("kwriteconfig6") or exit("kwriteconfig6 not found")
+    shutil.which("kwriteconfig6") or sys.exit("kwriteconfig6 not found")
     main()

@@ -7,25 +7,33 @@ ColorScheme-Text stylesheet and class on every currentColor shape. Without it,
 KDE's icon loader can't tint them and they render black. Prints "changed" when
 anything was written (Plasma caches icons, so it needs a restart).
 """
+
 import re
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "shared"))
-import changes  # noqa: E402
+import changes
 
 DEST = Path.home() / ".local/share/icons/hicolor/scalable/actions"
-STYLE = '<style type="text/css" id="current-color-scheme">.ColorScheme-Text { color: #fcfcfc; }</style>'
+STYLE = (
+    '<style type="text/css" id="current-color-scheme">.ColorScheme-Text { color: #fcfcfc; }</style>'
+)
 
 
 def kde_svg(svg):
     # Tag every element that paints with currentColor (filled or stroked shapes)
     def tag(m):
         element = m.group(0)
-        if "currentColor" not in element or "ColorScheme-Text" in element or element.startswith("<svg"):
+        if (
+            "currentColor" not in element
+            or "ColorScheme-Text" in element
+            or element.startswith("<svg")
+        ):
             return element
         return element.replace(" ", ' class="ColorScheme-Text" ', 1)
+
     svg = re.sub(r"<[a-zA-Z][^>]*>", tag, svg)
     return re.sub(r"(<svg\b[^>]*>)", r"\1" + STYLE, svg, count=1)
 

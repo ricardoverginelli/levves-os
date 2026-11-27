@@ -70,13 +70,16 @@ SCRIPTS = [
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def print_header(title):
     print(f"\n{'─' * 50}")
     print(f"  {title}")
     print(f"{'─' * 50}")
 
+
 def print_divider():
     print(f"\n{'═' * 50}")
+
 
 def ask_yes_no(question):
     while True:
@@ -87,7 +90,9 @@ def ask_yes_no(question):
             return False
         print("  Please enter y or n.")
 
+
 # ── Steps ─────────────────────────────────────────────────────────────────────
+
 
 def select_scripts():
     print_header("Select Setup Scripts to Run")
@@ -98,6 +103,7 @@ def select_scripts():
             selected.append(s)
 
     return selected
+
 
 def confirm_selection(selected):
     if not selected:
@@ -115,6 +121,7 @@ def confirm_selection(selected):
         print("\n  Cancelled. Exiting.")
         sys.exit(0)
 
+
 def run_scripts(selected):
     script_dir = Path(__file__).parent
     results = []
@@ -130,14 +137,16 @@ def run_scripts(selected):
             continue
 
         result = subprocess.run(
-            [sys.executable, str(script_path)],
-            cwd=str(script_dir)
+            [sys.executable, str(script_path)], cwd=str(script_dir), check=False
         )
 
         success = result.returncode == 0
-        results.append((s["label"], success, "OK" if success else f"Exited with code {result.returncode}"))
+        results.append(
+            (s["label"], success, "OK" if success else f"Exited with code {result.returncode}")
+        )
 
     return results
+
 
 def print_summary(results):
     print_divider()
@@ -155,6 +164,7 @@ def print_summary(results):
     else:
         print("  Some scripts failed. Review the output above for details.")
     print()
+
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 

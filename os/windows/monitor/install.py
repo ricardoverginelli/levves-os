@@ -20,35 +20,54 @@ STARTUP_REG_NAME = "main-monitor-ahk"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def print_header(title):
     print(f"\n{'─' * 50}")
     print(f"  {title}")
     print(f"{'─' * 50}")
 
+
 def find_ahk_exe():
-    for path in (Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"),
-                 Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey.exe")):
+    for path in (
+        Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"),
+        Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"),
+    ):
         if path.exists():
             return path
     return None
 
+
 def run_key(access):
     return winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_REG_KEY, 0, access)
 
+
 # ── Steps ─────────────────────────────────────────────────────────────────────
+
 
 def check_monitor():
     print_header("Checking the Monitor")
     # status exits 1 when the monitor isn't connected: this setup is for the PC that has it
     result = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(PS_SCRIPT), "status"],
-        capture_output=True, text=True)
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(PS_SCRIPT),
+            "status",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     last = (result.stdout.strip().splitlines() or [""])[-1]
     if result.returncode != 0:
         print(f"  ✗ {last or result.stderr.strip()}")
         print("    This toggle is for the PC with the Asus XG27ACS; nothing installed.")
         sys.exit(1)
     print(f"  ✓ {last}")
+
 
 def register_startup():
     print_header("Registering Startup Entry")
@@ -65,6 +84,7 @@ def register_startup():
     subprocess.Popen([str(ahk_exe), str(AHK_SCRIPT.resolve())])
     print(f"  ✓ {AHK_SCRIPT.name} is running.")
 
+
 def uninstall():
     print_header("Removing Main Monitor Toggle")
     try:
@@ -75,18 +95,31 @@ def uninstall():
         print("  ✓ No startup entry to remove")
     if find_ahk_exe():
         # Stop the running copy, found by its script path on the command line
-        subprocess.run(["powershell", "-NoProfile", "-Command",
-                        "Get-CimInstance Win32_Process -Filter \"Name like 'AutoHotkey%'\" | "
-                        f"Where-Object CommandLine -like '*{AHK_SCRIPT.name}*' | "
-                        "ForEach-Object { Stop-Process -Id $_.ProcessId }"])
+        subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                (
+                    "Get-CimInstance Win32_Process -Filter \"Name like 'AutoHotkey%'\" | "
+                    f"Where-Object CommandLine -like '*{AHK_SCRIPT.name}*' | "
+                    "ForEach-Object { Stop-Process -Id $_.ProcessId }"
+                ),
+            ],
+            check=False,
+        )
         print(f"  ✓ Stopped {AHK_SCRIPT.name}")
     print()
+
 
 def done():
     print_header("Main Monitor Toggle Installed")
     print("  Win+Shift+M turns the Asus off and back on; it starts with Windows.")
-    print("  From a shell: powershell -File os/windows/monitor/main-monitor.ps1 [toggle|off|on|status]")
+    print(
+        "  From a shell: powershell -File os/windows/monitor/main-monitor.ps1 [toggle|off|on|status]"
+    )
     print()
+
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 

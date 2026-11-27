@@ -6,6 +6,7 @@ every folder was amber; the accent is one thing per view (design/DESIGN.md Color
 inherits Breeze Dark and replaces only its places and mimetype icons that use the accent, with the accent
 fixed to `text-muted`. Prints "changed" when anything was written.
 """
+
 import configparser
 import re
 import shutil
@@ -18,8 +19,8 @@ OUT = Path.home() / ".local/share/icons/Levves"
 
 sys.path.insert(0, str(HERE.parents[3] / "design/dist"))
 sys.path.insert(0, str(HERE.parent / "shared"))
-import changes  # noqa: E402
-from levves_tokens import color  # noqa: E402  (the Levves design system)
+import changes
+from levves_tokens import color
 
 FOLDER = color("text-muted")
 SETS = ("places/", "mimetypes/")  # folders, and the file views' inode-directory
@@ -27,7 +28,11 @@ SETS = ("places/", "mimetypes/")  # folders, and the file views' inode-directory
 
 def accent_to_folder(m):
     """An element painted in the accent, painted in the folder color instead (and not recolored)."""
-    element = m.group(0).replace(' class="ColorScheme-Accent"', "").replace('class="ColorScheme-Accent" ', "")
+    element = (
+        m.group(0)
+        .replace(' class="ColorScheme-Accent"', "")
+        .replace('class="ColorScheme-Accent" ', "")
+    )
     return element.replace("currentColor", FOLDER)
 
 
@@ -36,12 +41,18 @@ def build(dest):
     index.optionxform = str
     index.read(BREEZE / "index.theme")
     places = [d for d in index["Icon Theme"]["Directories"].split(",") if d.startswith(SETS)]
-    scaled = [d for d in index["Icon Theme"].get("ScaledDirectories", "").split(",") if d.startswith(SETS)]
+    scaled = [
+        d for d in index["Icon Theme"].get("ScaledDirectories", "").split(",") if d.startswith(SETS)
+    ]
 
     theme = configparser.ConfigParser(interpolation=None)
     theme.optionxform = str
-    theme["Icon Theme"] = {"Name": "Levves", "Comment": "Breeze Dark with neutral folders",
-                           "Inherits": "breeze-dark,hicolor", "Directories": ",".join(places)}
+    theme["Icon Theme"] = {
+        "Name": "Levves",
+        "Comment": "Breeze Dark with neutral folders",
+        "Inherits": "breeze-dark,hicolor",
+        "Directories": ",".join(places),
+    }
     if scaled:
         theme["Icon Theme"]["ScaledDirectories"] = ",".join(scaled)
     for directory in places + scaled:

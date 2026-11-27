@@ -12,6 +12,7 @@ sandbox's). Nothing is recorded unless that stream exists, and the recorder
 never reconnects elsewhere: with a missing target, pw-record would fall back
 to the default source, the microphone.
 """
+
 import array
 import cmath
 import json
@@ -25,22 +26,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 PORT = 48731
-IDLE_EXIT = 5          # seconds without a request
-RATE = 24000           # PipeWire downmixes and resamples to this, mono
-HOP = RATE // 30       # one analysis per ~33ms
-SIZE = 1024            # FFT window: 43ms, 23 Hz per bin
+IDLE_EXIT = 5  # seconds without a request
+RATE = 24000  # PipeWire downmixes and resamples to this, mono
+HOP = RATE // 30  # one analysis per ~33ms
+SIZE = 1024  # FFT window: 43ms, 23 Hz per bin
 BANDS = 32
 LOW_HZ, HIGH_HZ = 50, 12000
-FLOOR_DB = -36         # below the running peak, drawn as nothing
+FLOOR_DB = -36  # below the running peak, drawn as nothing
 ATTACK, RELEASE = 0.5, 0.2  # the popup smooths between readings too
-RESOLVE_EVERY = 2      # seconds between stream lookups while silent
-TILT_DB = 3            # per octave up from LOW_HZ: music has less energy up high
+RESOLVE_EVERY = 2  # seconds between stream lookups while silent
+TILT_DB = 3  # per octave up from LOW_HZ: music has less energy up high
 
 
 def find_stream(app):
     """object.serial of the app's output stream, preferring a running one."""
     try:
-        dump = json.loads(subprocess.run(["pw-dump"], capture_output=True, text=True, timeout=3).stdout)
+        dump = json.loads(
+            subprocess.run(
+                ["pw-dump"], capture_output=True, text=True, timeout=3, check=False
+            ).stdout
+        )
     except (subprocess.SubprocessError, json.JSONDecodeError):
         return None
     app = app.lower()
@@ -50,7 +55,11 @@ def find_stream(app):
         props = info.get("props") or {}
         if props.get("media.class") != "Stream/Output/Audio":
             continue
-        names = (props.get("application.name"), props.get("application.process.binary"), props.get("node.name"))
+        names = (
+            props.get("application.name"),
+            props.get("application.process.binary"),
+            props.get("node.name"),
+        )
         if any(n and app in n.lower() for n in names):
             found.append((info.get("state") == "running", props.get("object.serial")))
     found.sort(reverse=True)
@@ -92,8 +101,10 @@ for b in range(BANDS + 1):
     EDGES.append(round(hz * SIZE / RATE))
 for b in range(1, len(EDGES)):
     EDGES[b] = max(EDGES[b], EDGES[b - 1] + 1)
-TILT = [TILT_DB * math.log2(math.sqrt(max(EDGES[b], 1) * EDGES[b + 1]) * RATE / SIZE / LOW_HZ)
-        for b in range(BANDS)]
+TILT = [
+    TILT_DB * math.log2(math.sqrt(max(EDGES[b], 1) * EDGES[b + 1]) * RATE / SIZE / LOW_HZ)
+    for b in range(BANDS)
+]
 
 
 class Analyzer:
@@ -114,7 +125,7 @@ class Analyzer:
         recorder, serial, app = None, None, None
         samples = array.array("f")
         pending = b""  # a partial sample from the last read
-        fresh = 0      # samples since the last analysis
+        fresh = 0  # samples since the last analysis
         last_resolve = 0
         while time.monotonic() - self.last_request < IDLE_EXIT:
             with self.lock:
@@ -131,10 +142,25 @@ class Analyzer:
                     pending = b""
                     if serial is not None:
                         recorder = subprocess.Popen(
-                            ["pw-record", "--target", str(serial), "--rate", str(RATE),
-                             "--channels", "1", "--format", "f32", "--raw",
-                             "-P", "{ node.dont-reconnect = true node.passive = true }", "-"],
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
+                            [
+                                "pw-record",
+                                "--target",
+                                str(serial),
+                                "--rate",
+                                str(RATE),
+                                "--channels",
+                                "1",
+                                "--format",
+                                "f32",
+                                "--raw",
+                                "-P",
+                                "{ node.dont-reconnect = true node.passive = true }",
+                                "-",
+                            ],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL,
+                            bufsize=0,
+                        )
             if recorder is None:
                 self.decay()
                 time.sleep(1 / 30)
@@ -166,7 +192,7 @@ class Analyzer:
             self.levels = [v * (1 - RELEASE) for v in self.levels]
 
     def analyze(self, samples):
-        spectrum = fft([s * w for s, w in zip(samples, WINDOW)])
+        spectrum = fft([s * w for s, w in zip(samples, WINDOW, strict=False)])
         raw = []
         for b in range(BANDS):
             lo, hi = EDGES[b], EDGES[b + 1]

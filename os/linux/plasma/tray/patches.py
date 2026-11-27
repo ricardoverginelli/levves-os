@@ -36,7 +36,7 @@ PLASMOID_ITEM = "contents/ui/PlasmoidItem.qml"
 EXPANDER = "contents/ui/ExpanderArrow.qml"
 HIGHLIGHT = "contents/ui/CurrentItemHighLight.qml"
 
-ICON_OVERLAY = '''
+ICON_OVERLAY = """
     // Leaves: opens on hover (root.leavesHoverOpen)
     HoverHandler { id: leavesHover }
     // The Leaves notifications open a side panel instead of expanding (leavesPanelOpen)
@@ -67,9 +67,9 @@ ICON_OVERLAY = '''
         value: 0
         when: plasmoidContainer.leavesIconName !== ""
     }
-'''
+"""
 
-LEAVES = '''
+LEAVES = """
     // ── Leaves (os/linux/plasma/tray/patches.py) ────────────────────────────
     // Ids match by prefix (some apps add a counter, e.g. NordPass_status_icon_1)
     // (Media Player: the Leaves media bar covers it)
@@ -320,9 +320,9 @@ LEAVES = '''
             }
         }
     }
-'''
+"""
 
-PINNED_GRID = '''
+PINNED_GRID = """
             // Leaves: volume, then notifications, always at the right end
             GridView {
                 id: pinnedGrid
@@ -344,62 +344,85 @@ PINNED_GRID = '''
                     height: pinnedGrid.cellHeight
                 }
             }
-'''
+"""
 
 
 def apply(files):
     # 16px icons (DESIGN.md) instead of Kirigami's 22px smallMedium
-    replace(files, MAIN,
-            "readonly property int smallIconSize: Kirigami.Units.iconSizes.smallMedium",
-            "readonly property int smallIconSize: Kirigami.Units.iconSizes.small  // Leaves: 16px")
+    replace(
+        files,
+        MAIN,
+        "readonly property int smallIconSize: Kirigami.Units.iconSizes.smallMedium",
+        "readonly property int smallIconSize: Kirigami.Units.iconSizes.small  // Leaves: 16px",
+    )
 
     # The message bus other Leaves widgets use to reach the tray
-    replace(files, MAIN,
-            "import org.kde.plasma.plasmoid\n",
-            'import org.kde.plasma.plasmoid\n\nimport "../../../../../leaves/bus.js" as LeavesBus\n')
+    replace(
+        files,
+        MAIN,
+        "import org.kde.plasma.plasmoid\n",
+        'import org.kde.plasma.plasmoid\n\nimport "../../../../../leaves/bus.js" as LeavesBus\n',
+    )
 
     # HoverOpener (shared/), installed next to bus.js
     for name in [MAIN, PLASMOID_ITEM]:
-        replace(files, name,
-                "import org.kde.plasma.plasmoid\n",
-                'import org.kde.plasma.plasmoid\n\nimport "../../../../../leaves"\n')
+        replace(
+            files,
+            name,
+            "import org.kde.plasma.plasmoid\n",
+            'import org.kde.plasma.plasmoid\n\nimport "../../../../../leaves"\n',
+        )
 
     # Tells hover popups when the pointer is over the tray's popup
-    replace(files, MAIN,
-            "                id: expandedRepresentation\n",
-            "                id: expandedRepresentation\n\n"
-            "                HoverHandler { onHoveredChanged: root.leavesPopupHovered = hovered }  // Leaves\n")
+    replace(
+        files,
+        MAIN,
+        "                id: expandedRepresentation\n",
+        "                id: expandedRepresentation\n\n"
+        "                HoverHandler { onHoveredChanged: root.leavesPopupHovered = hovered }  // Leaves\n",
+    )
 
     # Placement rules, the extra models and their popup tracking
-    replace(files, MAIN,
-            "    readonly property alias hiddenModel: hiddenModel\n",
-            "    readonly property alias hiddenModel: hiddenModel\n" + LEAVES)
+    replace(
+        files,
+        MAIN,
+        "    readonly property alias hiddenModel: hiddenModel\n",
+        "    readonly property alias hiddenModel: hiddenModel\n" + LEAVES,
+    )
 
-    replace(files, MAIN,
-            """        id: activeModel
+    replace(
+        files,
+        MAIN,
+        """        id: activeModel
         filterRoleName: "effectiveStatus"
         filterRowCallback: (sourceRow, sourceParent) => {
             let value = sourceModel.data(sourceModel.index(sourceRow, 0, sourceParent), filterRole);
             return value === PlasmaCore.Types.ActiveStatus;
         }""",
-            """        id: activeModel
+        """        id: activeModel
         filterRoleName: "effectiveStatus"
-        filterRowCallback: (sourceRow, sourceParent) => root.leavesPlace(sourceModel, sourceRow, sourceParent) === "visible\"""")
+        filterRowCallback: (sourceRow, sourceParent) => root.leavesPlace(sourceModel, sourceRow, sourceParent) === "visible\"""",
+    )
 
-    replace(files, MAIN,
-            """        id: hiddenModel
+    replace(
+        files,
+        MAIN,
+        """        id: hiddenModel
         filterRoleName: "effectiveStatus"
         filterRowCallback: (sourceRow, sourceParent) => {
             let value = sourceModel.data(sourceModel.index(sourceRow, 0, sourceParent), filterRole);
             return value === PlasmaCore.Types.PassiveStatus
         }""",
-            """        id: hiddenModel
+        """        id: hiddenModel
         filterRoleName: "effectiveStatus"
-        filterRowCallback: (sourceRow, sourceParent) => root.leavesPlace(sourceModel, sourceRow, sourceParent) === "chevron\"""")
+        filterRowCallback: (sourceRow, sourceParent) => root.leavesPlace(sourceModel, sourceRow, sourceParent) === "chevron\"""",
+    )
 
-    replace(files, MAIN,
-            "        activeInstantiator.active = true;\n        hiddenInstantiator.active = true;\n",
-            """        activeInstantiator.active = true;
+    replace(
+        files,
+        MAIN,
+        "        activeInstantiator.active = true;\n        hiddenInstantiator.active = true;\n",
+        """        activeInstantiator.active = true;
         hiddenInstantiator.active = true;
         pinnedInstantiator.active = true;
         removedInstantiator.active = true;
@@ -413,96 +436,154 @@ def apply(files):
             pinnedModel.invalidateFilter();
             removedModel.invalidateFilter();
         });
-""")
+""",
+    )
 
     # The popup floats off the bar with its whole frame: rounded and bordered on
     # the bar side too (Plasma otherwise drops the frame edge against a panel)
-    replace(files, MAIN,
-            "            margin: (Plasmoid.containmentDisplayHints & PlasmaCore.Types.ContainmentPrefersFloatingApplets) ? Kirigami.Units.largeSpacing : 0\n",
-            "            margin: root.leavesPopupGap  // Leaves\n")
-    replace(files, MAIN,
-            "                : PlasmaCore.AppletPopup.AtScreenEdges | PlasmaCore.AppletPopup.AtPanelEdges\n",
-            "                : PlasmaCore.AppletPopup.AtScreenEdges  // Leaves: keep the edge against the bar\n")
+    replace(
+        files,
+        MAIN,
+        "            margin: (Plasmoid.containmentDisplayHints & PlasmaCore.Types.ContainmentPrefersFloatingApplets) ? Kirigami.Units.largeSpacing : 0\n",
+        "            margin: root.leavesPopupGap  // Leaves\n",
+    )
+    replace(
+        files,
+        MAIN,
+        "                : PlasmaCore.AppletPopup.AtScreenEdges | PlasmaCore.AppletPopup.AtPanelEdges\n",
+        "                : PlasmaCore.AppletPopup.AtScreenEdges  // Leaves: keep the edge against the bar\n",
+    )
 
     # Popups open under leavesAnchor when one is set
-    replace(files, MAIN,
-            "            visualParent: root\n",
-            "            visualParent: root.leavesAnchor ?? root  // Leaves\n")
+    replace(
+        files,
+        MAIN,
+        "            visualParent: root\n",
+        "            visualParent: root.leavesAnchor ?? root  // Leaves\n",
+    )
 
     # Chevron at the left end, then the regular items, then the pinned ones
-    replace(files, MAIN,
-            "                Layout.column: 0                                        // to prevent overlapping\n",
-            "                Layout.column: root.vertical ? 0 : 1  // Leaves: after the chevron\n")
-    replace(files, MAIN,
-            "                Layout.column: root.vertical ? 0 : 1                     // to prevent overlapping\n",
-            "                Layout.column: 0  // Leaves: chevron at the left end\n")
-    replace(files, MAIN,
-            "                visible: root.hiddenLayout.itemCount > 0\n            }\n",
-            "                visible: root.hiddenLayout.itemCount > 0\n            }\n" + PINNED_GRID)
+    replace(
+        files,
+        MAIN,
+        "                Layout.column: 0                                        // to prevent overlapping\n",
+        "                Layout.column: root.vertical ? 0 : 1  // Leaves: after the chevron\n",
+    )
+    replace(
+        files,
+        MAIN,
+        "                Layout.column: root.vertical ? 0 : 1                     // to prevent overlapping\n",
+        "                Layout.column: 0  // Leaves: chevron at the left end\n",
+    )
+    replace(
+        files,
+        MAIN,
+        "                visible: root.hiddenLayout.itemCount > 0\n            }\n",
+        "                visible: root.hiddenLayout.itemCount > 0\n            }\n" + PINNED_GRID,
+    )
 
     # MingCute chevron (top panel: down when closed, up when open); the
     # MingCute SVGs are masks, so the arrows are tinted with the text color
-    replace(files, EXPANDER,
-            """        source: {
+    replace(
+        files,
+        EXPANDER,
+        """        source: {
             if (Plasmoid.location === PlasmaCore.Types.TopEdge) {
                 return "arrow-down-symbolic";""",
-            """        isMask: true
+        """        isMask: true
         color: Kirigami.Theme.textColor
         source: {
             if (Plasmoid.location === PlasmaCore.Types.TopEdge) {
-                return "mingcute-down-fill";""")
-    replace(files, EXPANDER,
-            """        source: {
+                return "mingcute-down-fill";""",
+    )
+    replace(
+        files,
+        EXPANDER,
+        """        source: {
             if (Plasmoid.location === PlasmaCore.Types.TopEdge) {
                 return "arrow-up-symbolic";""",
-            """        isMask: true
+        """        isMask: true
         color: Kirigami.Theme.textColor
         source: {
             if (Plasmoid.location === PlasmaCore.Types.TopEdge) {
-                return "mingcute-up-fill";""")
+                return "mingcute-up-fill";""",
+    )
 
     # No open look on the tray while the popup is under another item (leavesAnchor)
-    for old in ["rotation: systemTrayState.expanded ? 180 : 0", "opacity: systemTrayState.expanded ? 0 : 1",
-                "rotation: systemTrayState.expanded ? 0 : -180", "opacity: systemTrayState.expanded ? 1 : 0"]:
-        replace(files, EXPANDER, old, old.replace("systemTrayState.expanded", "root.leavesOpenHere"))
-    replace(files, HIGHLIGHT,
-            "    function updateHighlightedItem() {\n        if (systemTrayState.expanded) {",
-            "    function updateHighlightedItem() {\n        if (root.leavesOpenHere) {")
-    replace(files, HIGHLIGHT,
-            "        currentItemHighLight.opacity = systemTrayState.expanded ? 1 : 0",
-            "        currentItemHighLight.opacity = 1  // Leaves: the ActiveLine fades itself")
+    for old in [
+        "rotation: systemTrayState.expanded ? 180 : 0",
+        "opacity: systemTrayState.expanded ? 0 : 1",
+        "rotation: systemTrayState.expanded ? 0 : -180",
+        "opacity: systemTrayState.expanded ? 1 : 0",
+    ]:
+        replace(
+            files, EXPANDER, old, old.replace("systemTrayState.expanded", "root.leavesOpenHere")
+        )
+    replace(
+        files,
+        HIGHLIGHT,
+        "    function updateHighlightedItem() {\n        if (systemTrayState.expanded) {",
+        "    function updateHighlightedItem() {\n        if (root.leavesOpenHere) {",
+    )
+    replace(
+        files,
+        HIGHLIGHT,
+        "        currentItemHighLight.opacity = systemTrayState.expanded ? 1 : 0",
+        "        currentItemHighLight.opacity = 1  // Leaves: the ActiveLine fades itself",
+    )
 
     # The open item's line is the Leaves ActiveLine (shared/): 1px, grows left to
     # right; it grows again on the next item instead of the highlight sliding there
-    replace(files, HIGHLIGHT,
-            "import org.kde.plasma.core as PlasmaCore\n",
-            'import org.kde.plasma.core as PlasmaCore\n\nimport "../../../../../leaves"\n')
-    replace(files, HIGHLIGHT,
-            '    imagePath: "widgets/tabbar"\n',
-            '    imagePath: ""  // Leaves: drawn by the ActiveLine below\n')
-    replace(files, HIGHLIGHT,
-            "    z: -1 // always draw behind icons\n",
-            "    z: -1 // always draw behind icons\n\n"
-            "    ActiveLine {  // Leaves\n"
-            "        active: root.leavesOpenHere && currentItemHighLight.highlightedItem !== null\n"
-            "        key: currentItemHighLight.highlightedItem\n"
-            "    }\n")
-    replace(files, HIGHLIGHT,
-            "        highlightedItem = nextItem;\n        animationEnabled = true;\n",
-            "        highlightedItem = nextItem;\n        animationEnabled = false;  // Leaves: no slide between items\n")
+    replace(
+        files,
+        HIGHLIGHT,
+        "import org.kde.plasma.core as PlasmaCore\n",
+        'import org.kde.plasma.core as PlasmaCore\n\nimport "../../../../../leaves"\n',
+    )
+    replace(
+        files,
+        HIGHLIGHT,
+        '    imagePath: "widgets/tabbar"\n',
+        '    imagePath: ""  // Leaves: drawn by the ActiveLine below\n',
+    )
+    replace(
+        files,
+        HIGHLIGHT,
+        "    z: -1 // always draw behind icons\n",
+        "    z: -1 // always draw behind icons\n\n"
+        "    ActiveLine {  // Leaves\n"
+        "        active: root.leavesOpenHere && currentItemHighLight.highlightedItem !== null\n"
+        "        key: currentItemHighLight.highlightedItem\n"
+        "    }\n",
+    )
+    replace(
+        files,
+        HIGHLIGHT,
+        "        highlightedItem = nextItem;\n        animationEnabled = true;\n",
+        "        highlightedItem = nextItem;\n        animationEnabled = false;  // Leaves: no slide between items\n",
+    )
 
     # No tooltips on items that open on hover
-    replace(files, PLASMOID_ITEM,
-            "    active: inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0))\n",
-            "    active: !root.leavesMatches(root.leavesHoverOpen, itemId)  // Leaves\n"
-            "        && (inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0)))\n")
+    replace(
+        files,
+        PLASMOID_ITEM,
+        "    active: inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0))\n",
+        "    active: !root.leavesMatches(root.leavesHoverOpen, itemId)  // Leaves\n"
+        "        && (inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0)))\n",
+    )
 
     # Icon overrides for applets (see leavesIcon)
-    replace(files, PLASMOID_ITEM,
-            "AbstractItem {\n    id: plasmoidContainer\n",
-            "AbstractItem {\n    id: plasmoidContainer\n" + ICON_OVERLAY)
+    replace(
+        files,
+        PLASMOID_ITEM,
+        "AbstractItem {\n    id: plasmoidContainer\n",
+        "AbstractItem {\n    id: plasmoidContainer\n" + ICON_OVERLAY,
+    )
 
     # Items see the Leaves status, so forced-chevron items lay out as hidden ones
-    replace(files, LOADER,
-            "            effectiveStatus: Qt.binding(() => effectiveStatus),\n",
-            "            effectiveStatus: Qt.binding(() => root.leavesStatus(model.itemId ?? \"\", effectiveStatus, model.applet ?? null)),\n")
+    replace(
+        files,
+        LOADER,
+        "            effectiveStatus: Qt.binding(() => effectiveStatus),\n",
+        '            effectiveStatus: Qt.binding(() => root.leavesStatus(model.itemId ?? "", effectiveStatus, model.applet ?? null)),\n',
+    )

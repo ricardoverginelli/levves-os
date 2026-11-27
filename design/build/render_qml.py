@@ -6,13 +6,14 @@
 Pass design/dist/qml as an import path for `import Levves`. QML warnings are printed. Needs
 PySide6 built against the system Qt (Fedora's python3-pyside6), so KDE's QML modules load too.
 """
+
 import os
 import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QTimer, QUrl, qInstallMessageHandler  # noqa: E402
-from PySide6.QtGui import QGuiApplication  # noqa: E402
-from PySide6.QtQuick import QQuickView  # noqa: E402
+from PySide6.QtCore import QTimer, QUrl, qInstallMessageHandler
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQuick import QQuickView
 
 qInstallMessageHandler(lambda _type, _context, message: print("QML:", message))
 app = QGuiApplication(sys.argv[:1])

@@ -17,14 +17,17 @@ SHAREX_WINGET_ID = "ShareX.ShareX"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def print_header(title):
     print(f"\n{'─' * 50}")
     print(f"  {title}")
     print(f"{'─' * 50}")
 
+
 def run(cmd, capture=True):
-    result = subprocess.run(cmd, shell=True, capture_output=capture, text=True)
+    result = subprocess.run(cmd, shell=True, capture_output=capture, text=True, check=False)
     return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
+
 
 def find_sharex_exe():
     """Try to locate ShareX.exe after install."""
@@ -38,15 +41,18 @@ def find_sharex_exe():
             return path
     return None
 
+
 # ── Steps ─────────────────────────────────────────────────────────────────────
+
 
 def check_config():
     print_header("Checking Config File")
     if not SHAREX_CONFIG.exists():
         print(f"  ✗ Config file not found at: {SHAREX_CONFIG}")
-        print(f"    Make sure ShareX-19.0.2.sxb is next to this script in os/windows/sharex/.")
+        print("    Make sure ShareX-19.0.2.sxb is next to this script in os/windows/sharex/.")
         sys.exit(1)
     print(f"  ✓ Config file found: {SHAREX_CONFIG.name}")
+
 
 def install_sharex():
     print_header("Installing ShareX")
@@ -58,7 +64,10 @@ def install_sharex():
         return
 
     print("  Installing via winget...")
-    ok, _, err = run(f"winget install --id {SHAREX_WINGET_ID} --silent --accept-package-agreements --accept-source-agreements", capture=False)
+    ok, _, err = run(
+        f"winget install --id {SHAREX_WINGET_ID} --silent --accept-package-agreements --accept-source-agreements",
+        capture=False,
+    )
     if not ok:
         print(f"  ✗ winget install failed: {err}")
         print("    Try running this script as Administrator.")
@@ -67,6 +76,7 @@ def install_sharex():
     print("  ✓ ShareX installed.")
     print("  Waiting for install to settle...")
     time.sleep(3)
+
 
 def import_config():
     print_header("Importing ShareX Config")
@@ -87,15 +97,17 @@ def import_config():
     ok, _, err = run(f'"{sharex_exe}" -silent -importbackup "{SHAREX_CONFIG}"')
     if not ok:
         print(f"  ✗ Import failed: {err}")
-        print(f"    Try running manually: \"{sharex_exe}\" -silent -importbackup \"{SHAREX_CONFIG}\"")
+        print(f'    Try running manually: "{sharex_exe}" -silent -importbackup "{SHAREX_CONFIG}"')
         sys.exit(1)
 
     print("  ✓ Config imported successfully.")
+
 
 def done():
     print_header("ShareX Setup Complete")
     print("  Launch ShareX to verify your settings and hotkeys are applied.")
     print()
+
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 

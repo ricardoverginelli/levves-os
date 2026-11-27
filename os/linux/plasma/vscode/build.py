@@ -8,11 +8,12 @@ with Preferences: Color Theme → Levves (picked for you when Leaves was).
 Prints "changed" when the installed theme was replaced; VS Code windows that
 are already open pick it up after Developer: Reload Window.
 """
+
 import json
-import sys
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -28,17 +29,20 @@ INSTALLED = Path.home() / f".vscode/extensions/{PUBLISHER}.{NAME}-{VERSION}"
 
 DIST = HERE.parents[3] / "design/dist"
 sys.path.insert(0, str(DIST))
-from levves_tokens import TOKENS as LEVVES, color as palette  # noqa: E402  (TOKENS below is the syntax scopes)
+from levves_tokens import TOKENS as LEVVES
+from levves_tokens import color as palette
 
 
 def rgb(hex_color):
     h = hex_color.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def mix(a, b, t):
     """Blend hex color a toward b by t (0..1)."""
-    return "#" + "".join(f"{round(x + (y - x) * t):02x}" for x, y in zip(rgb(a), rgb(b)))
+    return "#" + "".join(
+        f"{round(x + (y - x) * t):02x}" for x, y in zip(rgb(a), rgb(b), strict=False)
+    )
 
 
 def alpha(color, opacity):
@@ -66,53 +70,153 @@ SYNTAX = {
 
 TOKENS = [
     ("Comments", ["comment", "punctuation.definition.comment"], "comment", "italic"),
-    ("Keywords", ["keyword", "storage", "storage.type", "storage.modifier",
-                  "keyword.control", "keyword.operator.new", "keyword.operator.expression",
-                  "keyword.operator.logical.python", "variable.language.this",
-                  "variable.language.self", "variable.language.super"], "keyword", None),
-    ("Operators and punctuation", ["keyword.operator", "punctuation", "meta.brace",
-                                   "punctuation.definition.tag"], "punctuation", None),
-    ("Functions", ["entity.name.function", "support.function", "meta.function-call",
-                   "variable.function"], "function", None),
-    ("Types", ["entity.name.type", "entity.name.class", "entity.other.inherited-class",
-               "support.type", "support.class", "entity.name.namespace", "storage.type.cs",
-               "entity.name.type.module"], "type", None),
-    ("Strings", ["string", "string.template", "markup.inline.raw",
-                 "punctuation.definition.string"], "string", None),
-    ("Escapes and regex", ["constant.character.escape", "string.regexp",
-                           "punctuation.definition.template-expression",
-                           "punctuation.section.embedded"], "type", None),
-    ("Constants", ["constant", "constant.numeric", "constant.language",
-                   "support.constant", "variable.other.constant", "variable.other.enummember",
-                   "entity.name.constant"], "constant", None),
+    (
+        "Keywords",
+        [
+            "keyword",
+            "storage",
+            "storage.type",
+            "storage.modifier",
+            "keyword.control",
+            "keyword.operator.new",
+            "keyword.operator.expression",
+            "keyword.operator.logical.python",
+            "variable.language.this",
+            "variable.language.self",
+            "variable.language.super",
+        ],
+        "keyword",
+        None,
+    ),
+    (
+        "Operators and punctuation",
+        ["keyword.operator", "punctuation", "meta.brace", "punctuation.definition.tag"],
+        "punctuation",
+        None,
+    ),
+    (
+        "Functions",
+        ["entity.name.function", "support.function", "meta.function-call", "variable.function"],
+        "function",
+        None,
+    ),
+    (
+        "Types",
+        [
+            "entity.name.type",
+            "entity.name.class",
+            "entity.other.inherited-class",
+            "support.type",
+            "support.class",
+            "entity.name.namespace",
+            "storage.type.cs",
+            "entity.name.type.module",
+        ],
+        "type",
+        None,
+    ),
+    (
+        "Strings",
+        ["string", "string.template", "markup.inline.raw", "punctuation.definition.string"],
+        "string",
+        None,
+    ),
+    (
+        "Escapes and regex",
+        [
+            "constant.character.escape",
+            "string.regexp",
+            "punctuation.definition.template-expression",
+            "punctuation.section.embedded",
+        ],
+        "type",
+        None,
+    ),
+    (
+        "Constants",
+        [
+            "constant",
+            "constant.numeric",
+            "constant.language",
+            "support.constant",
+            "variable.other.constant",
+            "variable.other.enummember",
+            "entity.name.constant",
+        ],
+        "constant",
+        None,
+    ),
     ("Variables", ["variable", "variable.other", "meta.definition.variable"], "variable", None),
     ("Parameters", ["variable.parameter"], "variable", "italic"),
-    ("Properties", ["variable.other.property", "variable.other.object.property",
-                    "support.variable.property", "meta.object-literal.key",
-                    "support.type.property-name", "entity.name.tag.yaml",
-                    "entity.name.tag.toml", "support.type.property-name.json"], "property", None),
+    (
+        "Properties",
+        [
+            "variable.other.property",
+            "variable.other.object.property",
+            "support.variable.property",
+            "meta.object-literal.key",
+            "support.type.property-name",
+            "entity.name.tag.yaml",
+            "entity.name.tag.toml",
+            "support.type.property-name.json",
+        ],
+        "property",
+        None,
+    ),
     ("Tags", ["entity.name.tag", "meta.tag.sgml"], "tag", None),
-    ("Components", ["support.class.component", "entity.name.tag.tsx",
-                    "entity.name.tag.jsx"], "type", None),
-    ("Attributes", ["entity.other.attribute-name", "entity.other.attribute-name.class.css",
-                    "entity.other.attribute-name.id.css"], "attribute", None),
-    ("Decorators", ["meta.decorator", "entity.name.function.decorator",
-                    "punctuation.decorator"], "attribute", None),
-    ("CSS values", ["support.constant.property-value", "keyword.other.unit",
-                    "constant.other.color"], "constant", None),
-    ("Imports", ["keyword.control.import", "keyword.control.export",
-                 "keyword.control.from"], "keyword", "italic"),
+    (
+        "Components",
+        ["support.class.component", "entity.name.tag.tsx", "entity.name.tag.jsx"],
+        "type",
+        None,
+    ),
+    (
+        "Attributes",
+        [
+            "entity.other.attribute-name",
+            "entity.other.attribute-name.class.css",
+            "entity.other.attribute-name.id.css",
+        ],
+        "attribute",
+        None,
+    ),
+    (
+        "Decorators",
+        ["meta.decorator", "entity.name.function.decorator", "punctuation.decorator"],
+        "attribute",
+        None,
+    ),
+    (
+        "CSS values",
+        ["support.constant.property-value", "keyword.other.unit", "constant.other.color"],
+        "constant",
+        None,
+    ),
+    (
+        "Imports",
+        ["keyword.control.import", "keyword.control.export", "keyword.control.from"],
+        "keyword",
+        "italic",
+    ),
 ]
 
 MARKUP = [
-    ("Headings", ["markup.heading", "markup.heading entity.name",
-                  "punctuation.definition.heading"], palette("fog"), "bold"),
+    (
+        "Headings",
+        ["markup.heading", "markup.heading entity.name", "punctuation.definition.heading"],
+        palette("fog"),
+        "bold",
+    ),
     ("Bold", ["markup.bold"], palette("text"), "bold"),
     ("Italic", ["markup.italic"], palette("text"), "italic"),
     ("Links", ["markup.underline.link", "string.other.link"], palette("info"), None),
     ("Quotes", ["markup.quote"], palette("text-muted"), "italic"),
-    ("Lists", ["punctuation.definition.list", "beginning.punctuation.definition.list"],
-     palette("terminal.magenta"), None),
+    (
+        "Lists",
+        ["punctuation.definition.list", "beginning.punctuation.definition.list"],
+        palette("terminal.magenta"),
+        None,
+    ),
     ("Inserted", ["markup.inserted"], palette("success"), None),
     ("Deleted", ["markup.deleted"], palette("critical"), None),
     ("Changed", ["markup.changed"], palette("info"), None),
@@ -161,12 +265,18 @@ SEMANTIC = {
 
 # --- Workbench ------------------------------------------------------------
 
+
 def workbench():
     # Urban Flora's window: chrome on `surface` with the weak `edge` between parts and around
     # popups, section headers as labels over a hairline, the status bar on `surface`, fields as `bg-deep` openings, the editor
     # and terminal on `bg`. Fog is focus, the current tab's line and the selection; amber is the
     # primary button and the cursor only
-    bg, surface, raised, border = palette("bg"), palette("surface"), palette("raised"), palette("border")
+    bg, surface, raised, border = (
+        palette("bg"),
+        palette("surface"),
+        palette("raised"),
+        palette("border"),
+    )
     text, muted, faint = palette("text"), palette("text-muted"), palette("text-faint")
     accent, on_accent = palette("accent"), palette("on-accent")
     edge, well = palette("edge"), palette("well")
@@ -197,7 +307,6 @@ def workbench():
         "progressBar.background": palette("fog"),
         "toolbar.hoverBackground": hover,
         "toolbar.activeBackground": alpha("text", 0.1),
-
         # Window chrome
         "titleBar.activeBackground": palette("title-bar"),
         "titleBar.activeForeground": text,
@@ -216,7 +325,6 @@ def workbench():
         "menu.selectionForeground": text,
         "menu.separatorBackground": border,
         "menu.border": edge,
-
         # Activity bar
         # Activity bar: flat keys, the current one held down
         "activityBar.background": surface,
@@ -230,7 +338,6 @@ def workbench():
         "activityBarTop.foreground": text,
         "activityBarTop.inactiveForeground": muted,
         "activityBarTop.activeBorder": palette("field-edge"),
-
         # Side bar
         "sideBar.background": bg,
         "sideBar.foreground": muted,
@@ -242,7 +349,6 @@ def workbench():
         "sideBarSectionHeader.border": palette("row-line"),
         "sideBarStickyScroll.background": bg,
         "sideBarStickyScroll.shadow": alpha("bg-deep", 0.6),
-
         # Lists and trees
         "list.hoverBackground": hover,
         "list.hoverForeground": text,
@@ -265,7 +371,6 @@ def workbench():
         "list.deemphasizedForeground": faint,
         "tree.indentGuidesStroke": palette("row-line"),
         "tree.inactiveIndentGuidesStroke": palette("row-line"),
-
         # Editor groups and tabs: folder tabs on the window's `surface`, the current one in the
         # editor's color, joining it
         "editorGroup.border": edge,
@@ -294,7 +399,6 @@ def workbench():
         "breadcrumb.activeSelectionForeground": text,
         "breadcrumb.background": bg,
         "breadcrumbPicker.background": surface,
-
         # Editor
         "editor.background": bg,
         "editor.foreground": text,
@@ -361,7 +465,6 @@ def workbench():
         "editorGutter.modifiedBackground": palette("info"),
         "editorGutter.deletedBackground": palette("critical"),
         "editorGutter.foldingControlForeground": faint,
-
         # Editor widgets (find, suggest, hover, peek): popups are surface
         "editorWidget.background": surface,
         "editorWidget.foreground": text,
@@ -391,7 +494,6 @@ def workbench():
         "peekViewResult.matchHighlightBackground": alpha("warning", 0.25),
         "peekViewResult.lineForeground": muted,
         "peekViewResult.fileForeground": text,
-
         # Diff
         "diffEditor.insertedTextBackground": alpha("success", 0.16),
         "diffEditor.removedTextBackground": alpha("critical", 0.16),
@@ -404,7 +506,6 @@ def workbench():
         "merge.currentContentBackground": alpha("success", 0.1),
         "merge.incomingHeaderBackground": alpha("info", 0.3),
         "merge.incomingContentBackground": alpha("info", 0.1),
-
         # Inputs and buttons
         # Fields in wells, buttons as keys
         "input.background": palette("bg-deep"),  # a field is an opening
@@ -447,7 +548,6 @@ def workbench():
         "keybindingLabel.foreground": text,
         "keybindingLabel.border": raised,  # a flat key, no bottom edge
         "keybindingLabel.bottomBorder": raised,
-
         # Quick input (command palette)
         "quickInput.background": surface,
         "quickInput.foreground": text,
@@ -457,7 +557,6 @@ def workbench():
         "quickInputList.focusIconForeground": text,
         "pickerGroup.foreground": muted,
         "pickerGroup.border": palette("row-line"),
-
         # Panel and terminal
         "panel.background": bg,
         "panel.border": edge,
@@ -480,7 +579,6 @@ def workbench():
         "terminalCommandDecoration.successBackground": palette("success"),
         "terminalCommandDecoration.errorBackground": palette("critical"),
         "terminalOverviewRuler.cursorForeground": accent,
-
         # Status bar: flat on the window surface
         "statusBar.background": surface,
         "statusBar.foreground": muted,
@@ -503,7 +601,6 @@ def workbench():
         "statusBarItem.warningBackground": palette("warning"),
         "statusBarItem.warningForeground": on_accent,
         "statusBarItem.focusBorder": palette("fog"),
-
         # Notifications
         "notifications.background": surface,
         "notifications.foreground": text,
@@ -515,7 +612,6 @@ def workbench():
         "notificationsErrorIcon.foreground": palette("critical"),
         "notificationsWarningIcon.foreground": palette("warning"),
         "notificationsInfoIcon.foreground": palette("info"),
-
         # Git and SCM decorations
         "gitDecoration.addedResourceForeground": palette("success"),
         "gitDecoration.untrackedResourceForeground": palette("success"),
@@ -531,7 +627,6 @@ def workbench():
         "scmGraph.historyItemRemoteRefColor": palette("terminal.magenta"),
         "scmGraph.historyItemBaseRefColor": palette("warning"),
         "scmGraph.historyItemHoverDefaultLabelForeground": text,
-
         # Misc
         "welcomePage.tileBackground": surface,
         "welcomePage.tileHoverBackground": raised,
@@ -573,12 +668,21 @@ def workbench():
     }
 
     # Terminal ANSI, as in the Konsole scheme (yakuake/build.py): bright is 25% toward white
-    ansi = {"Black": palette("terminal.black"), "Red": palette("critical"), "Green": palette("success"),
-            "Yellow": palette("warning"), "Blue": palette("info"), "Magenta": palette("terminal.magenta"),
-            "Cyan": palette("terminal.cyan"), "White": palette("text")}
+    ansi = {
+        "Black": palette("terminal.black"),
+        "Red": palette("critical"),
+        "Green": palette("success"),
+        "Yellow": palette("warning"),
+        "Blue": palette("info"),
+        "Magenta": palette("terminal.magenta"),
+        "Cyan": palette("terminal.cyan"),
+        "White": palette("text"),
+    }
     for name, color in ansi.items():
         c[f"terminal.ansi{name}"] = color
-        c[f"terminal.ansiBright{name}"] = palette("terminal.bright-black") if name == "Black" else mix(color, "#ffffff", 0.25)
+        c[f"terminal.ansiBright{name}"] = (
+            palette("terminal.bright-black") if name == "Black" else mix(color, "#ffffff", 0.25)
+        )
     return c
 
 
@@ -595,6 +699,7 @@ def theme():
 
 # --- Package --------------------------------------------------------------
 
+
 def package_json():
     return {
         "name": NAME,
@@ -604,7 +709,9 @@ def package_json():
         "version": VERSION,
         "engines": {"vscode": "^1.70.0"},
         "categories": ["Themes"],
-        "contributes": {"themes": [{"label": "Levves", "uiTheme": "vs-dark", "path": f"./{THEME_FILE}"}]},
+        "contributes": {
+            "themes": [{"label": "Levves", "uiTheme": "vs-dark", "path": f"./{THEME_FILE}"}]
+        },
     }
 
 
@@ -637,6 +744,7 @@ def dump(data):
 
 def main():
     files = {"package.json": dump(package_json()), THEME_FILE: dump(theme())}
+
     def installed(name):
         # VS Code reformats package.json and adds __metadata on install
         path = INSTALLED / name
@@ -655,9 +763,12 @@ def main():
             z.writestr("extension.vsixmanifest", MANIFEST)
             for name, text in files.items():
                 z.writestr(f"extension/{name}", text)
-        subprocess.run(["code", "--install-extension", str(vsix), "--force"],
-                       check=True, capture_output=True)
-    listed = subprocess.run(["code", "--list-extensions"], capture_output=True, text=True).stdout.split()
+        subprocess.run(
+            ["code", "--install-extension", str(vsix), "--force"], check=True, capture_output=True
+        )
+    listed = subprocess.run(
+        ["code", "--list-extensions"], capture_output=True, text=True, check=False
+    ).stdout.split()
     if OLD in listed:
         subprocess.run(["code", "--uninstall-extension", OLD], check=True, capture_output=True)
     # settings.json allows comments, so only the one value is swapped, as text
@@ -670,5 +781,5 @@ def main():
 
 
 if __name__ == "__main__":
-    shutil.which("code") or exit("code not found")
+    shutil.which("code") or sys.exit("code not found")
     main()

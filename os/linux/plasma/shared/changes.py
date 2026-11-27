@@ -3,6 +3,7 @@
 Each build prints "changed" (report) when what it installed changed, and apply.sh restarts what
 reads it. Import with `sys.path.insert(0, str(HERE.parent / "shared"))`, then `import changes`.
 """
+
 import shutil
 from pathlib import Path
 
@@ -10,7 +11,11 @@ from pathlib import Path
 def tree(path):
     """Every file under path, by its relative path, for comparing two installs."""
     path = Path(path)
-    return {p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()} if path.exists() else {}
+    return (
+        {p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()}
+        if path.exists()
+        else {}
+    )
 
 
 def write(path, text):

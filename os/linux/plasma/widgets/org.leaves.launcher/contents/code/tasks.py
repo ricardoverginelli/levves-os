@@ -16,6 +16,7 @@ programs  Apps running inside some other unit's cgroup, so they get no app-*
 The launcher reads the numbers per pid from the process model, so this only
 says which pids make up each row.
 """
+
 import json
 import os
 import shlex
@@ -23,7 +24,9 @@ import shutil
 import subprocess
 
 HOME = os.path.expanduser("~")
-CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", HOME + "/.cache"), "leaves-launcher", "service-packages.json")
+CACHE = os.path.join(
+    os.environ.get("XDG_CACHE_HOME", HOME + "/.cache"), "leaves-launcher", "service-packages.json"
+)
 RPMDB = "/usr/lib/sysimage/rpm/rpmdb.sqlite"
 UID = os.getuid()
 
@@ -38,20 +41,31 @@ def read(path):
 
 def running_services(scope):
     """{unit: {path, main, cgroup, description}} for running services."""
-    args = ["systemctl", "--no-pager", "show", "--type=service", "--state=running",
-            "--property=Id,FragmentPath,MainPID,ControlGroup,Description", "*"]
+    args = [
+        "systemctl",
+        "--no-pager",
+        "show",
+        "--type=service",
+        "--state=running",
+        "--property=Id,FragmentPath,MainPID,ControlGroup,Description",
+        "*",
+    ]
     if scope == "user":
         args.insert(1, "--user")
     try:
-        out = subprocess.run(args, capture_output=True, text=True, timeout=5).stdout
+        out = subprocess.run(args, capture_output=True, text=True, timeout=5, check=False).stdout
     except (OSError, subprocess.SubprocessError):
         return {}
     units = {}
     for block in out.split("\n\n"):
         p = dict(line.split("=", 1) for line in block.splitlines() if "=" in line)
         if p.get("Id"):
-            units[p["Id"]] = {"path": p.get("FragmentPath", ""), "main": int(p.get("MainPID") or 0),
-                              "cgroup": p.get("ControlGroup", ""), "description": p.get("Description", "")}
+            units[p["Id"]] = {
+                "path": p.get("FragmentPath", ""),
+                "main": int(p.get("MainPID") or 0),
+                "cgroup": p.get("ControlGroup", ""),
+                "description": p.get("Description", ""),
+            }
     return units
 
 
@@ -73,17 +87,35 @@ def user_installed(paths):
     missing = [p for p in paths if p not in files]
     if missing:
         try:
-            out = subprocess.run(["rpm", "-qf", "--qf", "%{NAME}\n", *missing],
-                                 capture_output=True, text=True, timeout=10).stdout.splitlines()
+            out = subprocess.run(
+                ["rpm", "-qf", "--qf", "%{NAME}\n", *missing],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            ).stdout.splitlines()
         except (OSError, subprocess.SubprocessError):
             out = []
-        owners = dict(zip(missing, out)) if len(out) == len(missing) else {}
+        owners = dict(zip(missing, out, strict=False)) if len(out) == len(missing) else {}
         packages = sorted({n for n in owners.values() if " " not in n})
         reasons = {}
         if packages:
             try:
-                q = subprocess.run(["dnf5", "-q", "repoquery", "--installed", "--qf", "%{name} %{reason}\n", *packages],
-                                   capture_output=True, text=True, timeout=20).stdout
+                q = subprocess.run(
+                    [
+                        "dnf5",
+                        "-q",
+                        "repoquery",
+                        "--installed",
+                        "--qf",
+                        "%{name} %{reason}\n",
+                        *packages,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=False,
+                ).stdout
                 reasons = dict(line.split(" ", 1) for line in q.splitlines() if " " in line)
             except (OSError, subprocess.SubprocessError):
                 pass
@@ -110,21 +142,43 @@ def services():
     found = []
     for scope in ("user", "system"):
         units = running_services(scope)
-        ours = {u for u, i in units.items()
-                if i["path"].startswith((HOME + "/.config/systemd/", "/etc/systemd/", "/usr/local/"))
-                and not u.startswith(("app-", "dbus-"))}
+        ours = {
+            u
+            for u, i in units.items()
+            if i["path"].startswith((HOME + "/.config/systemd/", "/etc/systemd/", "/usr/local/"))
+            and not u.startswith(("app-", "dbus-"))
+        }
         if scope == "system":
             # /etc holds plenty of packaged overrides and symlinks; only unpackaged ones are ours
-            ours -= {u for u in ours if units[u]["path"].startswith("/etc/")
-                     and subprocess.run(["rpm", "-qf", units[u]["path"]], capture_output=True).returncode == 0}
-        packaged = {i["path"] for u, i in units.items() if u not in ours and i["path"].startswith("/usr/lib/")}
+            ours -= {
+                u
+                for u in ours
+                if units[u]["path"].startswith("/etc/")
+                and subprocess.run(
+                    ["rpm", "-qf", units[u]["path"]], capture_output=True, check=False
+                ).returncode
+                == 0
+            }
+        packaged = {
+            i["path"]
+            for u, i in units.items()
+            if u not in ours and i["path"].startswith("/usr/lib/")
+        }
         theirs = user_installed(sorted(packaged))
         for unit, info in units.items():
             if unit in ours or info["path"] in theirs:
                 pids = cgroup_pids(info["cgroup"]) if info["cgroup"] else []
                 if pids:
-                    found.append({"unit": unit, "scope": scope, "name": info["description"] or unit,
-                                  "cgroup": info["cgroup"], "main": info["main"], "pids": pids})
+                    found.append(
+                        {
+                            "unit": unit,
+                            "scope": scope,
+                            "name": info["description"] or unit,
+                            "cgroup": info["cgroup"],
+                            "main": info["main"],
+                            "pids": pids,
+                        }
+                    )
     return found
 
 
@@ -133,7 +187,7 @@ def desktop_files():
     dirs = [os.environ.get("XDG_DATA_HOME", HOME + "/.local/share")]
     dirs += os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":")
     by_exe = {}
-    for d in reversed(dirs):   # earlier dirs win, like the menu
+    for d in reversed(dirs):  # earlier dirs win, like the menu
         apps = os.path.join(d, "applications")
         for root, _, names in os.walk(apps):
             for n in names:
@@ -146,7 +200,11 @@ def desktop_files():
                     elif section == "[Desktop Entry]" and "=" in line:
                         k, v = line.split("=", 1)
                         entry.setdefault(k.strip(), v.strip())
-                if entry.get("NoDisplay") == "true" or entry.get("Hidden") == "true" or not entry.get("Exec"):
+                if (
+                    entry.get("NoDisplay") == "true"
+                    or entry.get("Hidden") == "true"
+                    or not entry.get("Exec")
+                ):
                     continue
                 try:
                     argv = shlex.split(entry["Exec"])
@@ -155,9 +213,12 @@ def desktop_files():
                 while argv and (argv[0] == "env" or "=" in argv[0]):
                     argv.pop(0)
                 if not argv or argv[0] in ("flatpak", "sh", "bash", "python3", "python"):
-                    continue   # flatpaks get scopes of their own; wrappers can't be told apart
-                app = (os.path.relpath(os.path.join(root, n), apps).replace("/", "-"),
-                       entry.get("Name", n[:-8]), entry.get("Icon", ""))
+                    continue  # flatpaks get scopes of their own; wrappers can't be told apart
+                app = (
+                    os.path.relpath(os.path.join(root, n), apps).replace("/", "-"),
+                    entry.get("Name", n[:-8]),
+                    entry.get("Icon", ""),
+                )
                 names_ = {os.path.basename(argv[0])}
                 full = shutil.which(argv[0])
                 if full:
@@ -204,25 +265,33 @@ def programs(service_list):
         unit = unit_of(p["cgroup"])
         bare = app[0].removesuffix(".desktop")
         if unit.startswith(("app-", "dbus-")) and bare in unit:
-            continue   # the app's own scope, already a row
+            continue  # the app's own scope, already a row
         if not unit or unit.startswith(("session-", "init.")):
             continue
         parent = procs.get(p["ppid"])
         if parent and by_exe.get(parent["exe"]) == app and parent["cgroup"] == p["cgroup"]:
-            continue   # a child of the same app, collected below
+            continue  # a child of the same app, collected below
         pids = [pid]
-        for child, c in procs.items():   # its descendants in the same cgroup
+        for child, c in procs.items():  # its descendants in the same cgroup
             q, seen = c["ppid"], 0
             while q in procs and q != pid and seen < 64:
                 q, seen = procs[q]["ppid"], seen + 1
             if q == pid and c["cgroup"] == p["cgroup"]:
                 pids.append(child)
-        row = found.setdefault(app[0], {"menuId": app[0], "name": app[1], "icon": app[2], "pids": []})
+        row = found.setdefault(
+            app[0], {"menuId": app[0], "name": app[1], "icon": app[2], "pids": []}
+        )
         row["pids"] += pids
     return list(found.values())
 
 
 if __name__ == "__main__":
     s = services()
-    print(json.dumps({"services": [{k: v for k, v in x.items() if k != "main"} for x in s],
-                      "programs": programs(s)}))
+    print(
+        json.dumps(
+            {
+                "services": [{k: v for k, v in x.items() if k != "main"} for x in s],
+                "programs": programs(s),
+            }
+        )
+    )

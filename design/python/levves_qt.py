@@ -9,6 +9,7 @@ Put design/dist on sys.path, then:
 Names are `mingcute-<name>` or `leaves-<name>` (our own drawings), as installed for Plasma; a bare
 name is a MingCute one. The SVGs are read from the repo, so nothing has to be installed first.
 """
+
 from pathlib import Path
 
 from levves_tokens import color
@@ -38,13 +39,16 @@ def tinted(name, ink, size):
     return pixmap
 
 
+DEFAULT_SIZE = QSize(32, 32)
+
+
 class IconProvider(QQuickImageProvider):
     """image://icon/<name>?color=rrggbb for QML; `text` when no color is given.
 
     fallback(name, size) draws names that aren't ours (an app's own icon, say); without one, every
     name is taken as a MingCute icon."""
 
-    def __init__(self, fallback=None, default_size=QSize(32, 32)):
+    def __init__(self, fallback=None, default_size=DEFAULT_SIZE):
         super().__init__(QQuickImageProvider.Pixmap)
         self.fallback = fallback
         self.default_size = default_size

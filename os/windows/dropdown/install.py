@@ -39,48 +39,77 @@ CLAUDE_GUID = "{4c4c6576-7665-7300-8000-436c61756465}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def print_header(title):
     print(f"\n{'─' * 50}")
     print(f"  {title}")
     print(f"{'─' * 50}")
 
+
 def find_ahk_exe():
-    for path in (Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"),
-                 Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey.exe")):
+    for path in (
+        Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"),
+        Path(r"C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"),
+    ):
         if path.exists():
             return path
     return None
+
 
 def fetch_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "levves-setup-dropdown"})
     with urllib.request.urlopen(req) as resp:
         return json.load(resp)
 
+
 def terminal_running():
     """True while a WindowsTerminal.exe from TERMINAL_DIR runs (its files are locked)."""
     result = subprocess.run(
-        ["powershell", "-NoProfile", "-Command",
-         "Get-Process WindowsTerminal -ErrorAction SilentlyContinue | "
-         f"Where-Object Path -like '{TERMINAL_DIR}\\*' | Measure-Object | ForEach-Object Count"],
-        capture_output=True, text=True)
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            (
+                "Get-Process WindowsTerminal -ErrorAction SilentlyContinue | "
+                f"Where-Object Path -like '{TERMINAL_DIR}\\*' | Measure-Object | ForEach-Object Count"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     return result.stdout.strip() not in ("", "0")
 
+
 def stop_ahk_script():
-    subprocess.run(["powershell", "-NoProfile", "-Command",
-                    "Get-CimInstance Win32_Process -Filter \"Name like 'AutoHotkey%'\" | "
-                    f"Where-Object CommandLine -like '*{AHK_SCRIPT.name}*' | "
-                    "ForEach-Object { Stop-Process -Id $_.ProcessId }"])
+    subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            (
+                "Get-CimInstance Win32_Process -Filter \"Name like 'AutoHotkey%'\" | "
+                f"Where-Object CommandLine -like '*{AHK_SCRIPT.name}*' | "
+                "ForEach-Object { Stop-Process -Id $_.ProcessId }"
+            ),
+        ],
+        check=False,
+    )
+
 
 def mix(color, target, amount):
     """Move a #rrggbb color toward target by amount (0-1), like DESIGN.md's bright variants."""
-    a = [int(color[i:i + 2], 16) for i in (1, 3, 5)]
-    b = [int(target[i:i + 2], 16) for i in (1, 3, 5)]
-    return "#" + "".join(f"{round(x + (y - x) * amount):02x}" for x, y in zip(a, b))
+    a = [int(color[i : i + 2], 16) for i in (1, 3, 5)]
+    b = [int(target[i : i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * amount):02x}" for x, y in zip(a, b, strict=False))
+
 
 def milliseconds(value):
     return int(str(value).removesuffix("ms"))
 
+
 # ── Steps ─────────────────────────────────────────────────────────────────────
+
 
 def load_tokens():
     print_header("Loading Levves Tokens")
@@ -89,14 +118,16 @@ def load_tokens():
         sys.exit(1)
     sys.path.insert(0, str(TOKENS_DIR))
     from levves_tokens import TOKENS, color
+
     print(f"  ✓ Palette loaded, accent {color('accent')}")
     return TOKENS, color
+
 
 def install_terminal():
     print_header("Installing Windows Terminal (portable)")
     try:
         release = fetch_json(RELEASE_API)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         if (TERMINAL_DIR / "wt.exe").exists():
             print(f"  ! Could not reach GitHub ({e}); keeping the installed copy.")
             return
@@ -104,16 +135,25 @@ def install_terminal():
         sys.exit(1)
 
     tag = release["tag_name"]
-    if (TERMINAL_DIR / "wt.exe").exists() and VERSION_FILE.exists() \
-            and VERSION_FILE.read_text().strip() == tag:
+    if (
+        (TERMINAL_DIR / "wt.exe").exists()
+        and VERSION_FILE.exists()
+        and VERSION_FILE.read_text().strip() == tag
+    ):
         print(f"  ✓ Windows Terminal {tag} is already installed, skipping.")
         return
     if terminal_running():
         print("  ✗ The drop-down terminal is running; close it (exit every tab) and re-run.")
         sys.exit(1)
 
-    asset = next((a for a in release["assets"]
-                  if a["name"].startswith("Microsoft.WindowsTerminal_") and a["name"].endswith("_x64.zip")), None)
+    asset = next(
+        (
+            a
+            for a in release["assets"]
+            if a["name"].startswith("Microsoft.WindowsTerminal_") and a["name"].endswith("_x64.zip")
+        ),
+        None,
+    )
     if not asset:
         print(f"  ✗ No x64 portable zip in Windows Terminal release {tag}.")
         sys.exit(1)
@@ -153,6 +193,7 @@ def install_terminal():
     shutil.rmtree(work, ignore_errors=True)
     print(f"  ✓ Windows Terminal {tag} in {TERMINAL_DIR}")
 
+
 def write_settings(tokens, color):
     print_header("Terminal Settings")
     if not (USER_FONTS / "JetBrainsMono-Regular.ttf").exists():
@@ -161,27 +202,53 @@ def write_settings(tokens, color):
     # The Yakuake scheme (os/linux/plasma/yakuake/build.py): ANSI from the palette,
     # bright 25% toward white, bright black is the faint text
     names = ["black", "red", "green", "yellow", "blue", "purple", "cyan", "white"]
-    normal = [color("terminal.black"), color("critical"), color("success"), color("warning"),
-              color("info"), color("terminal.magenta"), color("terminal.cyan"), color("text")]
-    scheme = {"name": "Levves", "background": color("bg"), "foreground": color("text"),
-              "cursorColor": color("accent"), "selectionBackground": color("text-faint")}
-    for i, (name, value) in enumerate(zip(names, normal)):
+    normal = [
+        color("terminal.black"),
+        color("critical"),
+        color("success"),
+        color("warning"),
+        color("info"),
+        color("terminal.magenta"),
+        color("terminal.cyan"),
+        color("text"),
+    ]
+    scheme = {
+        "name": "Levves",
+        "background": color("bg"),
+        "foreground": color("text"),
+        "cursorColor": color("accent"),
+        "selectionBackground": color("text-faint"),
+    }
+    for i, (name, value) in enumerate(zip(names, normal, strict=False)):
         scheme[name] = value
         bright = color("terminal.bright-black") if i == 0 else mix(value, "#ffffff", 0.25)
         scheme["bright" + name[0].upper() + name[1:]] = bright
 
     profiles = [
-        {"guid": POWERSHELL_GUID, "name": "PowerShell",
-         "commandline": r"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo",
-         "startingDirectory": "%USERPROFILE%", "hidden": False},
+        {
+            "guid": POWERSHELL_GUID,
+            "name": "PowerShell",
+            "commandline": r"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo",
+            "startingDirectory": "%USERPROFILE%",
+            "hidden": False,
+        },
         {"guid": CMD_GUID, "hidden": True},
     ]
     claude = shutil.which("claude")
     if claude:
-        profiles.append({"guid": CLAUDE_GUID, "name": "Claude Code", "commandline": claude,
-                         "startingDirectory": "%USERPROFILE%", "hidden": False})
+        profiles.append(
+            {
+                "guid": CLAUDE_GUID,
+                "name": "Claude Code",
+                "commandline": claude,
+                "startingDirectory": "%USERPROFILE%",
+                "hidden": False,
+            }
+        )
     else:
-        print("  ! claude isn't on the PATH; no Claude Code profile (Win+Shift+N opens PowerShell).")
+        print(
+            "  ! claude isn't on the PATH; no Claude Code profile (Win+Shift+N opens PowerShell)."
+        )
 
     settings = {
         "$help": "Written by levves os/windows/dropdown/install.py; re-run it rather than editing here.",
@@ -195,22 +262,41 @@ def write_settings(tokens, color):
         "useAcrylicInTabRow": False,
         "confirmCloseAllTabs": False,
         "startOnUserLogin": False,
-        "disabledProfileSources": ["Windows.Terminal.Wsl", "Windows.Terminal.Azure",
-                                   "Windows.Terminal.PowershellCore", "Windows.Terminal.VisualStudio",
-                                   "Windows.Terminal.SshHostGenerator"],
+        "disabledProfileSources": [
+            "Windows.Terminal.Wsl",
+            "Windows.Terminal.Azure",
+            "Windows.Terminal.PowershellCore",
+            "Windows.Terminal.VisualStudio",
+            "Windows.Terminal.SshHostGenerator",
+        ],
         "theme": "Levves",
-        "themes": [{
-            "name": "Levves",
-            "window": {"applicationTheme": "dark", "useMica": False},
-            "tabRow": {"background": color("title-bar"), "unfocusedBackground": color("title-bar-inactive")},
-            "tab": {"background": color("bg"), "unfocusedBackground": color("title-bar"),
-                    "showCloseButton": "hover"},
-        }],
+        "themes": [
+            {
+                "name": "Levves",
+                "window": {"applicationTheme": "dark", "useMica": False},
+                "tabRow": {
+                    "background": color("title-bar"),
+                    "unfocusedBackground": color("title-bar-inactive"),
+                },
+                "tab": {
+                    "background": color("bg"),
+                    "unfocusedBackground": color("title-bar"),
+                    "showCloseButton": "hover",
+                },
+            }
+        ],
         "schemes": [scheme],
         "profiles": {
-            "defaults": {"colorScheme": "Levves", "font": {"face": "JetBrains Mono", "size": 12},
-                         "cursorShape": "filledBox", "padding": "8", "opacity": 100,
-                         "useAcrylic": False, "closeOnExit": "always", "bellStyle": "none"},
+            "defaults": {
+                "colorScheme": "Levves",
+                "font": {"face": "JetBrains Mono", "size": 12},
+                "cursorShape": "filledBox",
+                "padding": "8",
+                "opacity": 100,
+                "useAcrylic": False,
+                "closeOnExit": "always",
+                "bellStyle": "none",
+            },
             "list": profiles,
         },
         # Yakuake's Shift+Left/Right between split terminals (yakuakerc, kwin/yakuake-panes)
@@ -221,8 +307,11 @@ def write_settings(tokens, color):
     }
     SETTINGS.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS.write_text(json.dumps(settings, indent=4) + "\n", encoding="utf-8")
-    print(f"  ✓ Levves scheme, JetBrains Mono, PowerShell{' and Claude Code' if claude else ''} profiles")
+    print(
+        f"  ✓ Levves scheme, JetBrains Mono, PowerShell{' and Claude Code' if claude else ''} profiles"
+    )
     print(f"    {SETTINGS}")
+
 
 def register_startup(tokens):
     print_header("Registering Startup Entry")
@@ -242,10 +331,13 @@ def register_startup(tokens):
     subprocess.Popen([str(ahk_exe), str(AHK_SCRIPT.resolve()), str(opening), str(closing)])
     print(f"  ✓ {AHK_SCRIPT.name} is running.")
 
+
 def uninstall():
     print_header("Removing the Drop-down Terminal")
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_REG_KEY, 0, winreg.KEY_SET_VALUE) as key:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, STARTUP_REG_KEY, 0, winreg.KEY_SET_VALUE
+        ) as key:
             winreg.DeleteValue(key, STARTUP_REG_NAME)
         print(f"  ✓ Removed startup entry {STARTUP_REG_NAME}")
     except FileNotFoundError:
@@ -259,6 +351,7 @@ def uninstall():
         print(f"  ✓ Removed {TERMINAL_DIR}")
     print()
 
+
 def done():
     print_header("Drop-down Terminal Installed")
     print("  Win+/          open / retract (focuses it when it's open behind another window)")
@@ -266,6 +359,7 @@ def done():
     print("  Win+Shift+N    new Claude Code tab")
     print("  Shift+←/→      between split panes; Ctrl+Tab / Ctrl+Shift+Tab between tabs")
     print()
+
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 

@@ -4,6 +4,7 @@ in place of its /*LISTS*/ default: KWin scripts can't read files.
 
 Usage: build.py <installed script folder>   (apply.sh runs it after copying)
 """
+
 import json
 import sys
 from pathlib import Path

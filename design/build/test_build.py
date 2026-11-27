@@ -1,4 +1,5 @@
 """Tests for build.py. Run: python3 -m unittest discover -s design/build"""
+
 import json
 import tempfile
 import unittest
@@ -23,8 +24,16 @@ class Flatten(unittest.TestCase):
 
 class Resolve(unittest.TestCase):
     def test_references_follow_chains(self):
-        tokens = tokens_from({"color": {"$type": "color", "a": {"$value": "#111111"},
-                                        "b": {"$value": "{color.a}"}, "c": {"$value": "{color.b}"}}})
+        tokens = tokens_from(
+            {
+                "color": {
+                    "$type": "color",
+                    "a": {"$value": "#111111"},
+                    "b": {"$value": "{color.a}"},
+                    "c": {"$value": "{color.b}"},
+                }
+            }
+        )
         self.assertEqual(tokens[("color", "c")]["value"], "#111111")
 
     def test_a_missing_reference_is_an_error(self):
@@ -33,19 +42,33 @@ class Resolve(unittest.TestCase):
 
     def test_a_cycle_is_an_error(self):
         with self.assertRaises(build.TokenError):
-            tokens_from({"color": {"$type": "color", "a": {"$value": "{color.b}"}, "b": {"$value": "{color.a}"}}})
+            tokens_from(
+                {
+                    "color": {
+                        "$type": "color",
+                        "a": {"$value": "{color.b}"},
+                        "b": {"$value": "{color.a}"},
+                    }
+                }
+            )
 
     def test_a_reference_to_another_type_is_an_error(self):
         with self.assertRaises(build.TokenError):
-            tokens_from({"color": {"$type": "color", "a": {"$value": "{space.4}"}},
-                         "space": {"$type": "dimension", "4": {"$value": "4px"}}})
+            tokens_from(
+                {
+                    "color": {"$type": "color", "a": {"$value": "{space.4}"}},
+                    "space": {"$type": "dimension", "4": {"$value": "4px"}},
+                }
+            )
 
 
 class Load(unittest.TestCase):
     def test_a_group_defined_in_two_files_is_an_error(self):
         with tempfile.TemporaryDirectory() as d:
             for name in ("a.json", "b.json"):
-                Path(d, name).write_text(json.dumps({"size": {"$type": "dimension", name: {"$value": "1px"}}}))
+                Path(d, name).write_text(
+                    json.dumps({"size": {"$type": "dimension", name: {"$value": "1px"}}})
+                )
             with self.assertRaises(build.TokenError):
                 build.load(Path(d))
 
@@ -77,9 +100,11 @@ class RealTokens(unittest.TestCase):
 
     def test_python_color_helper(self):
         namespace = {}
-        exec(build.python(self.tokens), namespace)
+        exec(build.python(self.tokens), namespace)  # noqa: S102 - runs the generated module under test
         self.assertEqual(namespace["color"]("accent"), namespace["TOKENS"]["color.accent"])
-        self.assertEqual(namespace["color"]("terminal.cyan"), namespace["TOKENS"]["color.terminal.cyan"])
+        self.assertEqual(
+            namespace["color"]("terminal.cyan"), namespace["TOKENS"]["color.terminal.cyan"]
+        )
 
     def test_theme_has_the_tints(self):
         theme = build.qml(self.tokens)
@@ -100,10 +125,16 @@ class RealTokens(unittest.TestCase):
 class Hardcoded(unittest.TestCase):
     def scan(self, text, path="os/linux/x.qml"):
         import check_hardcoded
+
         return check_hardcoded.scan([path], ["e9a23b"], read=lambda f: text)
 
     def test_finds_hex_in_every_spelling(self):
-        for text in ['color: "#e9a23b"', "Color(0xFFE9A23B)", "ON = 'e9a23b'", "--accent: #E9A23B;"]:
+        for text in [
+            'color: "#e9a23b"',
+            "Color(0xFFE9A23B)",
+            "ON = 'e9a23b'",
+            "--accent: #E9A23B;",
+        ]:
             self.assertTrue(self.scan(text), text)
 
     def test_ignores_other_colors_and_longer_hex(self):

@@ -14,6 +14,7 @@ update changed the QML), the package is removed and the tray keeps the stock
 applet; update patches.py for the new version. Prints "changed" when the
 installed package changed.
 """
+
 import json
 import re
 import subprocess
@@ -25,24 +26,46 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True  # no __pycache__ in the repo
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "shared"))
-import changes  # noqa: E402
-import patches  # noqa: E402
+import changes
+import patches
 
 ID = "org.leaves.notifications"
 STOCK = "org.kde.plasma.notifications"
 DEST = Path.home() / ".local/share/plasma/plasmoids" / ID
 CACHE = Path.home() / ".cache/leaves/notifications"
-UPSTREAM = "https://raw.githubusercontent.com/KDE/plasma-workspace/v{version}/applets/notifications/{path}"
+UPSTREAM = (
+    "https://raw.githubusercontent.com/KDE/plasma-workspace/v{version}/applets/notifications/{path}"
+)
 # The QML files of applets/notifications/CMakeLists.txt
-QML = ["main", "CompactRepresentation", "DraggableDelegate", "FullRepresentation", "NotificationPopup",
-       "global/Globals", "global/PulseAudio",
-       "delegates/BaseDelegate", "delegates/DelegateHistory", "delegates/DelegateHistoryGrouped",
-       "delegates/DelegatePopup",
-       "components/ActionContainer", "components/Body", "components/DraggableFileArea",
-       "components/EditContextMenu", "components/FooterLoader", "components/HeadingButtons",
-       "components/Icon", "components/JobDetails", "components/JobIconItem", "components/JobItem",
-       "components/ModelInterface", "components/NotificationHeader", "components/NotificationReplyField",
-       "components/SpeedChart", "components/Summary", "components/ThumbnailStrip"]
+QML = [
+    "main",
+    "CompactRepresentation",
+    "DraggableDelegate",
+    "FullRepresentation",
+    "NotificationPopup",
+    "global/Globals",
+    "global/PulseAudio",
+    "delegates/BaseDelegate",
+    "delegates/DelegateHistory",
+    "delegates/DelegateHistoryGrouped",
+    "delegates/DelegatePopup",
+    "components/ActionContainer",
+    "components/Body",
+    "components/DraggableFileArea",
+    "components/EditContextMenu",
+    "components/FooterLoader",
+    "components/HeadingButtons",
+    "components/Icon",
+    "components/JobDetails",
+    "components/JobIconItem",
+    "components/JobItem",
+    "components/ModelInterface",
+    "components/NotificationHeader",
+    "components/NotificationReplyField",
+    "components/SpeedChart",
+    "components/Summary",
+    "components/ThumbnailStrip",
+]
 
 QMLDIR = """singleton Globals 1.0 Globals.qml
 PulseAudio 1.0 PulseAudio.qml
@@ -50,7 +73,9 @@ PulseAudio 1.0 PulseAudio.qml
 
 
 def plasma_version():
-    out = subprocess.run(["plasmashell", "--version"], capture_output=True, text=True).stdout
+    out = subprocess.run(
+        ["plasmashell", "--version"], capture_output=True, text=True, check=False
+    ).stdout
     return out.split()[-1]
 
 
@@ -61,7 +86,9 @@ def fetch(version):
         target = src / path
         if not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
-            with urllib.request.urlopen(UPSTREAM.format(version=version, path=path), timeout=30) as r:
+            with urllib.request.urlopen(
+                UPSTREAM.format(version=version, path=path), timeout=30
+            ) as r:
                 target.write_bytes(r.read())
     return src
 
@@ -72,16 +99,18 @@ def use_leaves_globals(files):
     for name, text in files.items():
         if not name.endswith(".qml") or "/global/" in name:
             continue
-        text = re.sub(r"(?<![\w.])(Notifications|NotificationsApplet)\.Globals\b", "Leaves.Globals", text)
+        text = re.sub(
+            r"(?<![\w.])(Notifications|NotificationsApplet)\.Globals\b", "Leaves.Globals", text
+        )
         if re.search(r"\bLeaves\.Globals\b", text):
             depth = name.count("/") - 2  # contents/ui/X.qml is depth 0
-            imports = list(re.finditer(r"^import .*\n", text, re.M))
+            imports = list(re.finditer(r"^import .*\n", text, re.MULTILINE))
             line = f'import "{"../" * depth}global" as Leaves\n'
-            text = text[:imports[-1].end()] + line + text[imports[-1].end():]
+            text = text[: imports[-1].end()] + line + text[imports[-1].end() :]
         # The patches' Levves pieces and tokens (Theme.*, not Kirigami.Theme)
         if re.search(r"(?<![\w.])Theme\.", text) and "\nimport Levves\n" not in text:
-            imports = list(re.finditer(r"^import .*\n", text, re.M))
-            text = text[:imports[-1].end()] + "import Levves\n" + text[imports[-1].end():]
+            imports = list(re.finditer(r"^import .*\n", text, re.MULTILINE))
+            text = text[: imports[-1].end()] + "import Levves\n" + text[imports[-1].end() :]
         files[name] = text
 
 
@@ -108,8 +137,10 @@ def main():
         files["metadata.json"] = json.dumps(metadata, indent=1, ensure_ascii=False)
     except (patches.PatchError, OSError) as e:
         files = None
-        print(f"Leaves notifications NOT installed for Plasma {version} ({e}); the tray uses the stock ones",
-              file=sys.stderr)
+        print(
+            f"Leaves notifications NOT installed for Plasma {version} ({e}); the tray uses the stock ones",
+            file=sys.stderr,
+        )
     changes.report(changes.replace_tree(DEST, files))
 
 

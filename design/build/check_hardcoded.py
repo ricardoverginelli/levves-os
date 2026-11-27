@@ -7,10 +7,10 @@ Looks for every color token's hex (#e9a23b, 0xFFE9A23B, "e9a23b") in the repo's 
 outside the places listed in SKIP. A file that can't use the generated files yet goes in DEFERRED
 with the reason; the check also fails when a deferred file no longer has any, so the list stays true.
 """
+
 import re
 import subprocess
 import sys
-from pathlib import Path
 
 import build
 
@@ -18,14 +18,26 @@ ROOT = build.DESIGN.parent
 
 # Not on the Levves tokens (yet), or not code
 SKIP = (
-    "design/",            # the tokens themselves and their outputs
-    "packages/",          # the suite keeps its Win95 tokens until its reskin
+    "design/",  # the tokens themselves and their outputs
+    "packages/",  # the suite keeps its Win95 tokens until its reskin
     "apps/suite/",
     "docs/",
     "tools/",
     "templates/",
 )
-SKIP_SUFFIXES = (".md", ".svg", ".png", ".jpg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".sxb", ".jar")
+SKIP_SUFFIXES = (
+    ".md",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".gif",
+    ".webp",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".sxb",
+    ".jar",
+)
 
 DEFERRED = {
     # file: why it can't use the generated files yet
@@ -38,7 +50,9 @@ def color_hexes():
 
 
 def tracked_files():
-    out = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z"], capture_output=True, check=True).stdout
+    out = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z"], capture_output=True, check=True
+    ).stdout
     return [f for f in out.decode().split("\0") if f]
 
 
@@ -67,11 +81,15 @@ def main():
         for n, line in lines:
             print(f"{f}:{n}: {line[:120]}", file=sys.stderr)
     if bad:
-        print("\nThese colors are Levves tokens: use design/dist/ for this platform (see design/DESIGN.md).",
-              file=sys.stderr)
+        print(
+            "\nThese colors are Levves tokens: use design/dist/ for this platform (see design/DESIGN.md).",
+            file=sys.stderr,
+        )
     for f in stale:
-        print(f"{f} no longer hardcodes a token color: remove it from DEFERRED in check_hardcoded.py",
-              file=sys.stderr)
+        print(
+            f"{f} no longer hardcodes a token color: remove it from DEFERRED in check_hardcoded.py",
+            file=sys.stderr,
+        )
     deferred = sum(len(hits[f]) for f in DEFERRED if f in hits)
     if not bad and not stale:
         print(f"no hardcoded token colors ({deferred} lines deferred to the reskin)")

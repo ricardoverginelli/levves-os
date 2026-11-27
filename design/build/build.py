@@ -16,6 +16,7 @@ Outputs (never edit them, change the tokens and rebuild):
     dist/levves_qt.py           the hand-written Python pieces in design/python/ (tinted icons), copied in
     dist/android/res/values/levves_colors.xml   Android color resources: @color/levves_<name>
 """
+
 import json
 import re
 import sys
@@ -56,8 +57,14 @@ def flatten(tree):
         kind = node.get("$type", inherited)
         if "$value" in node:
             if kind is None:
-                raise TokenError(f"{'.'.join(path)} has no $type (set it on the token or a group above)")
-            out[path] = {"type": kind, "value": node["$value"], "description": node.get("$description", "")}
+                raise TokenError(
+                    f"{'.'.join(path)} has no $type (set it on the token or a group above)"
+                )
+            out[path] = {
+                "type": kind,
+                "value": node["$value"],
+                "description": node.get("$description", ""),
+            }
             return
         for key, child in node.items():
             if not key.startswith("$") and isinstance(child, dict):
@@ -70,6 +77,7 @@ def flatten(tree):
 
 def resolve(tokens):
     """Replace "{a.b}" references with the token they point to (chains allowed, cycles not)."""
+
     def value_of(path, seen):
         token = tokens[path]
         value = token["value"]
@@ -80,15 +88,20 @@ def resolve(tokens):
         if target not in tokens:
             raise TokenError(f"{'.'.join(path)} refers to {match.group(1)}, which doesn't exist")
         if target in seen:
-            raise TokenError(f"reference cycle: {' -> '.join('.'.join(p) for p in seen + [target])}")
+            raise TokenError(
+                f"reference cycle: {' -> '.join('.'.join(p) for p in seen + [target])}"
+            )
         if tokens[target]["type"] != token["type"]:
-            raise TokenError(f"{'.'.join(path)} ({token['type']}) refers to a {tokens[target]['type']}")
+            raise TokenError(
+                f"{'.'.join(path)} ({token['type']}) refers to a {tokens[target]['type']}"
+            )
         return value_of(target, seen + [target])
 
     return {path: {**t, "value": value_of(path, [path])} for path, t in tokens.items()}
 
 
 # ── Names ──────────────────────────────────────────────────────────────────────
+
 
 def css_name(path):
     return "--lv-" + "-".join(path)
@@ -114,6 +127,7 @@ def fmt(n):
 
 # ── Outputs ────────────────────────────────────────────────────────────────────
 
+
 def css(tokens):
     lines = [f"/* {HEADER} */", ":root {"]
     for path, t in tokens.items():
@@ -134,7 +148,9 @@ def qml_name(path):
     name = camel(path)
     name = QML_RENAMES.get(name, name)
     if re.match(r"on[A-Z]", name):
-        raise TokenError(f"{'.'.join(path)} would be '{name}' in QML, a signal handler name: add it to QML_RENAMES")
+        raise TokenError(
+            f"{'.'.join(path)} would be '{name}' in QML, a signal handler name: add it to QML_RENAMES"
+        )
     return name
 
 
@@ -160,7 +176,10 @@ def qml(tokens):
         else:
             raise TokenError(f"no QML output for type {kind}")
         lines.append("    " + line)
-    lines += ["", "    // The mixes every piece uses (design/DESIGN.md Color, Edges), so none is mixed by hand"]
+    lines += [
+        "",
+        "    // The mixes every piece uses (design/DESIGN.md Color, Edges), so none is mixed by hand",
+    ]
     for name, base, opacity in TINTS:
         rgb = base if base.startswith("#") else tokens[("color", base)]["value"]
         alpha = round(tokens[("opacity", opacity)]["value"] * 255)
@@ -210,16 +229,21 @@ def kotlin(tokens):
 
 def python(tokens):
     data = {".".join(path): t["value"] for path, t in tokens.items()}
-    return (f'"""{HEADER}"""\n\nTOKENS = {json.dumps(data, indent=4)}\n\n\n'
-            'def color(name):\n'
-            '    """A color by its name without the group: color("text-muted"), color("terminal.cyan")."""\n'
-            '    return TOKENS["color." + name]\n')
+    return (
+        f'"""{HEADER}"""\n\nTOKENS = {json.dumps(data, indent=4)}\n\n\n'
+        "def color(name):\n"
+        '    """A color by its name without the group: color("text-muted"), color("terminal.cyan")."""\n'
+        '    return TOKENS["color." + name]\n'
+    )
 
 
 def python_pieces(pieces=PY_PIECES):
     """The hand-written Python pieces, copied next to levves_tokens.py so one sys.path entry finds both."""
-    return {path.name: f"# Copied from design/python/{path.name} by design/build/build.py. Don't edit here.\n"
-            + path.read_text() for path in sorted(pieces.glob("*.py"))}
+    return {
+        path.name: f"# Copied from design/python/{path.name} by design/build/build.py. Don't edit here.\n"
+        + path.read_text()
+        for path in sorted(pieces.glob("*.py"))
+    }
 
 
 def android(tokens):
@@ -237,8 +261,10 @@ def qml_module(tokens, pieces=QML_PIECES):
     files = {"Theme.qml": qml(tokens)}
     qmldir = ["module Levves", "singleton Theme 1.0 Theme.qml"]
     for path in sorted(pieces.glob("*.qml")):
-        files[path.name] = (f"// Copied from design/qml/{path.name} by design/build/build.py. Don't edit here.\n"
-                            + path.read_text())
+        files[path.name] = (
+            f"// Copied from design/qml/{path.name} by design/build/build.py. Don't edit here.\n"
+            + path.read_text()
+        )
         qmldir.append(f"{path.stem} 1.0 {path.name}")
     files["qmldir"] = "\n".join(qmldir) + "\n"
     return {f"qml/Levves/{name}": text for name, text in files.items()}
@@ -262,8 +288,11 @@ def main(argv):
         print(f"error: {e}", file=sys.stderr)
         return 2
     if "--check" in argv:
-        stale = [name for name, text in files.items()
-                 if not (DIST / name).exists() or (DIST / name).read_text() != text]
+        stale = [
+            name
+            for name, text in files.items()
+            if not (DIST / name).exists() or (DIST / name).read_text() != text
+        ]
         for name in stale:
             print(f"out of date: design/dist/{name}", file=sys.stderr)
         if stale:

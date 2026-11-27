@@ -11,6 +11,7 @@ If a patch no longer matches (a Plasma update changed the QML), the package is
 removed and top-bar.js falls back to the stock tray; update patches.py for the
 new version. Prints "changed" when the installed package changed.
 """
+
 import json
 import subprocess
 import sys
@@ -21,20 +22,39 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True  # no __pycache__ in the repo
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "shared"))
-import changes  # noqa: E402
-import patches  # noqa: E402
+import changes
+import patches
 
 ID = "org.leaves.systemtray"
 DEST = Path.home() / ".local/share/plasma/plasmoids" / ID
 CACHE = Path.home() / ".cache/leaves/systemtray"
-UPSTREAM = "https://raw.githubusercontent.com/KDE/plasma-workspace/v{version}/applets/systemtray/{path}"
-QML = ["AbstractItem", "BackgroundAppItem", "CompactApplet", "ConfigGeneral", "CurrentItemHighLight",
-       "ExpandedRepresentation", "ExpanderArrow", "HiddenItemsView", "ItemLoader", "PlasmoidItem",
-       "PlasmoidPopupsContainer", "PulseAnimation", "StatusNotifierItem", "SystemTrayState", "config", "main"]
+UPSTREAM = (
+    "https://raw.githubusercontent.com/KDE/plasma-workspace/v{version}/applets/systemtray/{path}"
+)
+QML = [
+    "AbstractItem",
+    "BackgroundAppItem",
+    "CompactApplet",
+    "ConfigGeneral",
+    "CurrentItemHighLight",
+    "ExpandedRepresentation",
+    "ExpanderArrow",
+    "HiddenItemsView",
+    "ItemLoader",
+    "PlasmoidItem",
+    "PlasmoidPopupsContainer",
+    "PulseAnimation",
+    "StatusNotifierItem",
+    "SystemTrayState",
+    "config",
+    "main",
+]
 
 
 def plasma_version():
-    out = subprocess.run(["plasmashell", "--version"], capture_output=True, text=True).stdout
+    out = subprocess.run(
+        ["plasmashell", "--version"], capture_output=True, text=True, check=False
+    ).stdout
     return out.split()[-1]
 
 
@@ -46,7 +66,9 @@ def fetch(version):
         target = src / path
         if not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
-            with urllib.request.urlopen(UPSTREAM.format(version=version, path=path), timeout=30) as r:
+            with urllib.request.urlopen(
+                UPSTREAM.format(version=version, path=path), timeout=30
+            ) as r:
                 target.write_bytes(r.read())
     return src
 
@@ -55,15 +77,24 @@ def main():
     version = plasma_version()
     try:
         src = fetch(version)
-        files = {f"contents/ui/{q}.qml": (src / f"qml/{q}.qml").read_text() for q in QML if q != "config"}
+        files = {
+            f"contents/ui/{q}.qml": (src / f"qml/{q}.qml").read_text() for q in QML if q != "config"
+        }
         files["contents/config/config.qml"] = (src / "qml/config.qml").read_text()
         files["contents/config/main.xml"] = (src / "main.xml").read_text()
         # A containment package must also carry applet/CompactApplet.qml: Plasma
         # wraps every tray item with it. Without it the items fall back to the
         # panel's version, open popups of their own and fight the tray's popup
         # (they flash open and closed). It uses AbstractItem from ui/.
-        files["contents/applet/CompactApplet.qml"] = (src / "qml/CompactApplet.qml").read_text().replace(
-            "import org.kde.plasma.plasmoid\n", 'import org.kde.plasma.plasmoid\n\nimport "../ui"\n', 1)
+        files["contents/applet/CompactApplet.qml"] = (
+            (src / "qml/CompactApplet.qml")
+            .read_text()
+            .replace(
+                "import org.kde.plasma.plasmoid\n",
+                'import org.kde.plasma.plasmoid\n\nimport "../ui"\n',
+                1,
+            )
+        )
         patches.apply(files)
         metadata = json.loads((src / "metadata.json").read_text())
         metadata["KPackageStructure"] = "Plasma/Applet"
@@ -77,7 +108,10 @@ def main():
         files["metadata.json"] = json.dumps(metadata, indent=1, ensure_ascii=False)
     except (patches.PatchError, OSError) as e:
         files = None
-        print(f"Leaves tray NOT installed for Plasma {version} ({e}); the bar uses the stock tray", file=sys.stderr)
+        print(
+            f"Leaves tray NOT installed for Plasma {version} ({e}); the bar uses the stock tray",
+            file=sys.stderr,
+        )
     changes.report(changes.replace_tree(DEST, files))
 
 

@@ -34,38 +34,49 @@ DISK_LABEL = "Drive Mirror"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def print_header(title):
     print(f"\n{'─' * 50}")
     print(f"  {title}")
     print(f"{'─' * 50}")
 
+
 def fail(msg):
     print(f"  ✗ {msg}")
     sys.exit(1)
+
 
 def fetch_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "levves-setup-drive-mirror"})
     with urllib.request.urlopen(req) as resp:
         return json.load(resp)
 
+
 def rclone_exe():
     return RCLONE_DIR / "rclone.exe"
+
 
 def installed_version():
     if not rclone_exe().exists():
         return None
-    out = subprocess.run([str(rclone_exe()), "version"], capture_output=True, text=True).stdout
-    return out.split()[1] if out else None   # "rclone v1.71.0 ..."
+    out = subprocess.run(
+        [str(rclone_exe()), "version"], capture_output=True, text=True, check=False
+    ).stdout
+    return out.split()[1] if out else None  # "rclone v1.71.0 ..."
+
 
 def broadcast_env_change():
     # Lets new terminals and Explorer pick up the PATH change without signing out
     HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG = 0xFFFF, 0x1A, 0x2
     ctypes.windll.user32.SendMessageTimeoutW(
-        HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", SMTO_ABORTIFHUNG, 5000, None)
+        HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", SMTO_ABORTIFHUNG, 5000, None
+    )
+
 
 def edit_user_path(add=(), remove=()):
-    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0,
-                        winreg.KEY_READ | winreg.KEY_SET_VALUE) as key:
+    with winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_READ | winreg.KEY_SET_VALUE
+    ) as key:
         try:
             value, kind = winreg.QueryValueEx(key, "Path")
         except FileNotFoundError:
@@ -86,23 +97,33 @@ def edit_user_path(add=(), remove=()):
             broadcast_env_change()
     return changed
 
+
 # ── Steps ─────────────────────────────────────────────────────────────────────
+
 
 def check_disk():
     print_header("Checking the Drive Mirror disk")
     out = subprocess.run(
-        ["powershell", "-NoProfile", "-Command",
-         f"(Get-Volume | Where-Object FileSystemLabel -eq '{DISK_LABEL}').DriveLetter"],
-        capture_output=True, text=True).stdout.strip()
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            f"(Get-Volume | Where-Object FileSystemLabel -eq '{DISK_LABEL}').DriveLetter",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
     if not out:
         fail(f"No disk labeled '{DISK_LABEL}' here; this is for the desktop only.")
     print(f"  ✓ Found it at {out}:")
+
 
 def install_rclone():
     print_header("Installing rclone")
     try:
         release = fetch_json(RCLONE_RELEASE_API)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         fail(f"Could not reach GitHub: {e}")
 
     tag = release["tag_name"]
@@ -110,8 +131,7 @@ def install_rclone():
         print(f"  ✓ rclone {tag} is already installed, skipping.")
         return
 
-    asset = next((a for a in release["assets"]
-                  if a["name"].endswith("-windows-amd64.zip")), None)
+    asset = next((a for a in release["assets"] if a["name"].endswith("-windows-amd64.zip")), None)
     if not asset:
         fail(f"No windows-amd64 zip in rclone release {tag}.")
     expected = (asset.get("digest") or "").removeprefix("sha256:")
@@ -124,7 +144,9 @@ def install_rclone():
     urllib.request.urlretrieve(asset["browser_download_url"], archive)
     actual = hashlib.sha256(archive.read_bytes()).hexdigest()
     if actual != expected:
-        fail(f"sha256 mismatch for {asset['name']}:\n      expected {expected}\n      got      {actual}")
+        fail(
+            f"sha256 mismatch for {asset['name']}:\n      expected {expected}\n      got      {actual}"
+        )
     print("  ✓ sha256 matches the GitHub release.")
 
     with zipfile.ZipFile(archive) as z:
@@ -135,23 +157,27 @@ def install_rclone():
     shutil.rmtree(tmp, ignore_errors=True)
     print(f"  ✓ rclone {tag} installed to {RCLONE_DIR}")
 
+
 def install_shim():
     print_header("Putting drive-push on the PATH")
     BIN_DIR.mkdir(parents=True, exist_ok=True)
     # Absolute path to the repo at install time: re-run if the repo moves
     SHIM.write_text(
-        "@powershell -NoProfile -ExecutionPolicy Bypass "
-        f"-File \"{PUSH_SCRIPT.resolve()}\" %*\r\n", encoding="ascii")
+        f'@powershell -NoProfile -ExecutionPolicy Bypass -File "{PUSH_SCRIPT.resolve()}" %*\r\n',
+        encoding="ascii",
+    )
     print(f"  ✓ {SHIM}")
     if edit_user_path(add=[RCLONE_DIR, BIN_DIR]):
         print("  ✓ Added rclone and levves\\bin to the user PATH (open a new terminal).")
     else:
         print("  ✓ Already on the user PATH.")
 
+
 def create_remote():
     print_header(f"Google Drive remote ({REMOTE})")
-    remotes = subprocess.run([str(rclone_exe()), "listremotes"],
-                             capture_output=True, text=True).stdout.split()
+    remotes = subprocess.run(
+        [str(rclone_exe()), "listremotes"], capture_output=True, text=True, check=False
+    ).stdout.split()
     if f"{REMOTE}:" in remotes:
         print(f"  ✓ {REMOTE} already exists, skipping.")
         return
@@ -159,11 +185,15 @@ def create_remote():
     print("  Sign in to Google in the browser window that opens...")
     # stdout is the new config section, token included: keep it off the screen.
     # The sign-in link goes to stderr and still shows.
-    result = subprocess.run([str(rclone_exe()), "config", "create", REMOTE, "drive", "scope=drive"],
-                            stdout=subprocess.DEVNULL)
+    result = subprocess.run(
+        [str(rclone_exe()), "config", "create", REMOTE, "drive", "scope=drive"],
+        stdout=subprocess.DEVNULL,
+        check=False,
+    )
     if result.returncode != 0:
         fail("rclone config create failed.")
     print(f"  ✓ {REMOTE} created.")
+
 
 def register_task():
     print_header("Scheduled task")
@@ -183,21 +213,32 @@ $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interac
 Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $action -Trigger $logon,$every `
     -Settings $settings -Principal $principal -Force | Out-Null
 """
-    result = subprocess.run(["powershell", "-NoProfile", "-Command", ps])
+    result = subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=False)
     if result.returncode != 0:
         fail(f"Could not register the {TASK_NAME} task.")
     print(f"  ✓ '{TASK_NAME}' runs 2 min after logon and every {TASK_EVERY_MINUTES} minutes.")
 
+
 def uninstall():
     print_header("Removing drive-push")
-    subprocess.run(["powershell", "-NoProfile", "-Command",
-                    f"Unregister-ScheduledTask -TaskName '{TASK_NAME}' -Confirm:$false "
-                    "-ErrorAction SilentlyContinue"])
+    subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            (
+                f"Unregister-ScheduledTask -TaskName '{TASK_NAME}' -Confirm:$false "
+                "-ErrorAction SilentlyContinue"
+            ),
+        ],
+        check=False,
+    )
     SHIM.unlink(missing_ok=True)
     shutil.rmtree(RCLONE_DIR, ignore_errors=True)
     edit_user_path(remove=[RCLONE_DIR, BIN_DIR] if not any(BIN_DIR.glob("*")) else [RCLONE_DIR])
     print("  ✓ Removed the task, rclone, the drive-push shim and their PATH entries.")
     print(f"    The {REMOTE} remote stays in rclone's config (%APPDATA%\\rclone\\rclone.conf).")
+
 
 def done():
     print_header("Drive push setup complete")
@@ -206,6 +247,7 @@ def done():
     print("    drive-push             # upload what changed since the last push")
     print("    drive-push --full      # compare the whole disk with Drive (~15 min)")
     print()
+
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
