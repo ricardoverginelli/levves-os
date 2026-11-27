@@ -16,10 +16,16 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-[ -d ~/.claude-gorila ] || { echo "No business login here (~/.claude-gorila)" >&2; exit 1; }
-[ -x ~/.local/bin/yakuake-tab ] || { echo "Run kwin/install.sh first" >&2; exit 1; }
+[ -d ~/.claude-gorila ] || {
+    echo "No business login here (~/.claude-gorila)" >&2
+    exit 1
+}
+[ -x ~/.local/bin/yakuake-tab ] || {
+    echo "Run kwin/install.sh first" >&2
+    exit 1
+}
 
 link yakuake-business-tab "$bin"
 launcher_shortcut yakuake-business-tab "New Yakuake business Claude tab" "$bin" utilities-terminal \
-    "[([$((0x1800004E)), 0, 0, 0],)]"  # Meta+Alt+N
+    "[([$((0x1800004E)), 0, 0, 0],)]" # Meta+Alt+N
 echo "Done. Meta+Alt+N opens a Yakuake tab with Claude Code on the business login."

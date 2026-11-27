@@ -9,8 +9,9 @@ need kwriteconfig6 dbus-send
 
 undo=false
 [ "${1:-}" = --uninstall ] && undo=true
-set_key() {  # <value> <kwriteconfig6 args…>: the value, or the default when undoing
-    local value=$1; shift
+set_key() { # <value> <kwriteconfig6 args…>: the value, or the default when undoing
+    local value=$1
+    shift
     if $undo; then kwriteconfig6 "$@" --delete; else kwriteconfig6 "$@" "$value"; fi
 }
 

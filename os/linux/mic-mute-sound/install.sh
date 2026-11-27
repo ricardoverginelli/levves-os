@@ -18,7 +18,7 @@ fi
 need pactl pw-play ffmpeg
 
 # Two quick notes each: falling for muted, rising for unmuted
-tone() {  # <out> <first Hz> <second Hz>
+tone() { # <out> <first Hz> <second Hz>
     ffmpeg -loglevel error -y \
         -f lavfi -i "sine=f=$2:d=0.07" -f lavfi -i "sine=f=$3:d=0.09" \
         -filter_complex "[0]afade=t=out:st=0.05:d=0.02[a];[1]afade=t=out:st=0.05:d=0.04[b];[a][b]concat=n=2:v=0:a=1,volume=0.35" \

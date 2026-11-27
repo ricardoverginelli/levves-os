@@ -3,7 +3,10 @@
 # ASUS laptop only (needs the 2808:a658 sensor). Run as root: sudo bash install.sh
 # Undo: sudo bash install.sh --uninstall (back to Fedora's libfprint)
 set -e
-[ "$(id -u)" = 0 ] || { echo "Run as root: sudo bash install.sh" >&2; exit 1; }
+[ "$(id -u)" = 0 ] || {
+    echo "Run as root: sudo bash install.sh" >&2
+    exit 1
+}
 
 user=${SUDO_USER:-$USER}
 out=$(getent passwd "$user" | cut -d: -f6)/.cache/libfprint-ft9366
@@ -17,9 +20,16 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-lsusb -d 2808:a658 >/dev/null || { echo "No FT9366 sensor (2808:a658) on this machine" >&2; exit 1; }
+lsusb -d 2808:a658 >/dev/null || {
+    echo "No FT9366 sensor (2808:a658) on this machine" >&2
+    exit 1
+}
+# shellcheck disable=SC2012 # picks the last built rpm; the names are plain
 rpm=$(ls "$out"/libfprint-[0-9]*.x86_64.rpm 2>/dev/null | tail -1)
-[ -n "$rpm" ] || { echo "Nothing built in $out; run bash build.sh first" >&2; exit 1; }
+[ -n "$rpm" ] || {
+    echo "Nothing built in $out; run bash build.sh first" >&2
+    exit 1
+}
 
 dnf -y --setopt=disable_excludes='*' install "$rpm"
 # A newer Fedora libfprint would drop the driver; build.sh again picks that one up

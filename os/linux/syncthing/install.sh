@@ -20,19 +20,25 @@ fi
 
 need syncthing ssh
 here() { syncthing cli "$@"; }
-there() {  # STGUIADDRESS in the container makes cli want an API key too; without it, cli reads config.xml
+there() { # STGUIADDRESS in the container makes cli want an API key too; without it, cli reads config.xml
     ssh "$nas" docker exec syncthing env -u STGUIADDRESS syncthing cli "$@"
 }
-has() { grep -qx "$2" <<<"$($1 config "${@:3}" list)"; }  # <here|there> <id> <collection…>
+has() { grep -qx "$2" <<<"$($1 config "${@:3}" list)"; } # <here|there> <id> <collection…>
 
 mkdir -p "$folder"
 cp stignore "$folder/.stignore"
 systemctl --user enable --now syncthing.service
-for _ in $(seq 20); do here show system >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 20); do
+    here show system >/dev/null 2>&1 && break
+    sleep 1
+done
 
 me=$(syncthing device-id)
 nas_id=$(ssh "$nas" docker exec syncthing syncthing device-id) ||
-    { echo "No Syncthing on $nas yet: run nas/syncthing/install.sh first" >&2; exit 1; }
+    {
+        echo "No Syncthing on $nas yet: run nas/syncthing/install.sh first" >&2
+        exit 1
+    }
 
 echo "==> Pairing $(uname -n) and the NAS"
 here config devices "$me" name set "$(uname -n)"

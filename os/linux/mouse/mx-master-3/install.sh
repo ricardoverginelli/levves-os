@@ -13,6 +13,9 @@ fi
 # receiver, the receiver is enough
 grep -qs 'MX Master 3' /sys/class/hidraw/*/device/uevent ||
     lsusb -d 046d:c52b >/dev/null || lsusb -d 046d:c548 >/dev/null ||
-    { echo "No MX Master 3 found; turn it on and connect it first" >&2; exit 1; }
+    {
+        echo "No MX Master 3 found; turn it on and connect it first" >&2
+        exit 1
+    }
 sudo dnf install -y solaar
 echo "Done; Solaar starts at login (tray icon). Set the buttons up in its rule editor"

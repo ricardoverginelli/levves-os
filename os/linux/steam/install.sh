@@ -17,9 +17,9 @@ if [ "${1:-}" = --uninstall ]; then
 else
     kwriteconfig6 --file kwinrulesrc --group $id --key Description "Steam's window is Steam"
     kwriteconfig6 --file kwinrulesrc --group $id --key wmclass steam
-    kwriteconfig6 --file kwinrulesrc --group $id --key wmclassmatch 1  # exact
+    kwriteconfig6 --file kwinrulesrc --group $id --key wmclassmatch 1 # exact
     kwriteconfig6 --file kwinrulesrc --group $id --key desktopfile steam
-    kwriteconfig6 --file kwinrulesrc --group $id --key desktopfilerule 2  # force
+    kwriteconfig6 --file kwinrulesrc --group $id --key desktopfilerule 2 # force
     rules=${rules:+$rules,}$id
 fi
 kwriteconfig6 --file kwinrulesrc --group General --key rules "$rules"

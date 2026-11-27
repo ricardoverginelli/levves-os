@@ -47,7 +47,7 @@ if ! diff -rq ../../../design/dist/qml "$levves_qml" >/dev/null 2>&1; then
 fi
 environment="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d"
 mkdir -p "$environment"
-echo "QML_IMPORT_PATH=$levves_qml" > "$environment/levves.conf"
+echo "QML_IMPORT_PATH=$levves_qml" >"$environment/levves.conf"
 if ! systemctl --user show-environment | grep -qx "QML_IMPORT_PATH=$levves_qml"; then
     systemctl --user set-environment QML_IMPORT_PATH="$levves_qml"
     echo "KWin's scripts and Alt+Tab see the Levves QML module after the next login"
@@ -140,7 +140,7 @@ if ! cmp -s wallpaper/urban-flora.png "$wallpaper"; then
     echo "Installing the wallpaper"
     mkdir -p "$(dirname "$wallpaper")"
     cp wallpaper/urban-flora.png "$wallpaper"
-    rm -f "$HOME/.local/share/wallpapers/leaves.png"  # the previous wallpaper
+    rm -f "$HOME/.local/share/wallpapers/leaves.png" # the previous wallpaper
 fi
 # Every desktop, not just one: a screen Plasma hasn't seen before (or sees under a new
 # identity, as after a monitor is turned off and on) gets a new desktop without it
@@ -155,7 +155,9 @@ if awk -v img="Image=file://$wallpaper" '
     plasma-apply-wallpaperimage "$wallpaper" >/dev/null
 fi
 lock="--file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General"
+# shellcheck disable=SC2086 # $lock holds several options, split on purpose (POSIX sh has no arrays)
 kwriteconfig6 $lock --key Image "file://$wallpaper"
+# shellcheck disable=SC2086 # $lock holds several options, split on purpose (POSIX sh has no arrays)
 kwriteconfig6 $lock --key PreviewImage "file://$wallpaper"
 
 # Login screen: same wallpaper and Plasma style plus our Plasma settings (colors,
@@ -166,7 +168,7 @@ login_hash=$({
     cat "$wallpaper" login-screen/install.sh
     find "$style" "$HOME/.local/share/icons/Levves" -type f -exec cat {} +
     for file in kdeglobals plasmarc plasma-localerc kcminputrc kxkbrc \
-                kwinoutputconfig.json fontconfig/fonts.conf; do
+        kwinoutputconfig.json fontconfig/fonts.conf; do
         cat "$config/$file" 2>/dev/null || true
     done
 } | sha1sum)
@@ -174,7 +176,7 @@ if [ "$(cat "$stamp" 2>/dev/null)" != "$login_hash" ]; then
     echo "Updating the login screen (asks for your password)"
     if pkexec sh "$PWD/login-screen/install.sh" "$wallpaper" "$config" "$style" "$HOME/.local/share/icons/Levves"; then
         mkdir -p "$(dirname "$stamp")"
-        echo "$login_hash" > "$stamp"
+        echo "$login_hash" >"$stamp"
     else
         echo "Login screen not updated; it will ask again on the next run"
     fi
@@ -207,7 +209,7 @@ restart=true
 # codes: Meta 0x10000000, Shift 0x02000000, Up 0x01000013, Down 0x01000015,
 # PgUp 0x01000016, PgDown 0x01000017. Everything is cleared first, so a key
 # moving from one action to another never conflicts.
-kwin_shortcut() {  # action, friendly name, keys as a(ai)
+kwin_shortcut() { # action, friendly name, keys as a(ai)
     gdbus call --session --dest org.kde.kglobalaccel --object-path /kglobalaccel \
         --method org.kde.KGlobalAccel.setForeignShortcutKeys "['kwin', '$1', 'KWin', '$2']" "$3" >/dev/null
 }
@@ -325,9 +327,13 @@ if ! diff -rq kwin-decoration/levves "$decoration" >/dev/null 2>&1; then
     cp -r kwin-decoration/levves/. "$decoration"
 fi
 deco="--file kwinrc --group org.kde.kdecoration2"
+# shellcheck disable=SC2086 # $deco holds several options, split on purpose (POSIX sh has no arrays)
 kwriteconfig6 $deco --key library org.kde.kwin.aurorae
+# shellcheck disable=SC2086 # $deco holds several options, split on purpose (POSIX sh has no arrays)
 kwriteconfig6 $deco --key theme kwin4_decoration_qml_levves
+# shellcheck disable=SC2086 # $deco holds several options, split on purpose (POSIX sh has no arrays)
 kwriteconfig6 $deco --key ButtonsOnLeft ""
+# shellcheck disable=SC2086 # $deco holds several options, split on purpose (POSIX sh has no arrays)
 kwriteconfig6 $deco --key ButtonsOnRight IAX
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 

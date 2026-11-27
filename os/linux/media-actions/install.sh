@@ -14,7 +14,7 @@ video/x-flv video/mp2t video/ogg video/3gpp video/x-ms-wmv video/x-m4v"
 images="image/png image/jpeg image/webp image/avif image/bmp image/tiff image/gif
 image/heif image/heic image/jxl"
 
-added() {  # mime → its Added Associations list, without us
+added() { # mime → its Added Associations list, without us
     kreadconfig6 --file "$mimeapps" --group "Added Associations" --key "$1" |
         tr ';' '\n' | grep -vx -e "$desktop" -e '' | paste -sd ';' || true
 }
@@ -36,11 +36,16 @@ fi
 
 need ffmpeg ffprobe magick notify-send kreadconfig6 kwriteconfig6
 need_python PySide6 python3-pyside6
-[ -d /usr/lib64/qt6/qml/org/kde/layershell ] || { echo "Missing: layer-shell-qt" >&2; exit 1; }
+[ -d /usr/lib64/qt6/qml/org/kde/layershell ] || {
+    echo "Missing: layer-shell-qt" >&2
+    exit 1
+}
 
 mkdir -p "$apps"
 link media-actions "$bin"
-cat > "$apps/$desktop" <<EOF
+# shellcheck disable=SC2086 # $videos and $images are space-separated lists
+mime_types=$(echo $videos $images | tr ' ' ';')
+cat >"$apps/$desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Cut or Convert
@@ -48,7 +53,7 @@ Comment=Cut with LosslessCut, or convert to MP4, MP3, GIF, PNG or JPG
 Exec=$bin %F
 Icon=mingcute-transfer-horizontal-fill
 NoDisplay=true
-MimeType=$(echo $videos $images | tr ' ' ';');
+MimeType=$mime_types;
 EOF
 
 # Dolphin's middle-click opens the second app in a type's list: keep the current

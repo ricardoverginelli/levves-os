@@ -19,5 +19,5 @@ need kscreen-doctor jq
 
 chmod +x main-monitor
 link main-monitor "$bin"
-launcher_shortcut $id "Toggle main monitor" "$bin toggle" video-display "[([$((0x1200004D)), 0, 0, 0],)]"  # Meta+Shift+M
+launcher_shortcut $id "Toggle main monitor" "$bin toggle" video-display "[([$((0x1200004D)), 0, 0, 0],)]" # Meta+Shift+M
 echo "Done: Meta+Shift+M toggles the main monitor"

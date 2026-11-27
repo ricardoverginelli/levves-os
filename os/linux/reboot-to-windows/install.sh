@@ -19,14 +19,20 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-[ -d /sys/firmware/efi ] || { echo "Not booted in UEFI mode" >&2; exit 1; }
-efibootmgr | grep -q 'Windows Boot Manager' || { echo "No Windows Boot Manager UEFI entry on this machine" >&2; exit 1; }
+[ -d /sys/firmware/efi ] || {
+    echo "Not booted in UEFI mode" >&2
+    exit 1
+}
+efibootmgr | grep -q 'Windows Boot Manager' || {
+    echo "No Windows Boot Manager UEFI entry on this machine" >&2
+    exit 1
+}
 
 # The helper runs as root without a password, so it's a root-owned copy,
 # never a link into this user-writable repo
 sudo install -o root -g root -m 755 efi-bootnext-windows "$helper"
 tmp=$(mktemp)
-echo "$USER ALL=(root) NOPASSWD: $helper" > "$tmp"
+echo "$USER ALL=(root) NOPASSWD: $helper" >"$tmp"
 visudo -cqf "$tmp"
 sudo install -o root -g root -m 440 "$tmp" "$rule"
 rm -f "$tmp"

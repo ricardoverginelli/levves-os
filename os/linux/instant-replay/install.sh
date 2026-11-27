@@ -23,7 +23,7 @@ capture-replay-folder|Open instant replay folder|folder|$((0x0D000042))"
 if [ "${1:-}" = --uninstall ]; then
     while IFS='|' read -r id name args keys; do
         remove_launcher_shortcut "$id"
-    done <<< "$hotkeys"
+    done <<<"$hotkeys"
     unlink_units capture-replay.service capture-tray.service
     rm -f "$bin"
     echo "Uninstalled"
@@ -39,7 +39,7 @@ link instant-replay "$bin"
 while IFS='|' read -r id name args keys; do
     echo "Hotkey: $name"
     launcher_shortcut "$id" "$name" "$bin $args" media-record "[([$keys, 0, 0, 0],)]"
-done <<< "$hotkeys"
+done <<<"$hotkeys"
 
 # Instant replay buffer, started with every Plasma session (restart to pick up changes),
 # unless this machine has it off by default (capture-replay-off/ sets $replay_off)
@@ -47,7 +47,7 @@ link_units capture-replay.service
 if [ -e "$replay_off" ]; then
     echo "Instant replay: off by default here (Alt+Shift+F10 turns it on)"
     systemctl --user disable --now capture-replay.service 2>/dev/null || true
-    link_units capture-replay.service  # disabling a linked unit removes its link too
+    link_units capture-replay.service # disabling a linked unit removes its link too
 else
     systemctl --user enable capture-replay.service
     systemctl --user restart capture-replay.service
@@ -72,7 +72,7 @@ if [ -f "$llc" ]; then
             | .outSegTemplate = "${FILENAME}-cut${SEG_SUFFIX}${EXT}"
             | .cleanupChoices += {cleanupAfterExport: true, askForCleanup: false, closeFile: true,
                 trashTmpFiles: true, trashProjectFile: true, trashSourceFile: false}' \
-            "$llc" > "$llc.new" && mv "$llc.new" "$llc"
+            "$llc" >"$llc.new" && mv "$llc.new" "$llc"
     fi
 fi
 echo "Done"

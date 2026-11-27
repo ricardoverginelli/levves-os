@@ -16,12 +16,12 @@ kwin=$data/kwin
 yakuake_shortcut="['yakuake', 'toggle-window-state', 'Yakuake', 'Open/Retract Yakuake']"
 bin=$local_bin/yakuake-tab
 
-plugin() {  # id, enabled
+plugin() { # id, enabled
     kwriteconfig6 --file kwinrc --group Plugins --key "${1}Enabled" "$2"
 }
 # Yakuake only reads yakuakerc on start, so note when a value actually changes
 yakuake_changed=false
-yakuake_set() {  # group, key, value
+yakuake_set() { # group, key, value
     [ "$(kreadconfig6 --file yakuakerc --group "$1" --key "$2")" = "$3" ] && return
     kwriteconfig6 --file yakuakerc --group "$1" --key "$2" "$3"
     yakuake_changed=true

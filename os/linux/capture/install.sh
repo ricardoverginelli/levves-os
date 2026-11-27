@@ -25,7 +25,7 @@ gif-last-clip|Record GIF of last region|gif last clip|$((0x0D000009))
 mp4-region-clip|Record MP4 of region|mp4 region clip|$((0x0F000009)),$((0x0E000042))
 clipboard-upload|Upload clipboard image|clipboard upload|$((0x0E000055))"
 
-shortcut() {  # component, action, component name, action name, keys as a(ai)
+shortcut() { # component, action, component name, action name, keys as a(ai)
     kga doRegister "['$1', '$2', '$3', '$4']"
     kga setForeignShortcutKeys "['$1', '$2', '$3', '$4']" "$5"
 }
@@ -35,7 +35,7 @@ spectacle=org.kde.spectacle.desktop
 if [ "${1:-}" = --uninstall ]; then
     while IFS='|' read -r id name args keys; do
         remove_launcher_shortcut "capture-$id"
-    done <<< "$hotkeys"
+    done <<<"$hotkeys"
     rm -f "$bin" "$tmpfiles/capture.conf"
     # Spectacle's defaults back: Print launches it, Shift+Print captures the desktop
     shortcut $spectacle _launch Spectacle "Launch Spectacle" "[([$((0x12000053)), 0, 0, 0],), ([$((0x01000009)), 0, 0, 0],)]"
@@ -59,8 +59,9 @@ shortcut $spectacle FullScreenScreenShot Spectacle "Capture Entire Desktop" "$no
 # (launcher_shortcut leaves out the startup notification, whose busy cursor would end up in screenshots)
 while IFS='|' read -r id name args keys; do
     echo "Hotkey: $name"
+    # shellcheck disable=SC2086 # split the comma list into one word per key
     keys="[$(printf '([%s, 0, 0, 0],)\n' ${keys//,/ } | paste -sd,)]"
     launcher_shortcut "capture-$id" "$name" "$bin $args" spectacle "$keys"
-done <<< "$hotkeys"
+done <<<"$hotkeys"
 
 echo "Done"

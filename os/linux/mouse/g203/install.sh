@@ -9,7 +9,10 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-lsusb -d 046d:c092 >/dev/null || { echo "No G203 LIGHTSYNC (046d:c092) plugged in" >&2; exit 1; }
+lsusb -d 046d:c092 >/dev/null || {
+    echo "No G203 LIGHTSYNC (046d:c092) plugged in" >&2
+    exit 1
+}
 sudo dnf install -y piper
 
 # Browser configurators (OpenMouse) turn the onboard profile off and keep the

@@ -12,7 +12,10 @@ need flatpak
 
 remote=artcraft-oci
 uninstall=
-[ "$1" = --uninstall ] && { uninstall=1; shift; }
+[ "$1" = --uninstall ] && {
+    uninstall=1
+    shift
+}
 apps=("$@")
 [ ${#apps[@]} -gt 0 ] || apps=(photocraft lightcraft vectorcraft)
 ids=("${apps[@]/#/ai.storyteller.}")

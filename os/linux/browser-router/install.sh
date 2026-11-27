@@ -23,7 +23,7 @@ chmod +x browser-router
 mkdir -p "$apps"
 link browser-router "$bin"
 # Absolute path: the Plasma session's PATH may not include ~/.local/bin
-cat > "$apps/$id" <<DESKTOP
+cat >"$apps/$id" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=Browser router

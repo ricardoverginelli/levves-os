@@ -16,7 +16,10 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-[ -e /dev/disk/by-uuid/C4C236E9C236DF7C ] || { echo "No Drive Mirror HDD on this machine" >&2; exit 1; }
+[ -e /dev/disk/by-uuid/C4C236E9C236DF7C ] || {
+    echo "No Drive Mirror HDD on this machine" >&2
+    exit 1
+}
 need rclone
 grep -q C4C236E9C236DF7C /etc/fstab || echo "Note: the fstab line from README.md is missing"
 rclone listremotes | grep -qx gdrive: || echo "Note: no 'gdrive' rclone remote yet (see README.md)"

@@ -37,7 +37,7 @@ for b in $browsers; do
     # Menu and taskbar launchers use the full /usr/bin path, so point them at
     # the wrapper. A copy: re-run after an update changes the system one.
     sed "s|^Exec=/usr/bin/|Exec=$bin/|; 1a # Made by levves mouse/middle-click (MiddleClickAutoscroll)" \
-        "/usr/share/applications/$b.desktop" > "$apps/$b.desktop"
+        "/usr/share/applications/$b.desktop" >"$apps/$b.desktop"
 done
 
 # The flag makes Chrome and Brave show "You are using an unsupported

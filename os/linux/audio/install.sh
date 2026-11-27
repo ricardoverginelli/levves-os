@@ -23,7 +23,10 @@ if [ "${1:-}" = --uninstall ]; then
     exit 0
 fi
 
-lsusb -d 2708:0009 >/dev/null || { echo "No Audient iD4 (2708:0009) on this machine" >&2; exit 1; }
+lsusb -d 2708:0009 >/dev/null || {
+    echo "No Audient iD4 (2708:0009) on this machine" >&2
+    exit 1
+}
 link id4-mic-mono.conf "$conf"
 restart
 pactl set-default-source id4_mic_mono
