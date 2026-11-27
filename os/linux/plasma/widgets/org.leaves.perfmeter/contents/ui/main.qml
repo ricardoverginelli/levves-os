@@ -128,7 +128,7 @@ PlasmoidItem {
         Caps { text: "Net"; Layout.alignment: Qt.AlignBaseline }
         Num {
             id: rate
-            readonly property string muted: Theme.textMuted
+            readonly property string muted: Theme.textMuted.toString()
             visible: !isNaN(down.value ?? NaN)
             font.pixelSize: Theme.typeSizeBar
             Layout.alignment: Qt.AlignBaseline
